@@ -1,3 +1,7 @@
+# import math
+# import random
+
+
 class rl_base:
     def __init__(self):
         self.state_dim = 0
@@ -25,6 +29,14 @@ class rl_base:
         Set the corresponding dimension as None if the state of which is a continuous one.
         If we set the maximum of x as 10, minimum of x as -10, and the step of x as 2 in the inverted pendulum example, 
         the state_step should be [2]; other wise, it should be [None]
+        """
+
+        self.state_space = []
+        """
+        It is a two dimensional list which includes all dimensions of states.
+        Set the corresponding dimension as None if the state of which is a continuous one.
+        If we set the maximum of x as 10, minimum of x as -10, and the step of x as 5 in the inverted pendulum example, 
+        the state_space should be [[-10, -5, 0, 5, -10]]; other wise, it should be [[None]]
         """
 
         self.isStateContinuous = []
@@ -64,6 +76,14 @@ class rl_base:
         Set the corresponding dimension as None if the action of which is a continuous one.
         If we set the step of the acceleration of the base in the inverted pendulum as 1, 
         then the action_step should be [1]; other wise, it should be [None]
+        """
+
+        self.action_space = []
+        """
+        It is a two dimensional list which includes all dimensions of action.
+        Set the corresponding dimension as None if the action of which is a continuous one.
+        If we set the step of the acceleration of the base in the inverted pendulum as 1, minimum value as -2, and maximum value as 2
+        the action_space should be [[-2, -1, 0, 1, 2]]; other wise, it should be [[None]]
         """
 
         self.isActionContinuous = []
@@ -108,7 +128,25 @@ class rl_base:
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
 
     def reset(self):
-        self.current_state = self.initial_state.copy()
-        self.next_state = self.initial_state.copy()
-        self.reward = 0.0
-        self.is_terminal = False
+        # self.current_state = self.initial_state.copy()
+        # self.next_state = []
+        # self.reward = 0.0
+        # self.is_terminal = False
+        pass
+
+    def reset_random(self):
+        # self.current_state = []
+        # for i in range(self.state_dim):
+        #     if self.isStateContinuous[i]:
+        #         if self.state_range[i][0] == -math.inf or self.state_range[i][1] == math.inf:
+        #             self.current_state.append(0.0)
+        #         else:
+        #             self.current_state.append(random.uniform(self.state_range[i][0], self.state_range[i][1]))
+        #     else:
+        #         '''如果状态离散'''
+        #         self.current_state.append(random.choice(self.state_space[i]))
+        #
+        # self.next_state = []
+        # self.reward = 0.0
+        # self.is_terminal = False
+        pass
