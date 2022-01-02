@@ -1,5 +1,8 @@
 # import math
 # import random
+import torch.nn as nn
+import torch.nn.functional as func
+import torch
 
 
 class rl_base:
