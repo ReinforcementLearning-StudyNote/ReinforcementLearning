@@ -169,7 +169,7 @@ class Flight_Attitude_Simulator(rl_base):
         cv.imshow(self.name4image, self.show)
         cv.waitKey(0) if isWait else cv.waitKey(1)
 
-    def show_dynamic_image(self, isWait=False, isRecord=False):
+    def show_dynamic_image(self, isWait=False):
         self.draw_pendulum()
         self.draw_copper()
         cv.imshow(self.name4image, self.show)
@@ -190,7 +190,7 @@ class Flight_Attitude_Simulator(rl_base):
             self.terminal_flag = 2
             print('超出最小角度')
             return True
-        if self.time > 2:
+        if self.time > 5:
             self.terminal_flag = 3
             print('超时')
             return True

@@ -15,5 +15,6 @@ import torch
 # b = torch.argmax(a, dim=1, keepdim=True)
 # print(b)
 # a = random.sample(range(1, 10), 9)
-a = np.random.choice(20, 5)
-print(type(a))
+mu = np.zeros(1)
+print(mu.shape)
+print(np.random.choice(size=mu.shape))
