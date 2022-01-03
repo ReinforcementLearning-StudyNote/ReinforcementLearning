@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 import copy
 from environment.envs.flight_attitude_simulator import Flight_Attitude_Simulator as flight_sim
 from algorithm.value_base.DQN import DQN
@@ -9,8 +9,7 @@ import os
 import torch
 import numpy as np
 import cv2 as cv
-
-sys.dont_write_bytecode = True
+from common.common import *
 
 cfgPath = '../../environment/config/'
 cfgFile = 'Flight_Attitude_Simulator.xml'
@@ -94,11 +93,11 @@ if __name__ == '__main__':
               modelFileXML=cfgPath + cfgFile)
     # env.show_initial_image(isWait=True)
     c = cv.waitKey(1)
-    simulationPath = '../../datasave/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DQN-FlightAttitudeSimulator/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DQN-FlightAttitudeSimulator/'
     os.mkdir(simulationPath)
-    TRAIN = True            # 直接训练
-    RETRAIN = True         # 基于之前的训练结果重新训练
-    TEST = False
+    TRAIN = False            # 直接训练
+    RETRAIN = False         # 基于之前的训练结果重新训练
+    TEST = True
     assert TRAIN ^ TEST     # 训练测试不可以同时进行
 
     if RETRAIN:
@@ -176,14 +175,15 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        dqn.get_optimalfrompkl('dqn_parameters_ok3.pkl')
+        dqn.get_optimalfrompkl('../../datasave/dqn-4-flight-attitude-simulator.pkl')
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
                              (env.width, env.height))
         simulation_num = 100
         for i in range(simulation_num):
-            print('测试数 = ', i)
+            print('==========START==========')
+            print('episode = ', i)
             env.reset_random()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
@@ -195,5 +195,7 @@ if __name__ == '__main__':
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(dqn.actionNUm2PhysicalAction(numAction))
                 env.show_dynamic_image(isWait=False)
                 env.saveData(is2file=False)
+            print('Stable Theta:', rad2deg(env.theta), '\t', 'Stable error:', rad2deg(env.setTheta - env.theta))
+            print('===========END===========')
         cv.waitKey(0)
         env.saveData(is2file=True, filepath=simulationPath)
