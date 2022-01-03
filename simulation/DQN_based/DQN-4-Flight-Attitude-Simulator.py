@@ -180,7 +180,7 @@ if __name__ == '__main__':
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
                              (env.width, env.height))
-        simulation_num = 100
+        simulation_num = 5
         for i in range(simulation_num):
             print('==========START==========')
             print('episode = ', i)
@@ -188,12 +188,11 @@ if __name__ == '__main__':
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
                     break
-                cap.write(env.show)
                 env.current_state = env.next_state.copy()
-                numAction = dqn.get_action_with_fixed_epsilon(env.current_state, 0.0)
-                # numAction = dqn.get_action_optimal_in_DQN(env.current_state)
-                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(dqn.actionNUm2PhysicalAction(numAction))
+                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal =\
+                    env.step_update(dqn.actionNUm2PhysicalAction(dqn.get_action_with_fixed_epsilon(env.current_state, 0.0)))
                 env.show_dynamic_image(isWait=False)
+                cap.write(env.save)
                 env.saveData(is2file=False)
             print('Stable Theta:', rad2deg(env.theta), '\t', 'Stable error:', rad2deg(env.setTheta - env.theta))
             print('===========END===========')

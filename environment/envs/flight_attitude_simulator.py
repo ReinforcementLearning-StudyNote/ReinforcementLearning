@@ -82,6 +82,7 @@ class Flight_Attitude_Simulator(rl_base):
         self.g = 9.8  # 重力加速度
 
         self.show = self.image.copy()
+        self.save = self.image.copy()
 
         self.terminal_flag = 0  # 0-正常 1-上边界出界 2-下边界出界 3-超时
 
@@ -168,11 +169,12 @@ class Flight_Attitude_Simulator(rl_base):
         cv.imshow(self.name4image, self.show)
         cv.waitKey(0) if isWait else cv.waitKey(1)
 
-    def show_dynamic_image(self, isWait=False):
+    def show_dynamic_image(self, isWait=False, isRecord=False):
         self.draw_pendulum()
         self.draw_copper()
         cv.imshow(self.name4image, self.show)
         cv.waitKey(0) if isWait else cv.waitKey(1)
+        self.save = self.show.copy()
         self.show = self.image.copy()
 
     def is_Terminal(self):
