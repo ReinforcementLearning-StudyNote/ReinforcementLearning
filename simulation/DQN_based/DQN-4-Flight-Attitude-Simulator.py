@@ -13,6 +13,7 @@ from common.common import *
 
 cfgPath = '../../environment/config/'
 cfgFile = 'Flight_Attitude_Simulator.xml'
+optPath = '../../datasave/network/'
 show_per = 1       # 每十个回合显示一次
 
 
@@ -175,7 +176,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        dqn.get_optimalfrompkl('../../datasave/dqn-4-flight-attitude-simulator.pkl')
+        dqn.get_optimalfrompkl(optPath + 'dqn-4-flight-attitude-simulator.pkl')
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
