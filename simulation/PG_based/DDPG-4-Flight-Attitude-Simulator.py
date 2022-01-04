@@ -14,10 +14,10 @@ show_per = 1
 simulationPath = '../../datasave/log/ddpg'
 
 
-def fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file: str,
-                                                  randomEnv: bool,
-                                                  fullFillRatio: float,
-                                                  is_only_success: bool):
+def fullFillReplayMemory_with_Optimal(torch_pkl_file: str,
+                                      randomEnv: bool,
+                                      fullFillRatio: float,
+                                      is_only_success: bool):
     pass
 
 
@@ -62,10 +62,10 @@ if __name__ == '__main__':
 
     if RETRAIN:
         print('Retraining')
-        fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file='dqn_parameters_ok3.pkl',
-                                                      randomEnv=True,
-                                                      fullFillRatio=0.5,
-                                                      is_only_success=True)
+        fullFillReplayMemory_with_Optimal(torch_pkl_file='dqn_parameters_ok3.pkl',
+                                          randomEnv=True,
+                                          fullFillRatio=0.5,
+                                          is_only_success=True)
         # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
         '''生成初始数据之后要再次初始化网络'''
         # dqn.eval_net.init()
@@ -97,7 +97,7 @@ if __name__ == '__main__':
                 c = cv.waitKey(1)
                 env.current_state = env.next_state.copy()
                 action = ddpg.choose_action(env.current_state)
-                action = ddpg.action_linear_trans(action)
+                action = ddpg.action_linear_trans(action)       # 将动作转换到实际范围上
                 s, a, r, s_, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
                 env.current_state = copy.deepcopy(s)
                 env.current_action = copy.deepcopy(a)
@@ -128,6 +128,8 @@ if __name__ == '__main__':
             print()
             ddpg.saveData_EpisodeReward(ddpg.episode, sumr)
             ddpg.episode += 1
+            if ddpg.episode % 10 == 0:
+                ddpg.save_models()
             if c == 27:
                 print('Over......')
                 break

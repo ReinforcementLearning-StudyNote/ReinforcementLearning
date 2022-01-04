@@ -98,7 +98,7 @@ class CriticNetWork(nn.Module):
         self.to(self.device)
 
     def forward(self, state, action):
-        state_value = self.fc1(state)                   # forward TODO 有BUG!!
+        state_value = self.fc1(state)                   # forward
         state_value = self.batch_norm1(state_value)     # batch normalization
         state_value = func.relu(state_value)            # relu
 
