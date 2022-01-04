@@ -96,8 +96,8 @@ if __name__ == '__main__':
             while not env.is_terminal:
                 c = cv.waitKey(1)
                 env.current_state = env.next_state.copy()
-                action = ddpg.choose_action(env.current_state)
-                action = ddpg.action_linear_trans(action)       # 将动作转换到实际范围上
+                _action_from_actor = ddpg.choose_action(env.current_state)
+                action = ddpg.action_linear_trans(_action_from_actor)       # 将动作转换到实际范围上
                 s, a, r, s_, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
                 env.current_state = copy.deepcopy(s)
                 env.current_action = copy.deepcopy(a)
