@@ -57,7 +57,7 @@ if __name__ == '__main__':
     TRAIN = True  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = False
-    is_storage_only_success = False
+    is_storage_only_success = True
     assert TRAIN ^ TEST  # 训练测试不可以同时进行
 
     if RETRAIN:
@@ -96,8 +96,8 @@ if __name__ == '__main__':
             while not env.is_terminal:
                 c = cv.waitKey(1)
                 env.current_state = env.next_state.copy()
-                _action_from_actor = ddpg.choose_action(env.current_state)
-                action = ddpg.action_linear_trans(_action_from_actor)       # 将动作转换到实际范围上
+                action_from_actor = ddpg.choose_action(env.current_state)
+                action = ddpg.action_linear_trans(action_from_actor)       # 将动作转换到实际范围上
                 s, a, r, s_, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
                 env.current_state = copy.deepcopy(s)
                 env.current_action = copy.deepcopy(a)

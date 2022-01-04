@@ -181,14 +181,14 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         :brief:     判断回合是否结束
         :return:    是否结束
         """
-        if self.theta > self.maxTheta + deg2rad(1):
-            self.terminal_flag = 1
-            print('超出最大角度')
-            return True
-        if self.theta < self.minTheta - deg2rad(1):
-            self.terminal_flag = 2
-            print('超出最小角度')
-            return True
+        # if self.theta > self.maxTheta + deg2rad(1):
+        #     self.terminal_flag = 1
+        #     print('超出最大角度')
+        #     return True
+        # if self.theta < self.minTheta - deg2rad(1):
+        #     self.terminal_flag = 2
+        #     print('超出最小角度')
+        #     return True
         if self.time > 5:
             self.terminal_flag = 3
             print('超时')
@@ -230,6 +230,12 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
             t_sim = t_sim + h
         # self.theta = max(self.theta, self.minTheta)
         # self.theta = min(self.theta, self.maxTheta)
+        if self.theta > self.maxTheta:      # 如果超出最大角度限制
+            self.theta = self.maxTheta
+            self.dTheta = 0.0           # 碰边界速度直接为0
+        if self.theta < self.minTheta:
+            self.theta = self.minTheta
+            self.dTheta = 0.0
         self.time = self.time + self.T
         self.thetaError = self.setTheta - self.theta
         self.sum_thetaError = self.sum_thetaError + abs(self.thetaError)
@@ -263,7 +269,7 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         if (self.terminal_flag == 1) or (self.terminal_flag == 2):
             r4 = -500 * (self.maxTheta - self.minTheta) ** 2
         '''其他误差'''
-        gain = 20.0
+        gain = 1.0
         self.reward = -gain * self.thetaError ** 2 + r4
         '''reward function'''
 
