@@ -232,10 +232,10 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         # self.theta = min(self.theta, self.maxTheta)
         if self.theta > self.maxTheta:      # 如果超出最大角度限制
             self.theta = self.maxTheta
-            self.dTheta = 0.0           # 碰边界速度直接为0
+            self.dTheta = -0.8 * self.dTheta           # 碰边界速度直接反弹
         if self.theta < self.minTheta:
             self.theta = self.minTheta
-            self.dTheta = 0.0
+            self.dTheta = -0.8 * self.dTheta
         self.time = self.time + self.T
         self.thetaError = self.setTheta - self.theta
         self.sum_thetaError = self.sum_thetaError + abs(self.thetaError)
@@ -264,10 +264,11 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         r3 = 0
         '''累计角度误差'''
         # self.reward = r1 + r2 + r3
+
         '''其他误差'''
         r4 = 0
-        if (self.terminal_flag == 1) or (self.terminal_flag == 2):
-            r4 = -500 * (self.maxTheta - self.minTheta) ** 2
+        # if (self.terminal_flag == 1) or (self.terminal_flag == 2):
+        #     r4 = -500 * (self.maxTheta - self.minTheta) ** 2
         '''其他误差'''
         gain = 1.0
         self.reward = -gain * self.thetaError ** 2 + r4

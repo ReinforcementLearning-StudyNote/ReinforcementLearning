@@ -4,7 +4,6 @@ import torch.nn.functional as func
 import torch
 import numpy as np
 from environment.config.xml_write import xml_cfg
-import os
 from common.common import *
 import pandas as pd
 
@@ -74,12 +73,22 @@ class OUActionNoise(object):
         self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
 
 
+class GaussianNoise(object):
+    def __init__(self, mu):
+        self.mu = mu
+        self.sigma = 1 / 3
+
+    def __call__(self):
+        return np.random.normal(self.mu, self.sigma, self.mu.shape)
+
+
 class CriticNetWork(nn.Module):
-    def __init__(self, beta, state_dim, fc1_dims, fc2_dims, action_dim, name, chkpt_dir='../../datasave/log/ddpg'):
+    def __init__(self, beta, state_dim, fc1_dims, fc2_dims, action_dim, name, chkpt_dir):
         super(CriticNetWork, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
+        # self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
+        self.checkpoint_file = chkpt_dir + name + '_ddpg'
 
         # print('嘤嘤嘤', self.state_dim, fc1_dims)
         self.fc1 = nn.Linear(self.state_dim, fc1_dims)
@@ -98,9 +107,9 @@ class CriticNetWork(nn.Module):
         self.to(self.device)
 
     def forward(self, state, action):
-        state_value = self.fc1(state)                   # forward
-        state_value = self.batch_norm1(state_value)     # batch normalization
-        state_value = func.relu(state_value)            # relu
+        state_value = self.fc1(state)  # forward
+        state_value = self.batch_norm1(state_value)  # batch normalization
+        state_value = func.relu(state_value)  # relu
 
         state_value = self.fc2(state_value)
         state_value = self.batch_norm2(state_value)
@@ -130,15 +139,16 @@ class CriticNetWork(nn.Module):
 
     def load_checkpoint(self):
         print('...loading checkpoint...')
-        torch.save(self.state_dict(), self.checkpoint_file)
+        self.load_state_dict(torch.load(self.checkpoint_file))
 
 
 class ActorNetwork(nn.Module):
-    def __init__(self, alpha, state_dim, fc1_dims, fc2_dims, action_dim, name, chkpt_dir='../../datasave/log/ddpg'):
+    def __init__(self, alpha, state_dim, fc1_dims, fc2_dims, action_dim, name, chkpt_dir):
         super(ActorNetwork, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
+        # self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
+        self.checkpoint_file = chkpt_dir + name + '_ddpg'
 
         self.fc1 = nn.Linear(self.state_dim, fc1_dims)
         self.batch_norm1 = nn.LayerNorm(fc1_dims)
@@ -174,7 +184,7 @@ class ActorNetwork(nn.Module):
         x = self.fc2(x)
         x = self.batch_norm2(x)
         x = func.relu(x)
-        x = torch.tanh(self.mu(x))      # bound the output to [-1, 1]
+        x = torch.tanh(self.mu(x))  # bound the output to [-1, 1]
 
         return x
 
@@ -184,7 +194,7 @@ class ActorNetwork(nn.Module):
 
     def load_checkpoint(self):
         print('...loading checkpoint...')
-        torch.save(self.state_dict(), self.checkpoint_file)
+        self.load_state_dict(torch.load(self.checkpoint_file))
 
 
 class DDPG:
@@ -196,7 +206,8 @@ class DDPG:
                  critic_soft_update: float = 1e-2,
                  memory_capacity: int = 5000,
                  batch_size: int = 64,
-                 modelFileXML: str = ''
+                 modelFileXML: str = '',
+                 path: str = ''
                  ):
         """
         :param gamma:                   discount factor
@@ -228,14 +239,15 @@ class DDPG:
         '''DDPG'''
 
         '''network'''
-        self.actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 64, 64, self.action_dim_nn, name='Actor')
-        self.target_actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 64, 64, self.action_dim_nn, name='TargetActor')
+        self.actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='Actor', chkpt_dir=path)
+        self.target_actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetActor', chkpt_dir=path)
 
-        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 64, 64, self.action_dim_nn, name='Critic')
-        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 64, 64, self.action_dim_nn, name='TargetCritic')
+        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='Critic', chkpt_dir=path)
+        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
         '''network'''
 
         self.noise = OUActionNoise(mu=np.zeros(self.action_dim_nn))
+        self.noise_gaussian = GaussianNoise(mu=np.zeros(self.action_dim_nn))
         self.update_network_parameters()
 
         self.episode = 0
@@ -244,13 +256,18 @@ class DDPG:
         self.save_episode = [self.episode]
         self.save_reward = [self.reward]
 
-    def choose_action(self, state):
-        self.actor.eval()
-        t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)              # get the tensor of the state
-        mu = self.actor(t_state).to(self.actor.device)                                      # choose action
-        mu_prime = mu + torch.tensor(self.noise(), dtype=torch.float).to(self.actor.device)   # action with noise
-        self.actor.train()
-        return mu_prime.cpu().detach().numpy()
+    def choose_action(self, state, is_optimal):
+        self.actor.eval()  # 切换到测试模式
+        t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)  # get the tensor of the state
+        mu = self.actor(t_state).to(self.actor.device)  # choose action
+        # mu_prime = mu + torch.tensor(self.noise(), dtype=torch.float).to(self.actor.device)             # action with OU noise
+        if is_optimal:
+            mu_prime = mu
+        else:
+            mu_prime = mu + torch.tensor(self.noise_gaussian(), dtype=torch.float).to(self.actor.device)  # action with gaussian noise
+        self.actor.train()  # 切换回训练模式
+        mu_prime_np = mu_prime.cpu().detach().numpy()
+        return np.clip(mu_prime_np, -1, 1)  # 将数据截断在[-1, 1]之间
 
     def learn(self):
         if self.memory.mem_counter < self.memory.batch_size:
@@ -267,7 +284,7 @@ class DDPG:
         self.target_critic.eval()
         self.critic.eval()
 
-        target_actions = self.target_actor.forward(new_state)   # 256 4
+        target_actions = self.target_actor.forward(new_state)  # 256 4
         critic_value_ = self.target_critic.forward(new_state, target_actions)
         critic_value = self.critic.forward(state, action)
 
@@ -335,6 +352,10 @@ class DDPG:
         self.critic.load_checkpoint()
         self.target_actor.load_checkpoint()
         self.target_critic.load_checkpoint()
+
+    def actor_load_optimal(self, path, file):
+        print('...loading checkpoint...')
+        self.actor.load_state_dict(torch.load(path + file))
 
     def get_RLBase_from_XML(self, filename):
         rl_base, agentName = self.load_rl_basefromXML(filename=filename)
