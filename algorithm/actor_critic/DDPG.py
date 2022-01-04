@@ -6,7 +6,7 @@ import numpy as np
 from environment.config.xml_write import xml_cfg
 import os
 from common.common import *
-# import pandas as pd
+import pandas as pd
 
 """use CPU or GPU"""
 use_cuda = torch.cuda.is_available()
@@ -35,6 +35,11 @@ class ReplayBuffer:
         self.end_mem[index] = 1 - done
         self.mem_counter += 1
 
+    def store_transition_per_episode(self, states, actions, rewards, states_, dones):
+        num = len(states)
+        for i in range(num):
+            self.store_transition(states[i], actions[i], rewards[i], states_[i], dones[i])
+
     def sample_buffer(self):
         max_mem = min(self.mem_counter, self.mem_size)
         batch = np.random.choice(max_mem, self.batch_size)
@@ -47,7 +52,7 @@ class ReplayBuffer:
         return states, actions, rewards, actions_, terminals
 
 
-class OUActionNoise:
+class OUActionNoise(object):
     def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
         self.mu = mu
         self.theta = theta
@@ -76,6 +81,7 @@ class CriticNetWork(nn.Module):
         self.action_dim = action_dim
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
 
+        # print('嘤嘤嘤', self.state_dim, fc1_dims)
         self.fc1 = nn.Linear(self.state_dim, fc1_dims)
         self.batch_norm1 = nn.LayerNorm(fc1_dims)
 
@@ -92,7 +98,7 @@ class CriticNetWork(nn.Module):
         self.to(self.device)
 
     def forward(self, state, action):
-        state_value = self.fc1(state)                   # forward
+        state_value = self.fc1(state)                   # forward TODO 有BUG!!
         state_value = self.batch_norm1(state_value)     # batch normalization
         state_value = func.relu(state_value)            # relu
 
@@ -225,23 +231,26 @@ class DDPG:
         self.actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 64, 64, self.action_dim_nn, name='Actor')
         self.target_actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 64, 64, self.action_dim_nn, name='TargetActor')
 
-        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn + self.action_dim_nn, 64, 64, self.action_dim_nn, name='Critic')
-        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn + self.action_dim_nn, 64, 64, self.action_dim_nn, name='TargetCritic')
+        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 64, 64, self.action_dim_nn, name='Critic')
+        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 64, 64, self.action_dim_nn, name='TargetCritic')
         '''network'''
 
         self.noise = OUActionNoise(mu=np.zeros(self.action_dim_nn))
         self.update_network_parameters()
 
+        self.episode = 0
+        self.reward = 0
+
+        self.save_episode = [self.episode]
+        self.save_reward = [self.reward]
+
     def choose_action(self, state):
         self.actor.eval()
-        t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)
-        mu = self.actor(t_state).to(self.actor.device)
-        mu_prime = mu + torch.tensor(self.noise, dtype=torch.float).to(self.actor.device)
+        t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)              # get the tensor of the state
+        mu = self.actor(t_state).to(self.actor.device)                                      # choose action
+        mu_prime = mu + torch.tensor(self.noise(), dtype=torch.float).to(self.actor.device)   # action with noise
         self.actor.train()
         return mu_prime.cpu().detach().numpy()
-
-    def remember(self, state, action, reward, new_state, done):
-        self.memory.store_transition(state, action, reward, new_state, done)
 
     def learn(self):
         if self.memory.mem_counter < self.memory.batch_size:
@@ -258,7 +267,7 @@ class DDPG:
         self.target_critic.eval()
         self.critic.eval()
 
-        target_actions = self.target_actor.forward(new_state)
+        target_actions = self.target_actor.forward(new_state)   # 256 4
         critic_value_ = self.target_critic.forward(new_state, target_actions)
         critic_value = self.critic.forward(state, action)
 
@@ -343,3 +352,37 @@ class DDPG:
         """
         root = xml_cfg().XML_Load(filename)
         return xml_cfg().XML_GetTagValue(node=xml_cfg().XML_FindNode(nodename='RL_Base', root=root)), root.attrib['name']
+
+    def DDPG_info(self):
+        print('agent name：', self.agentName)
+        print('state_dim:', self.state_dim_nn)
+        print('action_dim:', self.action_dim_nn)
+        print('action_range:', self.action_range)
+
+    def saveData_EpisodeReward(self,
+                               episode,
+                               reward,
+                               is2file=False,
+                               filename='EpisodeReward.csv',
+                               filepath=''):
+        if is2file:
+            data = pd.DataFrame({
+                'episode:': self.save_episode,
+                'reward': self.save_reward,
+            })
+            data.to_csv(filepath + filename, index=False, sep=',')
+        else:
+            self.save_episode.append(episode)
+            self.save_reward.append(reward)
+
+    def action_linear_trans(self, action):
+        # the action output
+        linear_action = []
+        for i in range(self.action_dim_nn):
+            a = action[i]
+            maxa = self.action_range[i][1]
+            mina = self.action_range[i][0]
+            k = (maxa - mina) / 2
+            b = (maxa + mina) / 2
+            linear_action.append(k * a + b)
+        return linear_action
