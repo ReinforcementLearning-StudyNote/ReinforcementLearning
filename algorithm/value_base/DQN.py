@@ -216,25 +216,6 @@ class DQN:
         """Episode-Epsilon for Flight Attitude Simulator"""
         return self.epsilon
 
-    # def update_replay_memory(self, new_transition: list):
-    #     """
-    #     :brief:                     update replay memory
-    #     :param new_transition:      new data
-    #     :return:                    None
-    #     """
-    #     index = self.replay_count % self.memory_capacity
-    #     self.replay_memory[index][:] = new_transition.copy()
-    #     self.replay_count += 1
-
-    # def update_replay_memory_per_episode(self, new_transitions):
-    #     """
-    #     :brief:                     update replay memory per episode
-    #     :param new_transitions:     new data of en entire episode
-    #     :return:                    None
-    #     """
-    #     for new_transition in new_transitions:
-    #         self.update_replay_memory(new_transition)
-
     def torch_action2num(self, batch_action_number: np.ndarray):
         row = batch_action_number.shape[0]
         col = batch_action_number.shape[1]

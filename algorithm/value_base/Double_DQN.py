@@ -1,6 +1,5 @@
 from algorithm.value_base.DQN import DQN
 import torch
-import numpy as np
 
 """use CPU or GPU"""
 use_cuda = torch.cuda.is_available()
@@ -34,33 +33,16 @@ class Double_DQN(DQN):
             torch.save(self.eval_net, saveNNPath + '/' + 'eval_dqn.pkl')
             torch.save(self.eval_net.state_dict(), saveNNPath + '/' + 'eval_dqn_parameters.pkl')
             print('网络更新：', int(self.target_replace_count / self.target_replace_iter))
-        sample_index = np.random.choice(self.memory_capacity, self.batch_size)
-        batch_memory = np.atleast_2d([self.replay_memory[i] for i in sample_index])
-        '''得到s, a, r, s', boolend 索引的index'''
-        index_s = [0, self.state_dim_nn]
-        index_a = [index_s[1], index_s[1] + self.action_dim_physical]
-        index_r = [index_a[1], index_a[1] + 1]
-        index_s_ = [index_r[1], index_r[1] + self.state_dim_nn]
-        index_b = [index_s_[1], index_s_[1] + 1]
-        '''得到s, a, r, s', boolend 索引的index'''
-        if self.state_dim_nn == 1:
-            t_s = torch.unsqueeze(torch.from_numpy(batch_memory[:, index_s[0]: index_s[1]]).float(), dim=1).to(device)
-            t_s_ = torch.unsqueeze(torch.from_numpy(batch_memory[:, index_s_[0]: index_s_[1]]).float(), dim=1).to(device)
-        else:
-            t_s = torch.squeeze(torch.from_numpy(batch_memory[:, index_s[0]: index_s[1]]).float()).to(device)
-            t_s_ = torch.squeeze(torch.from_numpy(batch_memory[:, index_s_[0]: index_s_[1]]).float()).to(device)
-        t_a = batch_memory[:, index_a[0]: index_a[1]]  # 是个numpy
+
+        state, action, reward, new_state, done = self.memory.sample_buffer()
+        t_s = torch.tensor(state, dtype=torch.float).to(device)
+        t_a = torch.tensor(action, dtype=torch.float).to(device)
         t_a_pos = self.torch_action2num(t_a).to(device)  # t_a是具体的物理动作，需要转换成动作编号作为索引值，是个tensor
-        t_r = torch.unsqueeze(torch.from_numpy(np.squeeze(batch_memory[:, index_r[0]: index_r[1]])).float(), dim=1).to(device)
-        t_bool = torch.unsqueeze(torch.from_numpy(np.squeeze(batch_memory[:, index_b[0]: index_b[1]])).float(), dim=1).to(device)
+        t_r = torch.tensor(reward, dtype=torch.float).to(device)
+        t_s_ = torch.tensor(new_state, dtype=torch.float).to(device)
+        t_bool = torch.tensor(done, dtype=torch.float).to(device)
         q_next = torch.squeeze(self.target_net(t_s_).detach().float()).to(device)
 
-        # '''Double DQN'''
-        # ddqn_action_value = self.eval_net(t_s_).detach().cpu().numpy()
-        # ddqn_num = np.argmax(ddqn_action_value, axis=1)
-        # t_ddqn_num = torch.unsqueeze(torch.from_numpy(ddqn_num).long(), dim=1).to(device)
-        # q_target = t_r + self.gamma * (torch.gather(q_next, 1, t_ddqn_num).mul(t_bool))
-        # '''Double DQN'''
         '''Double DQN'''
         ddqn_action_value2 = self.eval_net(t_s_).detach()
         t_ddqn_num2 = torch.argmax(ddqn_action_value2, dim=1, keepdim=True)
