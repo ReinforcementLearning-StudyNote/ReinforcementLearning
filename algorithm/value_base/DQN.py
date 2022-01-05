@@ -2,7 +2,6 @@ import random
 import torch.nn as nn
 import torch.nn.functional as func
 import torch
-import numpy as np
 from environment.config.xml_write import xml_cfg
 from common.common import *
 import pandas as pd
@@ -98,7 +97,8 @@ class DQN:
         self.target_net.load_state_dict(self.eval_net.state_dict())
         self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=self.learning_rate)
         self.loss_func = nn.MSELoss()
-        self.replay_memory = [[0 for _ in range(self.state_dim_nn + self.action_dim_physical + 1 + self.state_dim_nn + 1)] for _ in range(self.memory_capacity)]   # s a r s' terminal
+        self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_nn)
+        # self.replay_memory = [[0 for _ in range(self.state_dim_nn + self.action_dim_physical + 1 + self.state_dim_nn + 1)] for _ in range(self.memory_capacity)]   # s a r s' terminal
         self.replay_count = 0
         self.target_replace_count = 0
         '''NN'''
@@ -216,24 +216,24 @@ class DQN:
         """Episode-Epsilon for Flight Attitude Simulator"""
         return self.epsilon
 
-    def update_replay_memory(self, new_transition: list):
-        """
-        :brief:                     update replay memory
-        :param new_transition:      new data
-        :return:                    None
-        """
-        index = self.replay_count % self.memory_capacity
-        self.replay_memory[index][:] = new_transition.copy()
-        self.replay_count += 1
+    # def update_replay_memory(self, new_transition: list):
+    #     """
+    #     :brief:                     update replay memory
+    #     :param new_transition:      new data
+    #     :return:                    None
+    #     """
+    #     index = self.replay_count % self.memory_capacity
+    #     self.replay_memory[index][:] = new_transition.copy()
+    #     self.replay_count += 1
 
-    def update_replay_memory_per_episode(self, new_transitions):
-        """
-        :brief:                     update replay memory per episode
-        :param new_transitions:     new data of en entire episode
-        :return:                    None
-        """
-        for new_transition in new_transitions:
-            self.update_replay_memory(new_transition)
+    # def update_replay_memory_per_episode(self, new_transitions):
+    #     """
+    #     :brief:                     update replay memory per episode
+    #     :param new_transitions:     new data of en entire episode
+    #     :return:                    None
+    #     """
+    #     for new_transition in new_transitions:
+    #         self.update_replay_memory(new_transition)
 
     def torch_action2num(self, batch_action_number: np.ndarray):
         row = batch_action_number.shape[0]
@@ -275,37 +275,17 @@ class DQN:
             torch.save(self.eval_net, saveNNPath + '/' + 'eval_dqn.pkl')
             torch.save(self.eval_net.state_dict(), saveNNPath + '/' + 'eval_dqn_parameters.pkl')
             print('网络更新：', int(self.target_replace_count / self.target_replace_iter))
-        # sample_index = np.random.choice(self.memory_capacity, self.batch_size)
-        sample_index = random.sample(range(0, self.memory_capacity), self.batch_size)
-        batch_memory = np.atleast_2d([self.replay_memory[i] for i in sample_index])
-        '''得到s, a, r, s', boolend 索引的index'''
-        index_s = [0, self.state_dim_nn]
-        index_a = [index_s[1], index_s[1] + self.action_dim_physical]
-        index_r = [index_a[1], index_a[1] + 1]
-        index_s_ = [index_r[1], index_r[1] + self.state_dim_nn]
-        index_b = [index_s_[1], index_s_[1] + 1]
-        '''得到s, a, r, s', boolend 索引的index'''
-        if self.state_dim_nn == 1:
-            t_s = torch.unsqueeze(torch.from_numpy(batch_memory[:, index_s[0]: index_s[1]]).float(), dim=1).to(device)
-            t_s_ = torch.unsqueeze(torch.from_numpy(batch_memory[:, index_s_[0]: index_s_[1]]).float(), dim=1).to(device)
-        else:
-            t_s = torch.squeeze(torch.from_numpy(batch_memory[:, index_s[0]: index_s[1]]).float()).to(device)
-            t_s_ = torch.squeeze(torch.from_numpy(batch_memory[:, index_s_[0]: index_s_[1]]).float()).to(device)
-        # t_a = torch.unsqueeze(torch.from_numpy(batch_memory[:, index_a[0]: index_a[1]]).float(), dim=1) # .to(device)
-        t_a = batch_memory[:, index_a[0]: index_a[1]]       # 是个numpy
-        t_a_pos = self.torch_action2num(t_a).to(device)        # t_a是具体的物理动作，需要转换成动作编号作为索引值，是个tensor
-        t_r = torch.unsqueeze(torch.from_numpy(np.squeeze(batch_memory[:, index_r[0]: index_r[1]])).float(), dim=1).to(device)
-        t_bool = torch.unsqueeze(torch.from_numpy(np.squeeze(batch_memory[:, index_b[0]: index_b[1]])).float(), dim=1).to(device)
-
+        state, action, reward, new_state, done = self.memory.sample_buffer()
+        t_s = torch.tensor(state, dtype=torch.float).to(device)
+        t_a = torch.tensor(action, dtype=torch.float).to(device)
+        t_a_pos = self.torch_action2num(t_a).to(device)  # t_a是具体的物理动作，需要转换成动作编号作为索引值，是个tensor
+        t_r = torch.tensor(reward, dtype=torch.float).to(device)
+        t_s_ = torch.tensor(new_state, dtype=torch.float).to(device)
+        t_bool = torch.tensor(done, dtype=torch.float).to(device)
         q_next = torch.squeeze(self.target_net(t_s_).detach().float()).to(device)
         q_target = t_r + self.gamma * (q_next.max(1)[0].view(self.batch_size, 1).mul(t_bool))
         for _ in range(1):
             q_eval = self.eval_net(t_s).gather(1, t_a_pos)
-            # print(t_s.size())
-            # print(t_a_pos.size())
-            # print(q_eval.size())
-            # print(q_target.size())
-            # exit(0)
             loss = self.loss_func(q_eval, q_target)
             self.optimizer.zero_grad()
             loss.backward()
@@ -313,9 +293,6 @@ class DQN:
             self.saveData_StepTDErrorNNLose(self.target_replace_count,
                                             (q_target - q_eval).sum().detach().cpu().numpy(),
                                             loss.detach().cpu().numpy())
-            # self.save_step.append(self.target_replace_count)
-            # self.save_TDError.append((q_target - q_eval).sum().detach().numpy())
-            # self.save_NNLose.append(loss.detach().numpy())
 
     def get_optimalfrompkl(self, nn_para=None):
         """
@@ -333,7 +310,6 @@ class DQN:
         print('Agent action space:', self.action_space)
         print('Replay memory capitaty:', self.memory_capacity)
         print('Batch size:', self.batch_size)
-        print('Dimension of replay memory:', len(self.replay_memory[0]))
 
     def saveData_EpisodeRewardEpsilon(self,
                                       episode,

@@ -247,31 +247,26 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         '''is_terminal'''
 
         '''reward function'''
-        '''角度误差'''
-        k = 6.0
-        r1 = k * math.tan(math.pi / 2 - abs(self.thetaError) - deg2rad(5))
-        '''角度误差'''
+        '''1. 角度误差'''
+        gain = 1.0
+        r1 = -gain * self.thetaError ** 2
+        '''1. 角度误差'''
 
-        '''角速度误差'''
-        k = 1.5
-        if abs(self.thetaError) > deg2rad(20):
-            r2 = k * np.sign(self.thetaError * self.dTheta) * abs(self.dTheta)
-        else:
-            r2 = 0
-        '''角速度误差'''
+        '''2. 角速度误差'''
+        r2 = 0
+        '''2. 角速度误差'''
 
-        '''累计角度误差'''
+        '''3. 累计角度误差'''
         r3 = 0
-        '''累计角度误差'''
-        # self.reward = r1 + r2 + r3
+        '''3. 累计角度误差'''
 
-        '''其他误差'''
+        '''4. 其他误差'''
         r4 = 0
         # if (self.terminal_flag == 1) or (self.terminal_flag == 2):
         #     r4 = -500 * (self.maxTheta - self.minTheta) ** 2
-        '''其他误差'''
-        gain = 1.0
-        self.reward = -gain * self.thetaError ** 2 + r4
+        '''4. 其他误差'''
+
+        self.reward = r1 + r2 + r3 + r4
         '''reward function'''
 
         self.saveData()

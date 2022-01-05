@@ -143,13 +143,14 @@ if __name__ == '__main__':
                 if ddpg.episode % show_per == 0:
                     env.show_dynamic_image(isWait=False)
                 sumr = sumr + env.reward
-                ddpg.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 if is_storage_only_success:
                     new_state.append(env.current_state)
                     new_action.append(env.current_action)
                     new_reward.append(env.reward)
                     new_state_.append(env.next_state)
                     new_done.append(1.0 if env.is_terminal else 0.0)
+                else:
+                    ddpg.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 ddpg.learn()
             '''跳出循环代表回合结束'''
             if is_storage_only_success:

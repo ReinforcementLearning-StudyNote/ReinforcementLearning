@@ -182,14 +182,14 @@ class Flight_Attitude_Simulator(rl_base):
         :brief:     判断回合是否结束
         :return:    是否结束
         """
-        if self.theta > self.maxTheta + deg2rad(1):
-            self.terminal_flag = 1
-            print('超出最大角度')
-            return True
-        if self.theta < self.minTheta - deg2rad(1):
-            self.terminal_flag = 2
-            print('超出最小角度')
-            return True
+        # if self.theta > self.maxTheta + deg2rad(1):
+        #     self.terminal_flag = 1
+        #     print('超出最大角度')
+        #     return True
+        # if self.theta < self.minTheta - deg2rad(1):
+        #     self.terminal_flag = 2
+        #     print('超出最小角度')
+        #     return True
         if self.time > 5:
             self.terminal_flag = 3
             print('超时')
@@ -222,8 +222,12 @@ class Flight_Attitude_Simulator(rl_base):
             self.theta = self.theta + h * (K1 + 2 * K2 + 2 * K3 + K4) / 6
             self.dTheta = self.dTheta + h * (L1 + 2 * L2 + 2 * L3 + L4) / 6
             t_sim = t_sim + h
-        # self.theta = max(self.theta, self.minTheta)
-        # self.theta = min(self.theta, self.maxTheta)
+        if self.theta > self.maxTheta:
+            self.theta = self.maxTheta
+            self.dTheta = -0.8 * self.dTheta
+        if self.theta < self.minTheta:
+            self.theta = self.minTheta
+            self.dTheta = -0.8 * self.dTheta
         self.time = self.time + self.T
         self.thetaError = self.setTheta - self.theta
         self.sum_thetaError = self.sum_thetaError + abs(self.thetaError)
@@ -235,30 +239,26 @@ class Flight_Attitude_Simulator(rl_base):
         '''is_terminal'''
 
         '''reward function'''
-        '''角度误差'''
-        k = 6.0
-        r1 = k * math.tan(math.pi / 2 - abs(self.thetaError) - deg2rad(5))
-        '''角度误差'''
-
-        '''角速度误差'''
-        k = 1.5
-        if abs(self.thetaError) > deg2rad(20):
-            r2 = k * np.sign(self.thetaError * self.dTheta) * abs(self.dTheta)
-        else:
-            r2 = 0
-        '''角速度误差'''
-
-        '''累计角度误差'''
-        r3 = 0
-        '''累计角度误差'''
-        # self.reward = r1 + r2 + r3
-        '''其他误差'''
-        r4 = 0
-        if (self.terminal_flag == 1) or (self.terminal_flag == 2):
-            r4 = -500 * (self.maxTheta - self.minTheta) ** 2
-        '''其他误差'''
+        '''1. 角度误差'''
         gain = 20.0
-        self.reward = -gain * self.thetaError ** 2 + r4
+        r1 = -gain * self.thetaError ** 2
+        '''1. 角度误差'''
+
+        '''2. 角速度误差'''
+        r2 = 0
+        '''2. 角速度误差'''
+
+        '''3. 累计角度误差'''
+        r3 = 0
+        '''3. 累计角度误差'''
+
+        '''4. 其他误差'''
+        r4 = 0
+        # if (self.terminal_flag == 1) or (self.terminal_flag == 2):
+        #     r4 = -500 * (self.maxTheta - self.minTheta) ** 2
+        '''4. 其他误差'''
+
+        self.reward = r1 + r2 + r3 + r4
         '''reward function'''
 
         self.saveData()

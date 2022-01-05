@@ -2,7 +2,6 @@
 import torch.nn as nn
 import torch.nn.functional as func
 import torch
-import numpy as np
 from environment.config.xml_write import xml_cfg
 from common.common import *
 import pandas as pd
@@ -12,74 +11,6 @@ use_cuda = torch.cuda.is_available()
 use_cpu_only = True
 device = torch.device("cpu") if use_cpu_only else torch.device("cuda" if use_cuda else "cpu")
 """use CPU or GPU"""
-
-
-class ReplayBuffer:
-    def __init__(self, max_size, batch_size, state_dim, action_dim):
-        self.mem_size = max_size
-        self.mem_counter = 0
-        self.batch_size = batch_size
-        self.s_mem = np.zeros((self.mem_size, state_dim))
-        self._s_mem = np.zeros((self.mem_size, state_dim))
-        self.a_mem = np.zeros((self.mem_size, action_dim))
-        self.r_mem = np.zeros(self.mem_size)
-        self.end_mem = np.zeros(self.mem_size, dtype=np.float)
-
-    def store_transition(self, state, action, reward, state_, done):
-        index = self.mem_counter % self.mem_size
-        self.s_mem[index] = state
-        self.a_mem[index] = action
-        self.r_mem[index] = reward
-        self._s_mem[index] = state_
-        self.end_mem[index] = 1 - done
-        self.mem_counter += 1
-
-    def store_transition_per_episode(self, states, actions, rewards, states_, dones):
-        num = len(states)
-        for i in range(num):
-            self.store_transition(states[i], actions[i], rewards[i], states_[i], dones[i])
-
-    def sample_buffer(self):
-        max_mem = min(self.mem_counter, self.mem_size)
-        batch = np.random.choice(max_mem, self.batch_size)
-        states = self.s_mem[batch]
-        actions = self.a_mem[batch]
-        rewards = self.r_mem[batch]
-        actions_ = self._s_mem[batch]
-        terminals = self.end_mem[batch]
-
-        return states, actions, rewards, actions_, terminals
-
-
-class OUActionNoise(object):
-    def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
-        self.mu = mu
-        self.theta = theta
-        self.sigma = sigma
-        self.x0 = x0
-        self.dt = dt
-        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
-        self.reset()
-
-    def __call__(self):
-        # noise = OUActionNoise()
-        # noise()
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + \
-            self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
-        self.x_prev = x
-        return x
-
-    def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
-
-
-class GaussianNoise(object):
-    def __init__(self, mu):
-        self.mu = mu
-        self.sigma = 1 / 3
-
-    def __call__(self):
-        return np.random.normal(self.mu, self.sigma, self.mu.shape)
 
 
 class CriticNetWork(nn.Module):
@@ -315,31 +246,10 @@ class DDPG:
         """
         :return:        None
         """
-        # actor_params = self.actor.named_parameters()
-        # critic_params = self.critic.named_parameters()
-        # target_actor_params = self.target_actor.named_parameters()
-        # target_critic_params = self.target_critic.named_parameters()
-        # actor_state_dict = dict(actor_params)
-        # critic_state_dict = dict(critic_params)
-        # target_actor_dict = dict(target_actor_params)
-        # target_critic_dict = dict(target_critic_params)
-        # for name in critic_state_dict:
-        #     critic_state_dict[name] = self.critic_tau * critic_state_dict[name].clone() + \
-        #                               (1 - self.critic_tau) * target_critic_dict[name].clone()
-        # self.target_critic.load_state_dict(critic_state_dict)
-        #
-        # for name in actor_state_dict:
-        #     actor_state_dict[name] = self.actor_tau * actor_state_dict[name].clone() + \
-        #                               (1 - self.actor_tau) * target_actor_dict[name].clone()
-        # self.target_actor.load_state_dict(actor_state_dict)
-
-        '''parameter update'''
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(target_param.data * (1.0 - self.critic_tau) + param.data * self.critic_tau)  # soft update
-
         for target_param, param in zip(self.target_actor.parameters(), self.actor.parameters()):
             target_param.data.copy_(target_param.data * (1.0 - self.actor_tau) + param.data * self.actor_tau)  # soft update
-        '''parameter update'''
 
     def save_models(self):
         self.actor.save_checkpoint()
@@ -354,6 +264,12 @@ class DDPG:
         self.target_critic.load_checkpoint()
 
     def actor_load_optimal(self, path, file):
+        """
+        :brief:         only for test
+        :param path:    file path
+        :param file:    file name
+        :return:
+        """
         print('...loading checkpoint...')
         self.actor.load_state_dict(torch.load(path + file))
 
@@ -380,6 +296,18 @@ class DDPG:
         print('action_dim:', self.action_dim_nn)
         print('action_range:', self.action_range)
 
+    def action_linear_trans(self, action):
+        # the action output
+        linear_action = []
+        for i in range(self.action_dim_nn):
+            a = action[i]
+            maxa = self.action_range[i][1]
+            mina = self.action_range[i][0]
+            k = (maxa - mina) / 2
+            b = (maxa + mina) / 2
+            linear_action.append(k * a + b)
+        return linear_action
+
     def saveData_EpisodeReward(self,
                                episode,
                                reward,
@@ -395,15 +323,3 @@ class DDPG:
         else:
             self.save_episode.append(episode)
             self.save_reward.append(reward)
-
-    def action_linear_trans(self, action):
-        # the action output
-        linear_action = []
-        for i in range(self.action_dim_nn):
-            a = action[i]
-            maxa = self.action_range[i][1]
-            mina = self.action_range[i][0]
-            k = (maxa - mina) / 2
-            b = (maxa + mina) / 2
-            linear_action.append(k * a + b)
-        return linear_action

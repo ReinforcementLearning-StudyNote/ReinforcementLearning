@@ -1,13 +1,11 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
-import copy
 from environment.envs.flight_attitude_simulator import Flight_Attitude_Simulator as flight_sim
 from algorithm.value_base.DQN import DQN
 import datetime
 import os
 import torch
-import numpy as np
 import cv2 as cv
 from common.common import *
 
@@ -15,6 +13,7 @@ cfgPath = '../../environment/config/'
 cfgFile = 'Flight_Attitude_Simulator.xml'
 optPath = '../../datasave/network/'
 show_per = 1       # 每十个回合显示一次
+is_storage_only_success = False
 
 
 def fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file: str,
@@ -37,25 +36,35 @@ def fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file: str,
     print('Collecting...')
     fullFillCount = int(fullFillRatio * dqn.memory_capacity)
     fullFillCount = max(min(fullFillCount, dqn.memory_capacity), dqn.batch_size)
-    _new_transitions = []
+    _new_state = []
+    _new_action = []
+    _new_reward = []
+    _new_state_ = []
+    _new_done = []
     while dqn.replay_count < fullFillCount:
         env.reset_random() if randomEnv else env.reset()
-        _new_transitions.clear()
+        _new_state.clear()
+        _new_action.clear()
+        _new_reward.clear()
+        _new_state_.clear()
+        _new_done.clear()
         while not env.is_terminal:
             env.current_state = env.next_state.copy()       # 状态更新
             _numAction = dqn.get_action_with_fixed_epsilon(env.current_state, epsilon)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(dqn.actionNUm2PhysicalAction(_numAction))
             env.show_dynamic_image(isWait=False)
-            _boolend = not env.is_terminal
-            _new_transition = list(np.hstack((env.current_state, env.current_action, env.reward, env.next_state, _boolend)))
-            if not is_only_success:
-                dqn.update_replay_memory(_new_transition)
+            if is_only_success:
+                _new_state.append(env.current_state)
+                _new_action.append(env.current_action)
+                _new_reward.append(env.reward)
+                _new_state_.append(env.next_state)
+                _new_done.append(1 if env.is_terminal else 0)
+            else:
+                dqn.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 if dqn.replay_count % 100 == 0:
                     print('replay_count = ', dqn.replay_count)
-            else:
-                _new_transitions.append(_new_transition.copy())
         if is_only_success and env.terminal_flag == 3:
-            dqn.update_replay_memory_per_episode(_new_transitions)
+            dqn.memory.store_transition_per_episode(_new_state, _new_action, _new_reward, _new_state_, _new_done)
             print('replay_count = ', dqn.replay_count)
 
 
@@ -78,9 +87,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
             _numAction = dqn.get_action_random()
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(dqn.actionNUm2PhysicalAction(_numAction))
             env.show_dynamic_image(isWait=False)
-            _boolend = not env.is_terminal
-            _new_transition = list(np.hstack((env.current_state, env.current_action, env.reward, env.next_state, _boolend)))
-            dqn.update_replay_memory(_new_transition)
+            dqn.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
 
 
 if __name__ == '__main__':
@@ -127,35 +134,44 @@ if __name__ == '__main__':
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5)
             '''fullFillReplayMemory_Random'''
         print('Start to train...')
-        new_transitions = []
+        new_state = []
+        new_action = []
+        new_reward = []
+        new_state_ = []
+        new_done = []
         while dqn.episode <= MAX_EPISODE:
             # env.reset()
             env.reset_random()
             sumr = 0
-            new_transitions.clear()
+            new_state.clear()
+            new_action.clear()
+            new_reward.clear()
+            new_state_.clear()
+            new_done.clear()
             while not env.is_terminal:
                 c = cv.waitKey(1)
                 env.current_state = env.next_state.copy()
                 # dqn.epsilon = dqn.get_epsilon()
                 dqn.epsilon = 0.4
                 numAction = dqn.get_action_with_fixed_epsilon(env.current_state, dqn.epsilon)
-                s, a, r, s_, env.is_terminal = env.step_update(dqn.actionNUm2PhysicalAction(numAction))     # 环境更新的action需要是物理的action
-                env.current_state = copy.deepcopy(s)
-                env.current_action = copy.deepcopy(a)
-                env.reward = r
-                env.next_state = copy.deepcopy(s_)
+                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = \
+                    env.step_update(dqn.actionNUm2PhysicalAction(numAction))     # 环境更新的action需要是物理的action
                 if dqn.episode % show_per == 0:
                     env.show_dynamic_image(isWait=False)
                 sumr = sumr + env.reward
-                boolend = not env.is_terminal
-                new_transition = list(np.hstack((s, a, r, s_, boolend)))
-                new_transitions.append(new_transition.copy())
-                # dqn.update_replay_memory(new_transition)
+                if is_storage_only_success:
+                    new_state.append(env.current_state)
+                    new_action.append(env.current_action)
+                    new_reward.append(env.reward)
+                    new_state_.append(env.next_state)
+                    new_done.append(1 if env.is_terminal else 0)
+                else:
+                    dqn.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 dqn.nn_training(saveNNPath=simulationPath)
             '''跳出循环代表回合结束'''
-            if env.terminal_flag == 3:
+            if is_storage_only_success and env.terminal_flag == 3:
                 print('Update Replay Memory......')
-                dqn.update_replay_memory_per_episode(new_transitions)
+                dqn.memory.store_transition_per_episode(new_state, new_action, new_reward, new_state_, new_done)
             '''跳出循环代表回合结束'''
             print(
                 '=========START=========',
