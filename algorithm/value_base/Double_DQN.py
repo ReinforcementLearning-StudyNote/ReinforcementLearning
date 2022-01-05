@@ -32,7 +32,7 @@ class Double_DQN(DQN):
             torch.save(self.target_net.state_dict(), saveNNPath + '/' + 'dqn_parameters.pkl')
             torch.save(self.eval_net, saveNNPath + '/' + 'eval_dqn.pkl')
             torch.save(self.eval_net.state_dict(), saveNNPath + '/' + 'eval_dqn_parameters.pkl')
-            print('网络更新：', int(self.target_replace_count / self.target_replace_iter))
+            print('...network update...', int(self.target_replace_count / self.target_replace_iter))
 
         state, action, reward, new_state, done = self.memory.sample_buffer()
         t_s = torch.tensor(state, dtype=torch.float).to(device)

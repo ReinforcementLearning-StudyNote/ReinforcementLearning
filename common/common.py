@@ -49,6 +49,22 @@ def str2list(string: str) -> list:
     return outer
 
 
+def sind(theta):
+    """
+    :param theta:   degree, not rad
+    :return:
+    """
+    return math.sin(theta / 180.0 * math.pi)
+
+
+def cosd(theta):
+    """
+    :param theta:   degree, not rad
+    :return:
+    """
+    return math.cos(theta / 180.0 * math.pi)
+
+
 class ReplayBuffer:
     def __init__(self, max_size, batch_size, state_dim, action_dim):
         self.mem_size = max_size
