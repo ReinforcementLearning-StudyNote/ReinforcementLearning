@@ -1,4 +1,6 @@
 import math
+import random
+
 from environment.envs.pathplanning.samplingmap import samplingmap
 from environment.config.xml_write import *
 from algorithm.rl_base.rl_base import rl_base
@@ -112,35 +114,128 @@ class twoD_Nav_Empty(samplingmap, rl_base):
 
     def step_update(self, action: list):
         self.j = self.action_saturation(action).copy()      # 动作饱和处理
-        # self.state_saturation()                             # 状态饱和处理
         self.current_state = [(self.terminalP[0] - self.p[0]) / self.x_size,
                               (self.terminalP[1] - self.p[1]) / self.y_size,
-                              self.initV[0],
-                              self.initV[1],
-                              self.initA[0],
-                              self.initA[1]]
+                              self.v[0],
+                              self.v[1],
+                              self.a[0],
+                              self.a[1]]
 
         '''step update'''
         self.p = [self.p[i] + self.v[i] * self.dt + 1 / 2 * self.a[i] * self.dt ** 2 + 1 / 6 * self.j[i] * self.dt ** 3 for i in range(2)]
         self.v = [self.v[i] + self.a[i] * self.dt + 1 / 2 * self.j[i] * self.dt ** 2 for i in range(2)]
         self.a = [self.a[i] + self.dt * self.j[i] for i in range(2)]
-        self.is_terminal = self.is_Terminal()       # 刚刚更新完状态，就需要立即进行会和终止检测
         self.time = self.time + self.dt
+        self.is_terminal = self.is_Terminal()  # 刚刚更新完状态，就需要立即进行会和终止检测
         self.next_state = [(self.terminalP[0] - self.p[0]) / self.x_size,
                            (self.terminalP[1] - self.p[1]) / self.y_size,
-                           self.initV[0],
-                           self.initV[1],
-                           self.initA[0],
-                           self.initA[1]]
+                           self.v[0],
+                           self.v[1],
+                           self.a[0],
+                           self.a[1]]
+        if not self.is_terminal:
+            self.state_saturation()     # 如果不是回合终止，那么做状态饱和处理，否则做了也没有意义
         '''step update'''
 
         '''reward function'''
-        self.reward = 0
+        '''距离误差奖励'''
+        dis = self.dis_two_points(self.p, self.terminalP)
+        gain = 1.0
+        r1 = -gain * dis ** 2
+        '''距离误差奖励'''
+        self.reward = r1
         '''reward function'''
 
         self.saveData()
 
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
+
+    def reset(self):
+        """
+        :return:    None
+        """
+        '''physical parameters'''
+        self.initP = self.start.copy()
+        self.p = self.initP.copy()
+        self.v = self.initV.copy()
+        self.a = self.initA.copy()
+        self.j = self.initJ.copy()
+        self.terminalP = self.terminal.copy()
+        self.time = 0.0
+        self.terminal_flag = 0
+        '''physical parameters'''
+
+        '''RL_BASE'''
+        self.initial_state = [(self.terminalP[0] - self.p[0]) / self.x_size,
+                              (self.terminalP[1] - self.p[1]) / self.y_size,
+                              self.initV[0],
+                              self.initV[1],
+                              self.initA[0],
+                              self.initA[1]]
+        self.initial_action = self.initJ.copy()
+        self.current_state = self.initial_state.copy()
+        self.next_state = self.current_state.copy()
+        self.current_action = self.initial_action.copy()
+        self.reward = 0.0
+        self.is_terminal = False
+        '''RL_BASE'''
+
+        '''data_save'''
+        self.Px = [self.p[0]]
+        self.Py = [self.p[1]]
+        self.Vx = [self.v[0]]
+        self.Vy = [self.v[1]]
+        self.Ax = [self.a[0]]
+        self.Ay = [self.a[1]]
+        self.Jx = [self.j[0]]
+        self.Jy = [self.j[1]]
+        self.Time = [self.time]
+        '''data_save'''
+
+    def reset_random(self):
+        """
+        :return:    None
+        """
+        '''physical parameters'''
+        self.start = [random.uniform(0, self.x_size), random.uniform(0, self.y_size)]       # 随机重置地图的 start
+        self.terminal = [random.uniform(0, self.x_size), random.uniform(0, self.y_size)]    # 随机重置地图的 terminal
+        self.initP = self.start.copy()
+        self.p = self.initP.copy()
+        self.v = self.initV.copy()
+        self.a = self.initA.copy()
+        self.j = self.initJ.copy()
+        self.terminalP = self.terminal.copy()
+        self.time = 0.0
+        self.terminal_flag = 0
+        print('Init position:', self.initP)
+        '''physical parameters'''
+
+        '''RL_BASE'''
+        self.initial_state = [(self.terminalP[0] - self.p[0]) / self.x_size,
+                              (self.terminalP[1] - self.p[1]) / self.y_size,
+                              self.initV[0],
+                              self.initV[1],
+                              self.initA[0],
+                              self.initA[1]]
+        self.current_state = self.initial_state.copy()
+        self.next_state = self.current_state.copy()
+        self.initial_action = self.initJ.copy()
+        self.current_action = self.initial_action.copy()
+        self.reward = 0.0
+        self.is_terminal = False
+        '''RL_BASE'''
+
+        '''data_save'''
+        self.Px = [self.p[0]]
+        self.Py = [self.p[1]]
+        self.Vx = [self.v[0]]
+        self.Vy = [self.v[1]]
+        self.Ax = [self.a[0]]
+        self.Ay = [self.a[1]]
+        self.Jx = [self.j[0]]
+        self.Jy = [self.j[1]]
+        self.Time = [self.time]
+        '''data_save'''
 
     def saveModel2XML(self, filename='2D_Nav_EmptyWorld_Continuous.xml', filepath='../../config/'):
         rootMsg = {
