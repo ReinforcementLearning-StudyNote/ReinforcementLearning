@@ -9,8 +9,8 @@ import math
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../")
 
-from Map.Color.Color import Color
-from Map.Continuous.obstacle import obstacle
+from environment.Color import Color
+from environment.envs.pathplanning.obstacle import obstacle
 
 
 def sind(theta):
@@ -31,23 +31,19 @@ class samplingmap(obstacle):
                  start: list = None,
                  terminal: list = None,
                  obs=None,
-                 map_file=None,
                  draw=True):
         super(samplingmap, self).__init__(obs)  # 用obstacle的函数初始化sampling map
         self.width = width
         self.height = height
-        if map_file is None:
-            self.x_size = x_size
-            self.y_size = y_size
-            self.name4image = image_name
-            # self.start = [0.5, 0.5] if start is None else start
-            # self.terminal = [x_size - 0.5, y_size - 0.5] if terminal is None else terminal
-            self.start = start
-            self.terminal = terminal
-            self.obs = self.get_obs()
-            self.obs_num = 0 if obs is None else len(obs)
-        else:
-            pass
+
+        self.x_size = x_size
+        self.y_size = y_size
+        self.name4image = image_name
+        self.start = start
+        self.terminal = terminal
+        self.obs = self.get_obs()
+        self.obs_num = 0 if obs is None else len(obs)
+
         self.image = np.zeros([self.width, self.height, 3], np.uint8)
         self.image[:, :, 0] = np.ones([self.width, self.height]) * 255
         self.image[:, :, 1] = np.ones([self.width, self.height]) * 255
@@ -61,14 +57,72 @@ class samplingmap(obstacle):
                                    (self.height - 2 * self.y_offset) / self.y_size)
 
         self.image_temp = self.image.copy()
-        self.set_random_obstacles(10)
-        self.map_draw(draw)
+        # self.set_random_obstacles(10)
+        self.map_draw(draw, isWait=False)
 
     def set_start(self, start):
         self.start = start
 
     def set_terminal(self, terminal):
         self.terminal = terminal
+
+    def set_random_obs_single(self):
+        index = random.sample([0, 1, 2, 3], 1)[0]  # 0-circle, 1-ellipse, 2-poly
+        if index == 0:
+            newObs = self.set_random_circle(xRange=[1.5, self.x_size - 1.5], yRange=[1.5, self.x_size - 1.5])
+            center = newObs[1]
+            r = newObs[2][0]
+        elif index == 1:
+            newObs = self.set_random_ellipse(xRange=[1.5, self.x_size - 1.5], yRange=[1.5, self.x_size - 1.5])
+            center = newObs[1]
+            r = max(newObs[2][0], newObs[2][1])
+        else:
+            newObs = self.set_random_poly(xRange=[1.5, self.x_size - 1.5], yRange=[1.5, self.x_size - 1.5])
+            center = newObs[1]
+            r = newObs[2][0]
+        return newObs, center, r
+
+    def set_random_obstacles(self, num):
+        new_obs = []
+        safety_dis = 0.5
+        for i in range(num):
+            '''for each obstacle'''
+            counter = 0
+            while True:
+                newObs, center, r = self.set_random_obs_single()  # 0-circle, 1-ellipse, 2-poly
+                counter += 1
+                if counter > 1000:
+                    break
+                is_acceptable = True
+                '''检测newObs与起点和终点的距离'''
+                if (self.start is not None) and (self.start != []) and (self.terminal is not None) and (self.terminal != []):
+                    if (self.dis_two_points(self.start, center) < r + safety_dis) or (
+                            self.dis_two_points(self.terminal, center) < r + safety_dis):
+                        continue
+                '''检测newObs与起点和终点的距离'''
+
+                '''检测障碍物与其他障碍物的距离'''
+                for _obs in self.obs:
+                    if _obs[0] == 'circle':
+                        if self.dis_two_points(center, _obs[2]) < r + _obs[1][0] + safety_dis:
+                            is_acceptable = False
+                            break
+                    elif _obs[0] == 'ellipse':
+                        if self.dis_two_points(center, _obs[2]) < r + max(_obs[1][0], _obs[1][1]) + safety_dis:
+                            is_acceptable = False
+                            break
+                    else:
+                        if self.dis_two_points(center, [_obs[1][0], _obs[1][1]]) < r + _obs[1][2] + safety_dis:
+                            is_acceptable = False
+                            break
+                '''检测障碍物与其他障碍物的距离'''
+                if is_acceptable:
+                    new_obs.append(newObs.copy())
+                    break
+            self.obs = self.set_obs(new_obs)
+
+    def obs_clear(self):
+        self.obs.clear()
 
     def point_is_out(self, point: list) -> bool:
         """
@@ -113,12 +167,12 @@ class samplingmap(obstacle):
     @staticmethod
     def point_is_in_ellipse(long: float, short: float, rotate_angle: float, center: list, point: list) -> bool:
         """
-        :brief:                     判断点是否在椭圆内部
-        :param long:                长轴
-        :param short:               短轴
-        :param rotate_angle:        椭圆自身的旋转角度
-        :param center:              中心点
-        :param point:               待测点
+        :brief:                     if one point is in an ellipse
+        :param long:                long axis
+        :param short:               short axis
+        :param rotate_angle:        the rotate angle of the ellipse
+        :param center:              center of the ellipse
+        :param point:               point to be tested
         :return:                    bool
         """
         sub = np.array([point[i] - center[i] for i in [0, 1]])
@@ -162,8 +216,7 @@ class samplingmap(obstacle):
         """
         return self.line_is_in_ellipse(r, r, 0, center, point1, point2)
 
-    def line_is_in_ellipse(self, long: float, short: float, rotate_angle: float, center: list, point1: list,
-                           point2: list) -> bool:
+    def line_is_in_ellipse(self, long: float, short: float, rotate_angle: float, center: list, point1: list, point2: list) -> bool:
         """
         :brief:                     判断线段与椭圆是否有交点
         :param long:                长轴
@@ -358,32 +411,6 @@ class samplingmap(obstacle):
         """
         return int(_l * self.pixel_per_meter)
 
-    def test_func_point_is_in_obs_using_opencv_callback(self):
-        """
-        :brief:         as shown in the name of the function
-        :return:        None
-        """
-
-        def callback(event, x, y, flags, param):
-            self.image_temp = self.image.copy()
-            if event == cv.EVENT_MOUSEMOVE:  # 鼠标左键抬起
-                point = self.pixel2dis((x, y))
-                cv.circle(self.image_temp, (x, y), 3, Color().DarkMagenta, -1)
-                if min(point) <= 0. or point[0] > self.x_size or point[1] > self.y_size:
-                    cv.putText(self.image_temp, "OUT", (x + 5, y + 5), cv.FONT_HERSHEY_SIMPLEX,
-                               0.7, Color().DarkMagenta, 1, cv.LINE_AA)
-                else:
-                    cv.putText(self.image_temp, str(self.point_is_in_obs(point)), (x + 5, y + 5),
-                               cv.FONT_HERSHEY_SIMPLEX,
-                               0.7, Color().DarkMagenta, 1, cv.LINE_AA)
-
-        cv.setMouseCallback(self.name4image, callback)
-        while True:
-            cv.imshow(self.name4image, self.image_temp)
-            if cv.waitKey(1) == ord('q'):
-                break
-        cv.destroyAllWindows()
-
     def map_draw_boundary(self):
         cv.rectangle(self.image, self.dis2pixel([0., 0.]), self.dis2pixel([self.x_size, self.y_size]), Color().Black, 2)
 
@@ -437,60 +464,3 @@ class samplingmap(obstacle):
         cv.imwrite('../../../somefigures/figure/' + name, self.image)
         cv.waitKey(0)
         cv.destroyAllWindows()
-
-    '''random obstacles'''
-
-    def set_random_obs_single(self):
-        index = random.sample([0, 1, 2, 3], 1)[0]  # 0-circle, 1-ellipse, 2-poly
-        if index == 0:
-            newObs = self.set_random_circle(xRange=[1.5, self.x_size - 1.5], yRange=[1.5, self.x_size - 1.5])
-            center = newObs[1]
-            r = newObs[2][0]
-        elif index == 1:
-            newObs = self.set_random_ellipse(xRange=[1.5, self.x_size - 1.5], yRange=[1.5, self.x_size - 1.5])
-            center = newObs[1]
-            r = max(newObs[2][0], newObs[2][1])
-        else:
-            newObs = self.set_random_poly(xRange=[1.5, self.x_size - 1.5], yRange=[1.5, self.x_size - 1.5])
-            center = newObs[1]
-            r = newObs[2][0]
-        return newObs, center, r
-
-    def set_random_obstacles(self, num):
-        new_obs = []
-        safety_dis = 0.5
-        for i in range(num):
-            '''for each obstacle'''
-            counter = 0
-            while True:
-                newObs, center, r = self.set_random_obs_single()  # 0-circle, 1-ellipse, 2-poly
-                counter += 1
-                if counter > 1000:
-                    break
-                is_acceptable = True
-                '''检测newObs与起点和终点的距离'''
-                if (self.start is not None) and (self.start != []) and (self.terminal is not None) and (self.terminal != []):
-                    if (self.dis_two_points(self.start, center) < r + safety_dis) or (
-                            self.dis_two_points(self.terminal, center) < r + safety_dis):
-                        continue
-                '''检测newObs与起点和终点的距离'''
-
-                '''检测障碍物与其他障碍物的距离'''
-                for _obs in self.obs:
-                    if _obs[0] == 'circle':
-                        if self.dis_two_points(center, _obs[2]) < r + _obs[1][0] + safety_dis:
-                            is_acceptable = False
-                            break
-                    elif _obs[0] == 'ellipse':
-                        if self.dis_two_points(center, _obs[2]) < r + max(_obs[1][0], _obs[1][1]) + safety_dis:
-                            is_acceptable = False
-                            break
-                    else:
-                        if self.dis_two_points(center, [_obs[1][0], _obs[1][1]]) < r + _obs[1][2] + safety_dis:
-                            is_acceptable = False
-                            break
-                '''检测障碍物与其他障碍物的距离'''
-                if is_acceptable:
-                    new_obs.append(newObs.copy())
-                    break
-            self.obs = self.set_obs(new_obs)

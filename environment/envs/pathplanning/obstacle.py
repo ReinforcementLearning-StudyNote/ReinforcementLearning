@@ -1,34 +1,36 @@
-import math
 import random
-
-
-def sind(theta):
-    return math.sin(theta / 180.0 * math.pi)
-
-
-def cosd(theta):
-    return math.cos(theta / 180.0 * math.pi)
+from common.common import *
 
 
 class obstacle:
     def __init__(self, obs):
-        self.name_set = ['triangle',  # 三角形(等腰)(就是因为描述方便)(格式统一)
-                         'rectangle',  # 四边形(利用外接圆的方式去定义)
-                         'pentagon',  # 五边形(正)(利用外接圆的方式去定义)
-                         'hexagon',  # 六边形(正)(利用外接圆的方式去定义)
-                         'heptagon'  # 七边形(正)(利用外接圆的方式去定义)
-                         'octagon',  # 八边形(正)(利用外接圆的方式去定义)
-                         'circle',  # 圆形
-                         'ellipse']  # 椭圆形
-        self.obs = self.set_obs(obs)  # the formation is ['name', [r], [points]]
-        ''' triangle        ['triangle',  [pt1, pt2], [r, theta0, theta_bias]]     pt should be clockwise or counter-clock wise 
-            rectangle       ['rectangle', [pt1, pt2], [r, theta0, theta_bias]]             pt1 and pt2 are the coordinate of the center
-            pentagon        ['pentagon',  [pt1, pt2], [r, theta_bias]]
-            hexagon         ['hexagon',   [pt1, pt2], [r, theta_bias]]
-            heptagon        ['heptagon',  [pt1, pt2], [r, theta_bias]]
-            octagon         ['octagon',   [pt1, pt2], [r, theta_bias]]
-            circle          ['circle',    [pt1, pt2], [r]]
-            ellipse         ['ellipse',   [pt1, pt2], [long_axis, short_axis, theta_bias]]'''
+        self.name_set = ['triangle',        # 三角形(等腰)(就是因为描述方便)(格式统一)
+                         'rectangle',       # 四边形(利用外接圆的方式去定义)
+                         'pentagon',        # 五边形(正)(利用外接圆的方式去定义)
+                         'hexagon',         # 六边形(正)(利用外接圆的方式去定义)
+                         'heptagon'         # 七边形(正)(利用外接圆的方式去定义)
+                         'octagon',         # 八边形(正)(利用外接圆的方式去定义)
+                         'circle',          # 圆形
+                         'ellipse']         # 椭圆形
+        '''
+        This is the input formation of some figures. The storage formation is different, which is implemented in function set_obs()
+        triangle        ['triangle',  [pt1, pt2], [r, theta0, theta_bias]]     pt should be clockwise or counter-clock wise, theta0 is the 顶角 of the triangle
+                                                                            , theta_bias is the rotation angle.
+        rectangle       ['rectangle', [pt1, pt2], [r, theta0, theta_bias]]     pt1 and pt2 are the coordinate of the center
+        pentagon        ['pentagon',  [pt1, pt2], [r, theta_bias]]
+        hexagon         ['hexagon',   [pt1, pt2], [r, theta_bias]]
+        heptagon        ['heptagon',  [pt1, pt2], [r, theta_bias]]
+        octagon         ['octagon',   [pt1, pt2], [r, theta_bias]]
+        circle          ['circle',    [pt1, pt2], [r]]
+        ellipse         ['ellipse',   [pt1, pt2], [long_axis, short_axis, theta_bias]]
+        '''
+        self.obs = self.set_obs(obs)
+        '''
+        The formation is:
+        poly            ['name', [x, y, r], [pts]]          x and y are the coordinate of the center, r is the radius of the circumcircle of the polygon.
+        circle          ['name', [r],       [x, y]]
+        ellipse         ['name', [long_axis, short_axis, theta_bias], [x, y]]
+        '''
 
     @staticmethod
     def set_obs(message: list):
