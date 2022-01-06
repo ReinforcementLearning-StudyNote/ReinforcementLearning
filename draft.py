@@ -18,14 +18,4 @@ import torch
 # mu = np.zeros(1)
 # print(mu.shape)
 # print(np.random.choice(size=mu.shape))
-class GaussianNoise(object):
-    def __init__(self):
-        self.mu = np.zeros(2)
-        self.sigma = 1 / 3
-
-    def __call__(self):
-        return np.random.normal(self.mu, self.sigma, self.mu.shape)
-
-
-gs = GaussianNoise()
-print(gs())
+print(2.0 * max(math.pow(6.0*10/5, 1/3), math.pow(6.0*10/5, 1/3)))

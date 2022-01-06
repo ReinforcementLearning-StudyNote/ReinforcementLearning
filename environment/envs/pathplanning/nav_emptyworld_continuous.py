@@ -5,11 +5,13 @@ from environment.envs.pathplanning.samplingmap import samplingmap
 from environment.config.xml_write import *
 from algorithm.rl_base.rl_base import rl_base
 import pandas as pd
+import cv2 as cv
+from environment.Color import Color
 
 
-class twoD_Nav_Empty(samplingmap, rl_base):
+class Nav_EmptyWorld(samplingmap, rl_base):
     def __init__(self, samplingMap_dict: dict, vRange: list, aRange: list, jRange: list, save_cfg: bool):
-        super(twoD_Nav_Empty, self).__init__(samplingMap_dict['width'],
+        super(Nav_EmptyWorld, self).__init__(samplingMap_dict['width'],
                                              samplingMap_dict['height'],
                                              samplingMap_dict['x_size'],
                                              samplingMap_dict['y_size'],
@@ -35,7 +37,7 @@ class twoD_Nav_Empty(samplingmap, rl_base):
         self.dt = 0.01
         self.time = 0.0
         self.terminal_flag = 0  # 0-正常 1-出界 2-超时
-        self.tMax = 2.0 * max(math.pow(6.0*self.x_size/self.jRange[0], 1/3), math.pow(6.0*self.y_size/self.jRange[1], 1/3))
+        self.tMax = 3.0 * max(math.pow(6.0 * self.x_size / math.fabs(self.jRange[0]), 1 / 3), math.pow(6.0 * self.y_size / math.fabs(self.jRange[1]), 1 / 3))
         '''physical parameters'''
 
         '''rl_base'''
@@ -94,10 +96,18 @@ class twoD_Nav_Empty(samplingmap, rl_base):
     def state_saturation(self):
         self.p[0] = min(max(self.p[0], 0.0), self.x_size)
         self.p[1] = min(max(self.p[1], 0.0), self.y_size)
-        self.v[0] = min(max(self.p[1], self.vRange[0]), self.vRange[1])
-        self.v[1] = min(max(self.p[1], self.vRange[0]), self.vRange[1])
-        self.a[0] = min(max(self.p[1], self.aRange[0]), self.aRange[1])
-        self.a[1] = min(max(self.p[1], self.aRange[0]), self.aRange[1])
+        self.v[0] = min(max(self.v[1], self.vRange[0]), self.vRange[1])
+        self.v[1] = min(max(self.v[1], self.vRange[0]), self.vRange[1])
+        self.a[0] = min(max(self.a[1], self.aRange[0]), self.aRange[1])
+        self.a[1] = min(max(self.a[1], self.aRange[0]), self.aRange[1])
+
+    def show_dynamic_image(self, isWait=False):
+        self.image = self.image_temp.copy()
+        self.map_draw_boundary()
+        cv.circle(self.image, self.dis2pixel(self.p), 5, Color().Red, -1)
+        cv.circle(self.image, self.dis2pixel(self.terminal), 5, Color().Blue, -1)
+        cv.imshow(self.name4image, self.image)
+        cv.waitKey(0) if isWait else cv.waitKey(1)
 
     def is_Terminal(self):
         if (self.p[0] <= 0.0) or (self.p[0] >= self.x_size):
@@ -113,7 +123,7 @@ class twoD_Nav_Empty(samplingmap, rl_base):
         return False
 
     def step_update(self, action: list):
-        self.j = self.action_saturation(action).copy()      # 动作饱和处理
+        self.j = self.action_saturation(action).copy()  # 动作饱和处理
         self.current_state = [(self.terminalP[0] - self.p[0]) / self.x_size,
                               (self.terminalP[1] - self.p[1]) / self.y_size,
                               self.v[0],
@@ -134,7 +144,7 @@ class twoD_Nav_Empty(samplingmap, rl_base):
                            self.a[0],
                            self.a[1]]
         if not self.is_terminal:
-            self.state_saturation()     # 如果不是回合终止，那么做状态饱和处理，否则做了也没有意义
+            self.state_saturation()  # 如果不是回合终止，那么做状态饱和处理，否则做了也没有意义
         '''step update'''
 
         '''reward function'''
@@ -156,6 +166,9 @@ class twoD_Nav_Empty(samplingmap, rl_base):
         """
         '''physical parameters'''
         self.initP = self.start.copy()
+        self.initV = [0., 0.]
+        self.initA = [0., 0.]
+        self.initJ = [0., 0.]
         self.p = self.initP.copy()
         self.v = self.initV.copy()
         self.a = self.initA.copy()
@@ -197,9 +210,12 @@ class twoD_Nav_Empty(samplingmap, rl_base):
         :return:    None
         """
         '''physical parameters'''
-        self.start = [random.uniform(0, self.x_size), random.uniform(0, self.y_size)]       # 随机重置地图的 start
-        self.terminal = [random.uniform(0, self.x_size), random.uniform(0, self.y_size)]    # 随机重置地图的 terminal
+        self.set_start([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])  # 随机重置地图的 start
+        self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])  # 随机重置地图的 terminal
         self.initP = self.start.copy()
+        self.initV = [0., 0.]
+        self.initA = [0., 0.]
+        self.initJ = [0., 0.]
         self.p = self.initP.copy()
         self.v = self.initV.copy()
         self.a = self.initA.copy()
@@ -237,7 +253,7 @@ class twoD_Nav_Empty(samplingmap, rl_base):
         self.Time = [self.time]
         '''data_save'''
 
-    def saveModel2XML(self, filename='2D_Nav_EmptyWorld_Continuous.xml', filepath='../../config/'):
+    def saveModel2XML(self, filename='Nav_EmptyWorld_Continuous.xml', filepath='../config/'):
         rootMsg = {
             'name': 'Flight_Attitude_Simulator_Continuous',
             'author': 'Yefeng YANG',

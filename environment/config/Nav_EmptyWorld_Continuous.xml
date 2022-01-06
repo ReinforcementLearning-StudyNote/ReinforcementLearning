@@ -1,0 +1,48 @@
+<Plant E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn" author="Yefeng YANG" date="2022.01.05" name="Flight_Attitude_Simulator_Continuous">
+	<RL_Base>
+		<state_dim>6</state_dim>
+		<state_num>[inf, inf, inf, inf, inf, inf]</state_num>
+		<state_step>[None, None, None, None, None, None]</state_step>
+		<state_space>[None, None, None, None, None, None]</state_space>
+		<state_range>[[-1.0, 1.0], [-1.0, 1.0], [-3, 3], [-3, 3], [-3, 3], [-3, 3]]</state_range>
+		<isStateContinuous>[True, True, True, True, True, True]</isStateContinuous>
+		<initial_state>[0.4, 0.4, 0.0, 0.0, 0.0, 0.0]</initial_state>
+		<current_state>[0.4, 0.4, 0.0, 0.0, 0.0, 0.0]</current_state>
+		<next_state>[0.4, 0.4, 0.0, 0.0, 0.0, 0.0]</next_state>
+		<action_dim>2</action_dim>
+		<action_step>[None, None]</action_step>
+		<action_range>[[-5, 5], [-5, 5]]</action_range>
+		<action_num>[inf, inf]</action_num>
+		<action_space>[None, None]</action_space>
+		<isActionContinuous>[True, True]</isActionContinuous>
+		<initial_action>[0.0, 0.0]</initial_action>
+		<current_action>[0.0, 0.0]</current_action>
+		<is_terminal>False</is_terminal>
+	</RL_Base>
+	<Physical>
+		<x_size>10</x_size>
+		<y_size>10</y_size>
+		<initP>[5, 5]</initP>
+		<initV>[0.0, 0.0]</initV>
+		<initA>[0.0, 0.0]</initA>
+		<initJ>[0.0, 0.0]</initJ>
+		<terminalP>[9, 9]</terminalP>
+		<vRange>[-3, 3]</vRange>
+		<aRange>[-3, 3]</aRange>
+		<jRange>[-5, 5]</jRange>
+		<p>[5, 5]</p>
+		<v>[0.0, 0.0]</v>
+		<a>[0.0, 0.0]</a>
+		<j>[0.0, 0.0]</j>
+		<dt>0.01</dt>
+		<tMax>6.868285455319992</tMax>
+	</Physical>
+	<Image>
+		<width>500</width>
+		<height>500</height>
+		<name4image>2D_Nav_EmptyWorld</name4image>
+		<x_offset>25.0</x_offset>
+		<y_offset>25.0</y_offset>
+		<pixel_per_meter>45.0</pixel_per_meter>
+	</Image>
+</Plant>
