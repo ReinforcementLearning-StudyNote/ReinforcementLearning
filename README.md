@@ -32,5 +32,6 @@ TEST: True
 ```
 Then run this python file, you can see the result.
 (Actually, the converge process is much faster than that of in the gif, probably because of something wrong with this gif file.)
+lalalala
 
 ![image](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/dqn-4-flight-attitude-simulator.gif)
