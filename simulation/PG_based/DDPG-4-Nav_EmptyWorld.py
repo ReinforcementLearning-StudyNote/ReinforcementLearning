@@ -97,8 +97,8 @@ if __name__ == '__main__':
                 critic_learning_rate=1e-3,
                 actor_soft_update=1e-2,
                 critic_soft_update=1e-2,
-                memory_capacity=20000,  # 10000
-                batch_size=256,
+                memory_capacity=100000,
+                batch_size=512,
                 modelFileXML=cfgPath + cfgFile,
                 path=simulationPath)
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     TRAIN = True  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
-    is_storage_only_success = True
+    is_storage_only_success = False
     assert TRAIN ^ TEST  # 训练测试不可以同时进行
 
     if RETRAIN:

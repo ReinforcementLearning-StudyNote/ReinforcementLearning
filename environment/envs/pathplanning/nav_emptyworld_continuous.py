@@ -39,7 +39,7 @@ class Nav_EmptyWorld(samplingmap, rl_base):
         self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功
         # self.tMax = 3.0 * max(math.pow(6.0 * self.x_size / math.fabs(self.jRange[0]), 1 / 3), math.pow(6.0 * self.y_size / math.fabs(self.jRange[1]), 1 / 3))
         self.tMax = 10
-        self.miss = 0.3
+        self.miss = 0.4
         '''physical parameters'''
 
         '''rl_base'''
@@ -159,12 +159,24 @@ class Nav_EmptyWorld(samplingmap, rl_base):
         '''step update'''
 
         '''reward function'''
+        '''success 奖励'''
+        r3 = 0
+        if self.terminal_flag == 3:
+            r3 = 200
+        '''success 奖励'''
+
+        '''out奖励'''
+        r2 = 0
+        if self.terminal_flag == 1:
+            r2 = -200
+        '''out奖励'''
+
         '''距离误差奖励'''
         dis = self.dis_two_points(self.p, self.terminalP)
-        gain = 1.0
+        gain = 0.01
         r1 = -gain * dis ** 2
         '''距离误差奖励'''
-        self.reward = r1
+        self.reward = r1 + r2 + r3
         '''reward function'''
 
         self.saveData()
