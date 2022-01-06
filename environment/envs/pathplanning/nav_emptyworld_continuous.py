@@ -36,8 +36,10 @@ class Nav_EmptyWorld(samplingmap, rl_base):
         self.j = self.initJ.copy()
         self.dt = 0.01
         self.time = 0.0
-        self.terminal_flag = 0  # 0-正常 1-出界 2-超时
-        self.tMax = 3.0 * max(math.pow(6.0 * self.x_size / math.fabs(self.jRange[0]), 1 / 3), math.pow(6.0 * self.y_size / math.fabs(self.jRange[1]), 1 / 3))
+        self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功
+        # self.tMax = 3.0 * max(math.pow(6.0 * self.x_size / math.fabs(self.jRange[0]), 1 / 3), math.pow(6.0 * self.y_size / math.fabs(self.jRange[1]), 1 / 3))
+        self.tMax = 10
+        self.miss = 0.3
         '''physical parameters'''
 
         '''rl_base'''
@@ -71,6 +73,7 @@ class Nav_EmptyWorld(samplingmap, rl_base):
 
         '''visualization_opencv'''
         # Inherited in samplingmap.
+        self.save = self.image.copy()
         '''visualization_opencv'''
 
         '''data_save'''
@@ -96,9 +99,9 @@ class Nav_EmptyWorld(samplingmap, rl_base):
     def state_saturation(self):
         self.p[0] = min(max(self.p[0], 0.0), self.x_size)
         self.p[1] = min(max(self.p[1], 0.0), self.y_size)
-        self.v[0] = min(max(self.v[1], self.vRange[0]), self.vRange[1])
+        self.v[0] = min(max(self.v[0], self.vRange[0]), self.vRange[1])
         self.v[1] = min(max(self.v[1], self.vRange[0]), self.vRange[1])
-        self.a[0] = min(max(self.a[1], self.aRange[0]), self.aRange[1])
+        self.a[0] = min(max(self.a[0], self.aRange[0]), self.aRange[1])
         self.a[1] = min(max(self.a[1], self.aRange[0]), self.aRange[1])
 
     def show_dynamic_image(self, isWait=False):
@@ -106,18 +109,26 @@ class Nav_EmptyWorld(samplingmap, rl_base):
         self.map_draw_boundary()
         cv.circle(self.image, self.dis2pixel(self.p), 5, Color().Red, -1)
         cv.circle(self.image, self.dis2pixel(self.terminal), 5, Color().Blue, -1)
+        self.save = self.image.copy()
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
 
     def is_Terminal(self):
         if (self.p[0] <= 0.0) or (self.p[0] >= self.x_size):
             self.terminal_flag = 1
+            print('...out...')
             return True
         if (self.p[1] <= 0.0) or (self.p[1] >= self.y_size):
             self.terminal_flag = 1
+            print('...out...')
             return True
         if self.time > self.tMax:
             self.terminal_flag = 2
+            print('...time out...')
+            return True
+        if self.dis_two_points(self.p, self.terminalP) < self.miss:
+            self.terminal_flag = 3
+            print('...success...')
             return True
         self.terminal_flag = 0
         return False
@@ -223,7 +234,7 @@ class Nav_EmptyWorld(samplingmap, rl_base):
         self.terminalP = self.terminal.copy()
         self.time = 0.0
         self.terminal_flag = 0
-        print('Init position:', self.initP)
+        print('...init position...:', self.initP)
         '''physical parameters'''
 
         '''RL_BASE'''
@@ -296,7 +307,8 @@ class Nav_EmptyWorld(samplingmap, rl_base):
             'a': self.a,
             'j': self.j,
             'dt': self.dt,
-            'tMax': self.tMax
+            'tMax': self.tMax,
+            'miss': self.miss
         }
         imageMsg = {
             'width': self.width,

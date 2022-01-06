@@ -51,25 +51,28 @@ def test_nav_empty_world():
                         'x_size': 10,
                         'y_size': 10,
                         'image_name': '2D_Nav_EmptyWorld',
-                        'start': [5, 5],
-                        'terminal': [9, 9],
+                        'start': [0, 0],
+                        'terminal': [10, 10],
                         'obs': [],
                         'draw': True}
     env = Nav_EmptyWorld(samplingMap_dict=samplingMap_dict, vRange=[-3, 3], aRange=[-3, 3], jRange=[-5, 5], save_cfg=True)
-    for i in range(2):
-        env.reset_random()
-        env.show_dynamic_image(isWait=True)
-        print('...episode ', i, ' start...')
+    for i in range(1):
+        # env.reset_random()
+        env.reset()
+        # env.show_dynamic_image(isWait=True)
+        print('======episode ', i, ' start======')
         while not env.is_terminal:
-            print('monitor...')
-            print('X:', env.time, env.p[0], env.v[0], env.a[0], env.j[0])
-            print('Y:', env.time, env.p[1], env.v[1], env.a[1], env.j[1])
-            print('monitor...')
+            # print('monitor...')
+            # print('X:', 'time:', round(env.time, 4), 'p:', round(env.p[0], 4), 'v:', round(env.v[0], 4), 'a:', round(env.a[0], 4), 'j:', round(env.j[0], 4))
+            # print('Y:', 'time:', round(env.time, 4), 'p:', round(env.p[1], 4), 'v:', round(env.v[1], 4), 'a:', round(env.a[1], 4), 'j:', round(env.j[1], 4))
+            # print('monitor...')
             env.show_dynamic_image(isWait=False)
             # action = [-10.,-6.]
-            action = [random.uniform(env.jRange[0], env.jRange[1]), random.uniform(env.jRange[0], env.jRange[1])]
+            # action = [random.uniform(env.jRange[0], env.jRange[1]), random.uniform(env.jRange[0], env.jRange[1])]
+            action = [5, 5]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
-        print('...episode ', i, ' end...')
+        print(env.time)
+        print('======episode ', i, ' end======')
 
 
 test_nav_empty_world()
