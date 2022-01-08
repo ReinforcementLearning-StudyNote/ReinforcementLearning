@@ -129,5 +129,5 @@ class GaussianNoise(object):
         self.mu = mu
         self.sigma = 1 / 3
 
-    def __call__(self):
-        return np.random.normal(self.mu, self.sigma, self.mu.shape)
+    def __call__(self, sigma=1 / 3):
+        return np.random.normal(self.mu, sigma, self.mu.shape)

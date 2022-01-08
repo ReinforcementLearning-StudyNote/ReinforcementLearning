@@ -7,15 +7,13 @@ import random
 from common.common import *
 import torch
 
-# import torch
-# a=torch.tensor([[.1, .2, .3],
-#                 [1.1, 1.2, 1.3],
-#                 [2.1, 2.2, 2.3],
-#                 [3.1, 3.2, 3.3]])
-# b = torch.argmax(a, dim=1, keepdim=True)
-# print(b)
-# a = random.sample(range(1, 10), 9)
-# mu = np.zeros(1)
-# print(mu.shape)
-# print(np.random.choice(size=mu.shape))
-print(2.0 * max(math.pow(6.0*10/5, 1/3), math.pow(6.0*10/5, 1/3)))
+# a = [1, 1]
+# b = [-1, 1]
+# cos = np.dot(a,b) / np.linalg.norm(a) / np.linalg.norm(b)
+# print(cos)
+# print(np.arccos(cos))
+a = torch.randn(10, 4)
+b = torch.zeros(10)
+print(a,b)
+maxa = torch.max(input=a, dim=1, keepdim=True)
+print(maxa[0].mul(b))

@@ -97,9 +97,7 @@ class DQN:
         self.target_net.load_state_dict(self.eval_net.state_dict())
         self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=self.learning_rate)
         self.loss_func = nn.MSELoss()
-        self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_nn)
-        # self.replay_memory = [[0 for _ in range(self.state_dim_nn + self.action_dim_physical + 1 + self.state_dim_nn + 1)] for _ in range(self.memory_capacity)]   # s a r s' terminal
-        self.replay_count = 0
+        self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_physical)
         self.target_replace_count = 0
         '''NN'''
 
@@ -139,7 +137,7 @@ class DQN:
         :brief:         choose an action randomly
         :return:        the number of the action
         """
-        random.seed()
+        # random.seed()
         return np.random.choice(np.arange(0, self.action_dim_nn, 1))
 
     def get_action_optimal_in_DQN(self, state):
@@ -220,14 +218,14 @@ class DQN:
         row = batch_action_number.shape[0]
         col = batch_action_number.shape[1]
         index_a = []
-        for j in range(col):
+        for j in range(row):
             index = []
-            for i in range(row):
-                index.append(np.squeeze(np.argwhere(batch_action_number[i, j] == self.action_space[j])).tolist())
+            for i in range(col):
+                index.append(np.squeeze(np.argwhere(batch_action_number[j, i] == self.action_space[i])).tolist())
             index_a.append(index.copy())
             # print(index)
         # print(index_a)
-        numpy_a = np.array(index_a).T
+        numpy_a = np.array(index_a)
         # print(numpy_a)
         res = []
         for i in range(row):
@@ -258,13 +256,23 @@ class DQN:
             print('网络更新：', int(self.target_replace_count / self.target_replace_iter))
         state, action, reward, new_state, done = self.memory.sample_buffer()
         t_s = torch.tensor(state, dtype=torch.float).to(device)
-        t_a = torch.tensor(action, dtype=torch.float).to(device)
-        t_a_pos = self.torch_action2num(t_a).to(device)  # t_a是具体的物理动作，需要转换成动作编号作为索引值，是个tensor
-        t_r = torch.tensor(reward, dtype=torch.float).to(device)
+        t_a_pos = self.torch_action2num(action).to(device)  # t_a是具体的物理动作，需要转换成动作编号作为索引值，是个tensor
+        t_r = torch.unsqueeze(torch.tensor(reward, dtype=torch.float).to(device), dim=1)
         t_s_ = torch.tensor(new_state, dtype=torch.float).to(device)
-        t_bool = torch.tensor(done, dtype=torch.float).to(device)
-        q_next = torch.squeeze(self.target_net(t_s_).detach().float()).to(device)
-        q_target = t_r + self.gamma * (q_next.max(1)[0].view(self.batch_size, 1).mul(t_bool))
+        t_bool = torch.unsqueeze(torch.tensor(done, dtype=torch.float).to(device), dim=1)
+        q_next = self.target_net(t_s_).detach().to(device)
+        res = torch.max(input=q_next, dim=1, keepdim=True)
+        # q_target = t_r + self.gamma * (q_next.max(1)[0].view(self.batch_size, 1).mul(t_bool))
+        q_target = t_r + self.gamma * (res[0].mul(t_bool))
+        # print(';;;;;;;;')
+        # print(t_s.size())
+        # print(t_a_pos.size())
+        # print(t_r.size())
+        # print(t_s_.size())
+        # print(t_bool.size())
+        # print(q_next.size())
+        # print(q_target.size())
+        # print('=========')
         for _ in range(1):
             q_eval = self.eval_net(t_s).gather(1, t_a_pos)
             loss = self.loss_func(q_eval, q_target)

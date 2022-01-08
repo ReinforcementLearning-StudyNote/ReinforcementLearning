@@ -36,8 +36,12 @@ class Double_DQN(DQN):
 
         state, action, reward, new_state, done = self.memory.sample_buffer()
         t_s = torch.tensor(state, dtype=torch.float).to(device)
-        t_a = torch.tensor(action, dtype=torch.float).to(device)
-        t_a_pos = self.torch_action2num(t_a).to(device)  # t_a是具体的物理动作，需要转换成动作编号作为索引值，是个tensor
+        # t_a = torch.tensor(action, dtype=torch.float).to(device)
+        t_a_pos = self.torch_action2num(action).to(device)  # t_a是具体的物理动作，需要转换成动作编号作为索引值，是个tensor
+        # print('测试')
+        # print(action[0][:])
+        # print(t_a_pos[0])
+        # print('测试')
         t_r = torch.tensor(reward, dtype=torch.float).to(device)
         t_s_ = torch.tensor(new_state, dtype=torch.float).to(device)
         t_bool = torch.tensor(done, dtype=torch.float).to(device)
@@ -47,7 +51,7 @@ class Double_DQN(DQN):
         ddqn_action_value2 = self.eval_net(t_s_).detach()
         t_ddqn_num2 = torch.argmax(ddqn_action_value2, dim=1, keepdim=True)
         q_target = t_r + self.gamma * (torch.gather(q_next, 1, t_ddqn_num2).mul(t_bool))
-        print(t_ddqn_num2.size())
+        # print(t_ddqn_num2.size())
         '''Double DQN'''
 
         for _ in range(1):
@@ -61,5 +65,10 @@ class Double_DQN(DQN):
                                             loss.detach().cpu().numpy())
 
     def DoubleDQN_info(self):
-        print('This is Double DQN:')
-        self.DQN_info()
+        print('Double DQN agent name:', self.agentName)
+        print('Double DQN input dimension:', self.state_dim_nn)
+        print('Double DQN output dimension:', self.action_dim_nn)
+        print('Agent physical action dimension:', self.action_dim_physical)
+        print('Agent action space:', self.action_space)
+        print('Replay memory capitaty:', self.memory_capacity)
+        print('Batch size:', self.batch_size)

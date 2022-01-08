@@ -1,9 +1,11 @@
+import math
 import os
+import random
 import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
-from environment.envs.pathplanning.nav_emptyworld_continuous import Nav_EmptyWorld
+from environment.envs.pathplanning.nav_emptyworld_continuous import Nav_EmptyWorld_Continuous as nav2DCon
 from algorithm.actor_critic.DDPG import DDPG
 import cv2 as cv
 # from common.common import *
@@ -48,31 +50,51 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
             else:
                 ddpg.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
-            if env.terminal_flag == 3:
+            if env.terminal_flag == 3 or env.terminal_flag == 2:
                 print('Update Replay Memory......')
                 ddpg.memory.store_transition_per_episode(_new_state, _new_action, _new_reward, _new_state_, _new_done)
 
 
-def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
+def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_success: bool):
     """
-    :param randomEnv:       init env randomly
-    :param fullFillRatio:   the ratio
-    :return:                None
+    :param randomEnv:           init env randomly
+    :param fullFillRatio:       the ratio
+    :param is_only_success:
+    :return:
     """
     print('Collecting...')
     fullFillCount = int(fullFillRatio * ddpg.memory.mem_size)
     fullFillCount = max(min(fullFillCount, ddpg.memory.mem_size), ddpg.memory.batch_size)
+    _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while ddpg.memory.mem_counter < fullFillCount:
         env.reset_random() if randomEnv else env.reset()
+        _new_state.clear()
+        _new_action.clear()
+        _new_reward.clear()
+        _new_state_.clear()
+        _new_done.clear()
         while not env.is_terminal:
-            if ddpg.memory.mem_counter % 100 == 0:
+            if ddpg.memory.mem_counter % 100 == 0 and ddpg.memory.mem_counter > 0:
                 print('replay_count = ', ddpg.memory.mem_counter)
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = ddpg.choose_action(env.current_state, False)
+            # _action_from_actor = ddpg.choose_action(env.current_state, False)
+            _action_from_actor = ddpg.choose_action_random()
             _action = ddpg.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
             env.show_dynamic_image(isWait=False)
-            ddpg.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+            if is_only_success:
+                _new_state.append(env.current_state)
+                _new_action.append(env.current_action)
+                _new_reward.append(env.reward)
+                _new_state_.append(env.next_state)
+                _new_done.append(1.0 if env.is_terminal else 0.0)
+            else:
+                ddpg.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+        if is_only_success:
+            if env.terminal_flag == 3 or env.terminal_flag == 2:
+                print('Update Replay Memory......')
+                ddpg.memory.store_transition_per_episode(_new_state, _new_action, _new_reward, _new_state_, _new_done)
+                print('replay_count = ', ddpg.memory.mem_counter)
 
 
 if __name__ == '__main__':
@@ -88,7 +110,7 @@ if __name__ == '__main__':
                         'terminal': [9, 9],
                         'obs': [],
                         'draw': True}
-    env = Nav_EmptyWorld(samplingMap_dict=samplingMap_dict, vRange=[-3, 3], aRange=[-3, 3], jRange=[-5, 5], save_cfg=False)
+    env = nav2DCon(samplingMap_dict=samplingMap_dict, vRange=[-3, 3], aRange=[-3, 3], save_cfg=False)
     # initial position is [5, 5], terminal position is [9, 9], and it doesn't matter where the initial and terminal position are.
     # because the environment initialize itself stochasticly.
     # The initial velocity, acceleration, and jerk should be zero. The velocity range is [-3, 3], acceleration range is [-3. 3], and jerk range is [-5, 5]
@@ -97,8 +119,8 @@ if __name__ == '__main__':
                 critic_learning_rate=1e-3,
                 actor_soft_update=1e-2,
                 critic_soft_update=1e-2,
-                memory_capacity=100000,
-                batch_size=512,
+                memory_capacity=24000,
+                batch_size=256,
                 modelFileXML=cfgPath + cfgFile,
                 path=simulationPath)
 
@@ -106,7 +128,7 @@ if __name__ == '__main__':
     TRAIN = True  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
-    is_storage_only_success = False
+    is_storage_only_success = True
     assert TRAIN ^ TEST  # 训练测试不可以同时进行
 
     if RETRAIN:
@@ -123,16 +145,17 @@ if __name__ == '__main__':
         '''生成初始数据之后要再次初始化网络'''
 
     if TRAIN:
+        # random.seed(23)
         ddpg.DDPG_info()
         successCounter = 0
         timeOutCounter = 0
         # cv.waitKey(0)
         ddpg.save_episode.append(ddpg.episode)
         ddpg.save_reward.append(0.0)
-        MAX_EPISODE = 1500
+        MAX_EPISODE = math.inf
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
-            fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5)
+            fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=True)
             '''fullFillReplayMemory_Random'''
         print('Start to train...')
         new_state, new_action, new_reward, new_state_, new_done = [], [], [], [], []
@@ -150,7 +173,12 @@ if __name__ == '__main__':
             while not env.is_terminal:
                 c = cv.waitKey(1)
                 env.current_state = env.next_state.copy()
-                action_from_actor = ddpg.choose_action(env.current_state, False)
+                epsilon = random.uniform(0, 1)
+                if epsilon < 0.5:
+                    # print('...random...')
+                    action_from_actor = ddpg.choose_action_random()     # 有一定探索概率完全随机探索
+                else:
+                    action_from_actor = ddpg.choose_action(env.current_state, False)    # 剩下的是神经网络加噪声
                 action = ddpg.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = \
                     env.step_update(action)  # 环境更新的action需要是物理的action
@@ -166,6 +194,7 @@ if __name__ == '__main__':
                 else:
                     ddpg.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 ddpg.learn()
+            # cv.destroyAllWindows()
             '''跳出循环代表回合结束'''
             if env.terminal_flag == 3:
                 successCounter += 1

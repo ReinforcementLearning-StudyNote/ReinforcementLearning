@@ -177,7 +177,7 @@ class DDPG:
         self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
         '''network'''
 
-        self.noise = OUActionNoise(mu=np.zeros(self.action_dim_nn))
+        self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))
         self.noise_gaussian = GaussianNoise(mu=np.zeros(self.action_dim_nn))
         self.update_network_parameters()
 
@@ -187,15 +187,22 @@ class DDPG:
         self.save_episode = [self.episode]
         self.save_reward = [self.reward]
 
-    def choose_action(self, state, is_optimal):
+    def choose_action_random(self):
+        """
+        :brief:     因为该函数与choose_action并列，所以输出也必须是[-1, 1]之间
+        :return:    random action
+        """
+        return np.random.uniform(low=-1, high=1, size=self.action_dim_nn)
+
+    def choose_action(self, state, is_optimal=False):
         self.actor.eval()  # 切换到测试模式
         t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)  # get the tensor of the state
         mu = self.actor(t_state).to(self.actor.device)  # choose action
-        # mu_prime = mu + torch.tensor(self.noise(), dtype=torch.float).to(self.actor.device)             # action with OU noise
         if is_optimal:
             mu_prime = mu
         else:
-            mu_prime = mu + torch.tensor(self.noise_gaussian(), dtype=torch.float).to(self.actor.device)  # action with gaussian noise
+            mu_prime = mu + torch.tensor(self.noise_gaussian(sigma=1.0), dtype=torch.float).to(self.actor.device)  # action with gaussian noise
+            # mu_prime = mu + torch.tensor(self.noise_OU(), dtype=torch.float).to(self.actor.device)             # action with OU noise
         self.actor.train()  # 切换回训练模式
         mu_prime_np = mu_prime.cpu().detach().numpy()
         return np.clip(mu_prime_np, -1, 1)  # 将数据截断在[-1, 1]之间
@@ -300,7 +307,7 @@ class DDPG:
         # the action output
         linear_action = []
         for i in range(self.action_dim_nn):
-            a = action[i]
+            a = min(max(action[i], -1), 1)
             maxa = self.action_range[i][1]
             mina = self.action_range[i][0]
             k = (maxa - mina) / 2
