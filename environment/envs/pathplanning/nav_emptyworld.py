@@ -36,7 +36,7 @@ class Nav_EmptyWorld(samplingmap, rl_base):
         self.dt = 0.01
         self.time = 0.0
         self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功
-        self.tMax = 6
+        self.tMax = 10
         self.miss = 0.4
         '''physical parameters'''
 
@@ -92,6 +92,18 @@ class Nav_EmptyWorld(samplingmap, rl_base):
     def state_saturation(self):
         self.p[0] = min(max(self.p[0], 0.0), self.x_size)
         self.p[1] = min(max(self.p[1], 0.0), self.y_size)
+        # if self.p[0] < 0.0:
+        #     self.p[0] = 0.0
+        #     self.v[0] = 0
+        # if self.p[0] > self.x_size:
+        #     self.p[0] = self.x_size
+        #     self.v[0] = 0
+        # if self.p[1] < 0.0:
+        #     self.p[1] = 0.0
+        #     self.v[1] = 0
+        # if self.p[1] > self.y_size:
+        #     self.p[1] = self.y_size
+        #     self.v[1] = 0
         self.v[0] = min(max(self.v[0], self.vRange[0]), self.vRange[1])
         self.v[1] = min(max(self.v[1], self.vRange[0]), self.vRange[1])
         self.a[0] = min(max(self.a[0], self.aRange[0]), self.aRange[1])
@@ -170,17 +182,18 @@ class Nav_EmptyWorld(samplingmap, rl_base):
         vector_pos = [self.terminalP[i] - self.p[0] for i in [0, 1]]    # 位置误差
         if np.linalg.norm(self.v) > 1e-5:
             cos = np.dot(vector_pos, self.v) / np.linalg.norm(vector_pos) / np.linalg.norm(self.v)
+            cos = min(max(cos, -1), 1)
             rad_bet_pos_vel = np.arccos(cos)    # 夹角越大，惩罚越大
         else:
             rad_bet_pos_vel = 0.0
         gain4 = 1.0
-        r4 = - gain4 * rad_bet_pos_vel
+        r4 = -gain4 * rad_bet_pos_vel
         '''reward for the direction of the velocity'''
 
         '''reward for a successful episode'''
         r3 = 0
-        # if self.terminal_flag == 3:
-        #     r3 = 2000
+        if self.terminal_flag == 3:
+            r3 = 2000
         '''reward for a successful episode'''
 
         '''out奖励'''
@@ -191,9 +204,9 @@ class Nav_EmptyWorld(samplingmap, rl_base):
 
         '''reward for position error'''
         dis = self.dis_two_points(self.p, self.terminalP)
-        gain = 0.1
+        gain1 = 0.1
         # r1 = -gain * dis ** 2
-        r1 = -gain * math.fabs(dis)
+        r1 = -gain1 * math.fabs(dis)
         '''reward for position error'''
         self.reward = r1 + r2 + r3 + r4
         '''reward function'''

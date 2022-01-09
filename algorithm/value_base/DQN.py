@@ -147,8 +147,10 @@ class DQN:
         :return:        the number of the action
         """
         t_state = torch.tensor(state).float().to(device)
-        t_action_value = self.target_net(t_state).detach().cpu().numpy()
-        num = np.random.choice(np.where(t_action_value == np.max(t_action_value))[0])
+        t_action_value = self.target_net(t_state).cpu().detach().numpy()
+        # print(t_action_value.shape)
+        # num = np.random.choice(np.where(t_action_value == np.max(t_action_value))[0])
+        num = np.argmax(t_action_value)
         return num
 
     def get_action_with_fixed_epsilon(self, state, epsilon):
@@ -158,7 +160,7 @@ class DQN:
         :param epsilon:     exploration probability
         :return:            the number of the action
         """
-        random.seed()
+        # random.seed()
         self.epsilon = epsilon
         if random.uniform(0.0, 1.0) < self.epsilon:
             return self.get_action_random()
@@ -212,6 +214,19 @@ class DQN:
         else:
             self.epsilon = 0.1
         """Episode-Epsilon for Flight Attitude Simulator"""
+
+        """Episode-Epsilon for Nav Empty World"""
+        if 0 <= self.episode <= 500:
+            self.epsilon = 2.222e-06 * self.episode ** 2 - 0.001667 * self.episode + 0.9     # FAS
+        elif 500 < self.episode <= 1000:
+            self.epsilon = 2.222e-06 * self.episode ** 2 - 0.003 * self.episode + 1.45          # FAS
+        elif 1000 < self.episode <= 1500:
+            self.epsilon = 2.222e-06 * self.episode ** 2 - 0.004333 * self.episode + 2.4       # FAS
+        elif 1500 < self.episode <= 2000:
+            self.epsilon = 2.222e-06 * self.episode ** 2 - 0.005667 * self.episode + 3.75       # FAS
+        else:
+            self.epsilon = 0.1
+        """Episode-Epsilon for Nav Empty World"""
         return self.epsilon
 
     def torch_action2num(self, batch_action_number: np.ndarray):
@@ -262,17 +277,7 @@ class DQN:
         t_bool = torch.unsqueeze(torch.tensor(done, dtype=torch.float).to(device), dim=1)
         q_next = self.target_net(t_s_).detach().to(device)
         res = torch.max(input=q_next, dim=1, keepdim=True)
-        # q_target = t_r + self.gamma * (q_next.max(1)[0].view(self.batch_size, 1).mul(t_bool))
         q_target = t_r + self.gamma * (res[0].mul(t_bool))
-        # print(';;;;;;;;')
-        # print(t_s.size())
-        # print(t_a_pos.size())
-        # print(t_r.size())
-        # print(t_s_.size())
-        # print(t_bool.size())
-        # print(q_next.size())
-        # print(q_target.size())
-        # print('=========')
         for _ in range(1):
             q_eval = self.eval_net(t_s).gather(1, t_a_pos)
             loss = self.loss_func(q_eval, q_target)

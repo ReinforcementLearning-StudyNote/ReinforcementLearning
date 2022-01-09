@@ -7,13 +7,7 @@ import random
 from common.common import *
 import torch
 
-# a = [1, 1]
-# b = [-1, 1]
-# cos = np.dot(a,b) / np.linalg.norm(a) / np.linalg.norm(b)
-# print(cos)
-# print(np.arccos(cos))
-a = torch.randn(10, 4)
-b = torch.zeros(10)
-print(a,b)
-maxa = torch.max(input=a, dim=1, keepdim=True)
-print(maxa[0].mul(b))
+# a = torch.tensor([1,2,3,4,4]).detach().numpy()
+# print(np.argmax(a))
+rad_bet_pos_vel = np.arccos(2)
+print(rad_bet_pos_vel)

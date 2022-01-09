@@ -32,7 +32,7 @@
 		<v>[0.0, 0.0]</v>
 		<a>[0.0, 0.0]</a>
 		<dt>0.01</dt>
-		<tMax>6</tMax>
+		<tMax>10</tMax>
 		<miss>0.4</miss>
 	</Physical>
 	<Image>

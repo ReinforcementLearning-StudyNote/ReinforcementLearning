@@ -95,6 +95,6 @@ def test_nav_empty_world():
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
-    test_nav_empty_world_continuous()
-    # test_nav_empty_world()
+    # test_nav_empty_world_continuous()
+    test_nav_empty_world()
     pass
