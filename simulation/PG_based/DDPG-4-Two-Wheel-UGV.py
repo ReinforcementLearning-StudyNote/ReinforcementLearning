@@ -22,7 +22,8 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                                       is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
-    ddpg.load_models()
+    # ddpg.load_models()
+    ddpg.load_models(path='./DDPG-Two-Wheel-UGV/')
     fullFillCount = int(fullFillRatio * ddpg.memory.mem_size)
     fullFillCount = max(min(fullFillCount, ddpg.memory.mem_size), ddpg.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
@@ -34,10 +35,8 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
         _new_state_.clear()
         _new_done.clear()
         while not env.is_terminal:
-            if ddpg.memory.mem_counter % 100 == 0:
-                print('replay_count = ', ddpg.memory.mem_counter)
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = ddpg.choose_action(env.current_state, is_optimal=True)
+            _action_from_actor = ddpg.choose_action(env.current_state, is_optimal=False, sigma=1/3)
             _action = ddpg.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
             env.show_dynamic_image(isWait=False)
@@ -48,10 +47,13 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                 _new_state_.append(env.next_state)
                 _new_done.append(1.0 if env.is_terminal else 0.0)
             else:
+                if ddpg.memory.mem_counter % 100 == 0 and ddpg.memory.mem_counter > 0:
+                    print('replay_count = ', ddpg.memory.mem_counter)
                 ddpg.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
                 print('Update Replay Memory......')
+                print('replay_count = ', ddpg.memory.mem_counter)
                 ddpg.memory.store_transition_per_episode(_new_state, _new_action, _new_reward, _new_state_, _new_done)
     ddpg.memory.get_reward_sort()
 
@@ -122,7 +124,7 @@ if __name__ == '__main__':
 
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
-    RETRAIN = False  # 基于之前的训练结果重新训练
+    RETRAIN = True  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = True
     assert TRAIN ^ TEST  # 训练测试不可以同时进行
@@ -148,7 +150,7 @@ if __name__ == '__main__':
         # cv.waitKey(0)
         ddpg.save_episode.append(ddpg.episode)
         ddpg.save_reward.append(0.0)
-        MAX_EPISODE = 5000
+        MAX_EPISODE = 2000
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=True)
@@ -174,7 +176,7 @@ if __name__ == '__main__':
                     # print('...random...')
                     action_from_actor = ddpg.choose_action_random()     # 有一定探索概率完全随机探索
                 else:
-                    action_from_actor = ddpg.choose_action(env.current_state, False, sigma=0.5)    # 剩下的是神经网络加噪声
+                    action_from_actor = ddpg.choose_action(env.current_state, False, sigma=1/3)    # 剩下的是神经网络加噪声
                 action = ddpg.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = \
                     env.step_update(action)  # 环境更新的action需要是物理的action
@@ -219,7 +221,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        ddpg.actor_load_optimal(path='../../datasave/network/', file='ddpg-4-nav-empty-world')
+        ddpg.load_actor_optimal(path='../../datasave/network/', file='ddpg-4-nav-empty-world')
         # ddpg.load_models()
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),

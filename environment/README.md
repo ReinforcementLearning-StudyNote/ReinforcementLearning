@@ -16,3 +16,15 @@ described by more than one python files.
 
 To figure out which python file is the 'exact' source file of the 'xml', we can check the name of the file, which should be identical to the corresponding
 'xml' file in 'config'.
+
+# Environments we have:
+## Flight attitude simulator:
+It is a single degree of freedom flight attitude simulator. The input ot the system is the force at the right end
+of the rod, and the output is the degree of the rod. We can design a RL controller for the system.
+
+## Two wheel ground vehicle:
+It is the model of a two-wheel differential ground vehicle. However, this model is not for controlling
+problem but for planning problem. The entire model is the differential ground vehicle AND an empty world with
+4mx4m.  We can use this environment to learn how to train an agent for a trajectory planning problem.
+
+Currently, these are the models we have.

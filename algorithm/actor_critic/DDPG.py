@@ -264,20 +264,20 @@ class DDPG:
         self.target_actor.save_checkpoint()
         self.target_critic.save_checkpoint()
 
-    def load_models(self):
-        self.actor.load_checkpoint()
-        self.critic.load_checkpoint()
-        self.target_actor.load_checkpoint()
-        self.target_critic.load_checkpoint()
-
-    def actor_load_optimal(self, path, file):
+    def load_models(self, path):
         """
         :brief:         only for test
         :param path:    file path
-        :param file:    file name
         :return:
         """
         print('...loading checkpoint...')
+        self.actor.load_state_dict(torch.load(path + 'Actor_ddpg'))
+        self.target_actor.load_state_dict(torch.load(path + 'TargetActor_ddpg'))
+        self.critic.load_state_dict(torch.load(path + 'Critic_ddpg'))
+        self.target_critic.load_state_dict(torch.load(path + 'TargetCritic_ddpg'))
+
+    def load_actor_optimal(self, path, file):
+        print('...loading optimal...')
         self.actor.load_state_dict(torch.load(path + file))
 
     def get_RLBase_from_XML(self, filename):

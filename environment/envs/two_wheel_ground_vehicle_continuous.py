@@ -124,6 +124,7 @@ class Two_Wheel_Ground_Vehicle_Continuous(samplingmap, rl_base):
         self.map_draw_boundary()
         self.draw_car()
         self.draw_terminal()
+        cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
         self.save = self.image.copy()
