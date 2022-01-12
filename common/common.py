@@ -1,4 +1,5 @@
 import math
+import random
 import re
 import numpy as np
 
@@ -65,8 +66,41 @@ def cosd(theta):
     return math.cos(theta / 180.0 * math.pi)
 
 
+def points_rotate(pts, theta):
+    """
+    :param pts:
+    :param theta:   rad, counter-clockwise
+    :return:        new position
+    """
+    if type(pts[0]) == list:
+        return [[math.cos(theta) * pt[0] - math.sin(theta) * pt[1], math.sin(theta) * pt[0] + math.cos(theta) * pt[1]] for pt in pts]
+    else:
+        return [math.cos(theta) * pts[0] - math.sin(theta) * pts[1], math.sin(theta) * pts[0] + math.cos(theta) * pts[1]]
+
+
+def points_move(pts, dis):
+    if type(pts[0]) == list:
+        return [[pt[0] + dis[0], pt[1] + dis[1]] for pt in pts]
+    else:
+        return [pts[0] + dis[0], pts[1] + dis[1]]
+
+
+def cal_vector_degree(v1, v2):
+    """
+    :brief:         calculate the rad between two vectors
+    :param v1:      vector1
+    :param v2:      vector2
+    :return:        the rad
+    """
+    # print(v1, v2)
+    if np.linalg.norm(v2) < 1e-4 or np.linalg.norm(v1) < 1e-4:
+        return 0
+    cosTheta = min(max(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)), -1), 1)
+    return math.acos(cosTheta)
+
 class ReplayBuffer:
     def __init__(self, max_size, batch_size, state_dim, action_dim):
+        print(state_dim, action_dim)
         self.mem_size = max_size
         self.mem_counter = 0
         self.batch_size = batch_size
@@ -75,6 +109,8 @@ class ReplayBuffer:
         self.a_mem = np.zeros((self.mem_size, action_dim))
         self.r_mem = np.zeros(self.mem_size)
         self.end_mem = np.zeros(self.mem_size, dtype=np.float)
+        self.sorted_index = []
+        self.resort_count = 0
 
     def store_transition(self, state, action, reward, state_, done):
         index = self.mem_counter % self.mem_size
@@ -85,14 +121,31 @@ class ReplayBuffer:
         self.end_mem[index] = 1 - done
         self.mem_counter += 1
 
+    def get_reward_sort(self):
+        """
+        :return:        根据奖励大小得到所有数据的索引值，升序，即从小到大
+        """
+        self.sorted_index = sorted(range(min(self.mem_counter, self.mem_size)), key=lambda k: self.r_mem[k], reverse=False)
+
+    def get_reward_resort(self, per):
+        if self.resort_count > per:
+            print('...resorting...')
+            self.resort_count = 0
+            self.get_reward_sort()
+
     def store_transition_per_episode(self, states, actions, rewards, states_, dones):
+        self.resort_count += 1
         num = len(states)
         for i in range(num):
             self.store_transition(states[i], actions[i], rewards[i], states_[i], dones[i])
 
-    def sample_buffer(self):
+    def sample_buffer(self, is_reward_ascent=True):
         max_mem = min(self.mem_counter, self.mem_size)
-        batch = np.random.choice(max_mem, self.batch_size)
+        if is_reward_ascent:
+            '''倒着数是最好的，从10倍倒着数的数据中随机取出一倍的数据量作为batch'''
+            batch = random.sample(self.sorted_index[-self.batch_size * 10:], self.batch_size)
+        else:
+            batch = np.random.choice(max_mem, self.batch_size)
         states = self.s_mem[batch]
         actions = self.a_mem[batch]
         rewards = self.r_mem[batch]

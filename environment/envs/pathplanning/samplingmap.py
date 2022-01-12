@@ -23,10 +23,10 @@ def cosd(theta):
 
 class samplingmap(obstacle):
     def __init__(self,
-                 width: int = 400,
-                 height: int = 400,
-                 x_size: float = 10.,
-                 y_size: float = 10.,
+                 width: int,
+                 height: int,
+                 x_size: float,
+                 y_size: float,
                  image_name: str = 'samplingmap',
                  start: list = None,
                  terminal: list = None,
@@ -57,6 +57,7 @@ class samplingmap(obstacle):
                                    (self.height - 2 * self.y_offset) / self.y_size)
 
         self.image_temp = self.image.copy()
+        self.save = self.image.copy()
         # self.set_random_obstacles(10)
         self.map_draw(draw, isWait=False)
 
@@ -443,11 +444,13 @@ class samplingmap(obstacle):
 
     def map_draw(self, show=True, isWait=True):
         self.map_draw_boundary()
+        self.image_temp = self.image.copy()
         self.map_draw_start_terminal()
         self.map_draw_obs()
         if show:
             cv.imshow(self.name4image, self.image)
             cv.waitKey(0) if isWait else cv.waitKey(1)
+        self.image = self.image_temp.copy()
 
     def path_draw(self, path, name, color):
         pt1 = path.pop()

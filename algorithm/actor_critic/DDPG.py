@@ -194,24 +194,24 @@ class DDPG:
         """
         return np.random.uniform(low=-1, high=1, size=self.action_dim_nn)
 
-    def choose_action(self, state, is_optimal=False):
+    def choose_action(self, state, is_optimal=False, sigma=1/3):
         self.actor.eval()  # 切换到测试模式
         t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)  # get the tensor of the state
         mu = self.actor(t_state).to(self.actor.device)  # choose action
         if is_optimal:
             mu_prime = mu
         else:
-            mu_prime = mu + torch.tensor(self.noise_gaussian(sigma=1.0), dtype=torch.float).to(self.actor.device)  # action with gaussian noise
+            mu_prime = mu + torch.tensor(self.noise_gaussian(sigma=sigma), dtype=torch.float).to(self.actor.device)  # action with gaussian noise
             # mu_prime = mu + torch.tensor(self.noise_OU(), dtype=torch.float).to(self.actor.device)             # action with OU noise
         self.actor.train()  # 切换回训练模式
         mu_prime_np = mu_prime.cpu().detach().numpy()
         return np.clip(mu_prime_np, -1, 1)  # 将数据截断在[-1, 1]之间
 
-    def learn(self):
+    def learn(self, is_reward_ascent=True):
         if self.memory.mem_counter < self.memory.batch_size:
             return
 
-        state, action, reward, new_state, done = self.memory.sample_buffer()
+        state, action, reward, new_state, done = self.memory.sample_buffer(is_reward_ascent=is_reward_ascent)
         state = torch.tensor(state, dtype=torch.float).to(self.critic.device)
         action = torch.tensor(action, dtype=torch.float).to(self.critic.device)
         reward = torch.tensor(reward, dtype=torch.float).to(self.critic.device)

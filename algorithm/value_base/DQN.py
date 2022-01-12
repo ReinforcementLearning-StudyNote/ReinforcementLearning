@@ -1,4 +1,3 @@
-import random
 import torch.nn as nn
 import torch.nn.functional as func
 import torch
@@ -217,13 +216,13 @@ class DQN:
 
         """Episode-Epsilon for Nav Empty World"""
         if 0 <= self.episode <= 500:
-            self.epsilon = 2.222e-06 * self.episode ** 2 - 0.001667 * self.episode + 0.9     # FAS
+            self.epsilon = -0.0006 * self.episode + 0.9
         elif 500 < self.episode <= 1000:
-            self.epsilon = 2.222e-06 * self.episode ** 2 - 0.003 * self.episode + 1.45          # FAS
+            self.epsilon = -0.0006 * self.episode + 1.05
         elif 1000 < self.episode <= 1500:
-            self.epsilon = 2.222e-06 * self.episode ** 2 - 0.004333 * self.episode + 2.4       # FAS
+            self.epsilon = -0.0006 * self.episode + 1.2
         elif 1500 < self.episode <= 2000:
-            self.epsilon = 2.222e-06 * self.episode ** 2 - 0.005667 * self.episode + 3.75       # FAS
+            self.epsilon = -0.0006 * self.episode + 1.35
         else:
             self.epsilon = 0.1
         """Episode-Epsilon for Nav Empty World"""
@@ -255,8 +254,9 @@ class DQN:
             res.append(_sum)
         return torch.unsqueeze(torch.tensor(res).long(), dim=1)
 
-    def nn_training(self, saveNNPath=None):
+    def nn_training(self, saveNNPath=None, is_reward_ascent=False):
         """
+        :param is_reward_ascent:
         :brief:             train the neural network
         :param saveNNPath:  path of the pkl file
         :return:            None
@@ -269,7 +269,8 @@ class DQN:
             torch.save(self.eval_net, saveNNPath + '/' + 'eval_dqn.pkl')
             torch.save(self.eval_net.state_dict(), saveNNPath + '/' + 'eval_dqn_parameters.pkl')
             print('网络更新：', int(self.target_replace_count / self.target_replace_iter))
-        state, action, reward, new_state, done = self.memory.sample_buffer()
+        state, action, reward, new_state, done = self.memory.sample_buffer(is_reward_ascent=is_reward_ascent)
+        # 按照奖励的升序排列，得到索引号
         t_s = torch.tensor(state, dtype=torch.float).to(device)
         t_a_pos = self.torch_action2num(action).to(device)  # t_a是具体的物理动作，需要转换成动作编号作为索引值，是个tensor
         t_r = torch.unsqueeze(torch.tensor(reward, dtype=torch.float).to(device), dim=1)

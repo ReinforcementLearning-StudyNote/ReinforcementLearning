@@ -12,7 +12,7 @@ import cv2 as cv
 import datetime
 
 cfgPath = '../../environment/config/'
-cfgFile = 'Nav_EmptyWorld_Continuous.xml'
+cfgFile = 'Two_Wheel_UGV.xml'
 optPath = '../../datasave/network/'
 show_per = 1
 

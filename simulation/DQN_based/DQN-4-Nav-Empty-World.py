@@ -68,6 +68,7 @@ def fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file: str,
         if is_only_success and (env.terminal_flag == 3 or env.terminal_flag == 2):
             dqn.memory.store_transition_per_episode(_new_state, _new_action, _new_reward, _new_state_, _new_done)
             print('replay_count = ', dqn.memory.mem_counter)
+    dqn.memory.get_reward_sort()
 
 
 def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_success: bool):
@@ -115,6 +116,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
         if is_only_success and (env.terminal_flag == 3 or env.terminal_flag == 2):
             dqn.memory.store_transition_per_episode(_new_state, _new_action, _new_reward, _new_state_, _new_done)
             print('replay_count = ', dqn.memory.mem_counter)
+    dqn.memory.get_reward_sort()
 
 
 if __name__ == '__main__':
@@ -128,11 +130,11 @@ if __name__ == '__main__':
                         'obs': [],
                         'draw': True}
     env = Nav_EmptyWorld(samplingMap_dict=samplingMap_dict, vRange=[-3, 3], aRange=[-3, 3], save_cfg=False)
-    dqn = DQN(gamma=0.9,
+    dqn = DQN(gamma=1.0,
               epsilon=0.95,
               learning_rate=5e-4,
-              memory_capacity=100000,  # 10万
-              batch_size=512,
+              memory_capacity=10000,  # 6万
+              batch_size=256,
               target_replace_iter=100,
               modelFileXML=cfgPath + cfgFile)
     # env.show_initial_image(isWait=True)
@@ -145,11 +147,11 @@ if __name__ == '__main__':
 
     if RETRAIN:
         print('Retraining')
-        fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file='dqn-4-nav_empty_world2.pkl',
+        fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file='dqn-4-nav_empty_world1.pkl',
                                                       randomEnv=True,
                                                       fullFillRatio=0.5,
-                                                      epsilon=0.05,
-                                                      is_only_success=True)
+                                                      epsilon=0.6,
+                                                      is_only_success=True)     # 填满自动排序的
         # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
         '''生成初始数据之后要再次初始化网络'''
         # dqn.eval_net.init()
@@ -162,11 +164,11 @@ if __name__ == '__main__':
         dqn.save_episode.append(dqn.episode)
         dqn.save_reward.append(0.0)
         dqn.save_epsilon.append(dqn.epsilon)
-        MAX_EPISODE = 1500
+        MAX_EPISODE = 2000
         dqn.episode = 0  # 设置起始回合
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
-            fullFillReplayMemory_Random(randomEnv=False, fullFillRatio=0.25, is_only_success=True)
+            fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.25, is_only_success=True)
             '''fullFillReplayMemory_Random'''
         print('Start to train...')
         new_state = []
@@ -175,8 +177,8 @@ if __name__ == '__main__':
         new_state_ = []
         new_done = []
         while dqn.episode <= MAX_EPISODE:
-            env.reset()
-            # env.reset_random()
+            # env.reset()
+            env.reset_random()
             sumr = 0
             new_state.clear()
             new_action.clear()
@@ -204,9 +206,10 @@ if __name__ == '__main__':
                     dqn.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 dqn.nn_training(saveNNPath=simulationPath)
             '''跳出循环代表回合结束'''
-            if is_storage_only_success and env.terminal_flag == 3:
+            if is_storage_only_success and (env.terminal_flag == 3 or env.terminal_flag == 2):
                 print('Update Replay Memory......')
                 dqn.memory.store_transition_per_episode(new_state, new_action, new_reward, new_state_, new_done)
+                dqn.memory.get_reward_resort(per=5)
             '''跳出循环代表回合结束'''
             print(
                 '=========START=========',

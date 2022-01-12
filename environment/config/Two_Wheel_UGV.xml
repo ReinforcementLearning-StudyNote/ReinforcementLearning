@@ -1,14 +1,14 @@
 <Plant E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn" author="Yefeng YANG" date="2022.01.11" name="Flight_Attitude_Simulator_Continuous">
 	<RL_Base>
-		<state_dim>6</state_dim>
-		<state_num>[inf, inf, inf, inf, inf, inf]</state_num>
-		<state_step>[None, None, None, None, None, None]</state_step>
-		<state_space>[None, None, None, None, None, None]</state_space>
-		<state_range>[[0, 4.0], [0, 4.0], [-inf, inf], [-1.0, 1.0], [-1.0, 1.0], [0.6666666666666667, -0.6666666666666667]]</state_range>
-		<isStateContinuous>[True, True, True, True, True, True]</isStateContinuous>
-		<initial_state>[2.0, 2.0, 0.0, 0, 0, 0]</initial_state>
-		<current_state>[2.0, 2.0, 0.0, 0, 0, 0]</current_state>
-		<next_state>[2.0, 2.0, 0.0, 0, 0, 0]</next_state>
+		<state_dim>8</state_dim>
+		<state_num>[inf, inf, inf, inf, inf, inf, inf, inf]</state_num>
+		<state_step>[None, None, None, None, None, None, None, None]</state_step>
+		<state_space>[None, None, None, None, None, None, None, None]</state_space>
+		<state_range>[[-4.0, 4.0], [-4.0, 4.0], [0, 4.0], [0, 4.0], [-inf, inf], [-1.0, 1.0], [-1.0, 1.0], [0.6666666666666667, -0.6666666666666667]]</state_range>
+		<isStateContinuous>[True, True, True, True, True, True, True, True]</isStateContinuous>
+		<initial_state>[2.0, 2.0, 2.0, 2.0, 0.7853981633974483, 0, 0, 0]</initial_state>
+		<current_state>[2.0, 2.0, 2.0, 2.0, 0.7853981633974483, 0, 0, 0]</current_state>
+		<next_state>[2.0, 2.0, 2.0, 2.0, 0.7853981633974483, 0, 0, 0]</next_state>
 		<action_dim>2</action_dim>
 		<action_step>[None, None]</action_step>
 		<action_range>[[-10, 10], [-10, 10]]</action_range>
@@ -22,10 +22,10 @@
 	<Physical>
 		<initX>2.0</initX>
 		<initY>2.0</initY>
-		<initPhi>0.0</initPhi>
+		<initPhi>0.7853981633974483</initPhi>
 		<x>2.0</x>
 		<y>2.0</y>
-		<phi>0.0</phi>
+		<phi>0.7853981633974483</phi>
 		<dx>0</dx>
 		<dy>0</dy>
 		<dphi>0</dphi>
