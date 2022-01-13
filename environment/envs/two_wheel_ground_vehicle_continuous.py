@@ -119,11 +119,27 @@ class Two_Wheel_Ground_Vehicle_Continuous(samplingmap, rl_base):
         if self.terminal is not None and self.terminal != []:
             cv.circle(self.image, self.dis2pixel(self.terminal), 5, Color().Blue, -1)
 
+    def draw_region_grid(self, xNUm: int = 3, yNum: int = 3):
+        if xNUm <= 1 or yNum <= 1:
+            pass
+        else:
+            xStep = self.x_size / xNUm
+            yStep = self.y_size / yNum
+            for i in range(yNum - 1):
+                pt1 = self.dis2pixel([0, 0 + (i+1)*yStep])
+                pt2 = self.dis2pixel([self.x_size, 0 + (i+1)*yStep])
+                cv.line(self.image, pt1, pt2, Color().Black, 1)
+            for i in range(xNUm - 1):
+                pt1 = self.dis2pixel([0 + (i+1)*xStep, 0])
+                pt2 = self.dis2pixel([0 + (i+1)*xStep, self.y_size])
+                cv.line(self.image, pt1, pt2, Color().Black, 1)
+
     def show_dynamic_image(self, isWait):
         self.image_temp = self.image.copy()
         self.map_draw_boundary()
-        self.draw_car()
+        self.draw_region_grid(xNUm=3, yNum=3)
         self.draw_terminal()
+        self.draw_car()
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
@@ -166,13 +182,14 @@ class Two_Wheel_Ground_Vehicle_Continuous(samplingmap, rl_base):
         # 计算速度向量和位置差向量的夹角 (锐角的绝对值)
         errorP_vector = [self.terminal[0] - self.x, self.terminal[1] - self.y]
         currentTheta = cal_vector_degree(errorP_vector, [math.cos(self.phi), math.sin(self.phi)])
-        if currentTheta > math.pi / 2:      # 是个正的钝角
+        if currentTheta > math.pi / 2:  # 是个正的钝角
             currentTheta = math.pi - currentTheta
-        elif currentTheta < -math.pi / 2:   # 是个负的钝角
+        elif currentTheta < -math.pi / 2:  # 是个负的钝角
             currentTheta = math.pi + currentTheta
         else:
             currentTheta = math.fabs(currentTheta)
         '''最终得到正的锐角'''
+
         # 计算速度向量和位置差向量的夹角 (锐角的绝对值)
 
         def f(_phi):
@@ -257,7 +274,7 @@ class Two_Wheel_Ground_Vehicle_Continuous(samplingmap, rl_base):
         r3 = 0
         # print(currentTheta, nextTheta)
         if self.time > 0:
-            if currentTheta > nextTheta + 1e-4:     # 带1e-4是为了
+            if currentTheta > nextTheta + 1e-4:  # 带1e-4是为了
                 r3 = 2
             elif 1e-4 + currentTheta < nextTheta:
                 r3 = -2
