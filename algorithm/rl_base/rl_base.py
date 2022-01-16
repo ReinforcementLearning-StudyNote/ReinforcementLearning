@@ -1,10 +1,3 @@
-# import math
-# import random
-import torch.nn as nn
-import torch.nn.functional as func
-import torch
-
-
 class rl_base:
     def __init__(self):
         self.state_dim = 0
@@ -129,6 +122,14 @@ class rl_base:
 
     def step_update(self, action):
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
+
+    def get_reward(self, param=None):
+        """
+        :param param:       other parameters
+        :return:            reward function
+        """
+        '''should be the function of current state, time, or next state. It needs to be re-written in a specific environment.'''
+        pass
 
     def reset(self):
         # self.current_state = self.initial_state.copy()

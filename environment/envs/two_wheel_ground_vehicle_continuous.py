@@ -137,9 +137,10 @@ class Two_Wheel_Ground_Vehicle_Continuous(samplingmap, rl_base):
     def show_dynamic_image(self, isWait):
         self.image_temp = self.image.copy()
         self.map_draw_boundary()
-        self.draw_region_grid(xNUm=3, yNum=3)
-        self.draw_terminal()
         self.draw_car()
+        self.draw_terminal()
+        self.draw_region_grid(xNUm=3, yNum=3)
+
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
@@ -160,6 +161,10 @@ class Two_Wheel_Ground_Vehicle_Continuous(samplingmap, rl_base):
         #     print('...out...')
         #     self.terminal_flag = 1
         #     return True
+        if math.fabs(self.initPhi - self.phi) > 2 * math.pi:
+            print('...转的角度太大了...')
+            self.terminal_flag = 1
+            return True
         if self.time > 5.0:
             print('...time out...')
             self.terminal_flag = 2
@@ -171,42 +176,62 @@ class Two_Wheel_Ground_Vehicle_Continuous(samplingmap, rl_base):
         self.terminal_flag = 0
         return False
 
+    def get_reward(self, param=None):
+        currentError = math.sqrt(self.current_state[0] ** 2 + self.current_state[1] ** 2)
+        nextError = math.sqrt(self.next_state[0] ** 2 + self.next_state[1] ** 2)
+
+        r1 = -1      # 常值误差，每运行一步，就 -1
+
+        if currentError > nextError + 1e-2:
+            r2 = 3
+        elif 1e-2 + currentError < nextError:
+            r2 = -3
+        else:
+            r2 = 0
+
+        currentTheta = cal_vector_degree([self.current_state[0], self.current_state[1]],
+                                         [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
+        nextTheta = cal_vector_degree([self.next_state[0], self.next_state[1]],
+                                      [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
+        # print(currentTheta, nextTheta)
+        if currentTheta > nextTheta + 1e-3:  # 带1e-4是为了
+            r3 = 2
+        elif 1e-3 + currentTheta < nextTheta:
+            r3 = -2
+        else:
+            r3 = 0
+
+        '''4. 其他'''
+        r4 = 0
+        if self.terminal_flag == 3:
+            r4 = 500
+        if self.terminal_flag == 1:     # 惩罚
+            r4 = -200
+        '''4. 其他'''
+        # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
+        self.reward = r1 + r2 + r3 + r4
+
+    def f(self, _phi):
+        _dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(_phi)
+        _dy = self.r / 2 * (self.wLeft + self.wRight) * math.sin(_phi)
+        _dphi = self.r / self.rBody * (self.wRight - self.wLeft)
+        return np.array([_dx, _dy, _dphi])
+
     def step_update(self, action: list):
         self.wLeft = max(min(action[0], self.wMax), -self.wMax)
         self.wRight = max(min(action[1], self.wMax), -self.wMax)
         self.current_action = action.copy()
         self.current_state = [self.terminal[0] - self.x, self.terminal[1] - self.y, self.x, self.y, self.phi, self.dx, self.dy, self.dphi]
 
-        currentError = self.dis_two_points([self.x, self.y], self.terminal)
-
-        # 计算速度向量和位置差向量的夹角 (锐角的绝对值)
-        errorP_vector = [self.terminal[0] - self.x, self.terminal[1] - self.y]
-        currentTheta = cal_vector_degree(errorP_vector, [math.cos(self.phi), math.sin(self.phi)])
-        if currentTheta > math.pi / 2:  # 是个正的钝角
-            currentTheta = math.pi - currentTheta
-        elif currentTheta < -math.pi / 2:  # 是个负的钝角
-            currentTheta = math.pi + currentTheta
-        else:
-            currentTheta = math.fabs(currentTheta)
-        '''最终得到正的锐角'''
-
-        # 计算速度向量和位置差向量的夹角 (锐角的绝对值)
-
-        def f(_phi):
-            _dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(_phi)
-            _dy = self.r / 2 * (self.wLeft + self.wRight) * math.sin(_phi)
-            _dphi = self.r / self.rBody * (self.wRight - self.wLeft)
-            return np.array([_dx, _dy, _dphi])
-
         '''RK-44'''
         h = self.dt / 10
         t_sim = 0
         state = np.array([self.x, self.y, self.phi])
         while t_sim <= self.dt:
-            K1 = f(state[2])
-            K2 = f(state[2] + h * K1[2] / 2)
-            K3 = f(state[2] + h * K2[2] / 2)
-            K4 = f(state[2] + h * K3[2])
+            K1 = self.f(state[2])
+            K2 = self.f(state[2] + h * K1[2] / 2)
+            K3 = self.f(state[2] + h * K2[2] / 2)
+            K4 = self.f(state[2] + h * K3[2])
             state = state + h * (K1 + 2 * K2 + 2 * K3 + K4) / 6
             t_sim += h
         '''动力学系统状态更新'''
@@ -233,65 +258,9 @@ class Two_Wheel_Ground_Vehicle_Continuous(samplingmap, rl_base):
             self.dy = 0
         '''出界处理'''
 
-        '''is_terminal'''
         self.is_terminal = self.is_Terminal()
-        '''is_terminal'''
-
         self.next_state = [self.terminal[0] - self.x, self.terminal[1] - self.y, self.x, self.y, self.phi, self.dx, self.dy, self.dphi]
-        nextError = self.dis_two_points([self.x, self.y], self.terminal)
-
-        # 计算速度向量和位置差向量的夹角 (锐角的绝对值)
-        errorP_vector = [self.terminal[0] - self.x, self.terminal[1] - self.y]
-        nextTheta = cal_vector_degree(errorP_vector, [math.cos(self.phi), math.sin(self.phi)])
-        if nextTheta > math.pi / 2:  # 是个正的钝角
-            nextTheta = math.pi - nextTheta
-        elif nextTheta < -math.pi / 2:  # 是个负的钝角
-            nextTheta = math.pi + nextTheta
-        else:
-            nextTheta = math.fabs(nextTheta)
-        '''最终得到正的锐角'''
-        # 计算速度向量和位置差向量的夹角 (锐角的绝对值)
-
-        '''reward function'''
-        '''1. 位置误差'''
-        # gain = 1.0
-        # r1 = -gain * self.dis_two_points([self.x, self.y], self.terminal)
-        r1 = 0
-        '''1. 位置误差'''
-
-        '''2. 判断误差变大还是变小'''
-        # r2 = 0
-        if currentError > nextError:
-            r2 = 5
-        elif currentError < nextError:
-            r2 = -5
-        else:
-            r2 = 0
-        # print('r2:', r2)
-        '''2. 判断误差变大还是变小'''
-
-        '''3. 角度是否趋向于目标'''
-        r3 = 0
-        # print(currentTheta, nextTheta)
-        if self.time > 0:
-            if currentTheta > nextTheta + 1e-4:  # 带1e-4是为了
-                r3 = 2
-            elif 1e-4 + currentTheta < nextTheta:
-                r3 = -2
-            else:
-                r3 = 0
-        # print('r3:', r3)
-        '''3. 角度是否趋向于目标'''
-
-        '''4. 其他'''
-        r4 = 0
-        if self.terminal_flag == 3:
-            r4 = 500
-        '''4. 其他'''
-
-        self.reward = r1 + r2 + r3 + r4
-        '''reward function'''
-
+        self.get_reward()
         self.saveData()
 
         return self.current_state, action, self.reward, self.next_state, self.is_terminal

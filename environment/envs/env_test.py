@@ -103,10 +103,10 @@ def test_two_wheel_UGV():
     while not env.is_terminal:
         # print(env.time)
         env.show_dynamic_image(isWait=True)
-        action = [3, 3]
+        action = [-3, 3]
         env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
-        # print(env.reward)
-        print(env.current_state)
+        print(env.reward)
+        # print(env.current_state)
 
 
 if __name__ == '__main__':
