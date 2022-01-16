@@ -23,7 +23,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
     print('Retraining...')
     print('Collecting...')
     # ddpg.load_models()
-    ddpg.load_models(path='./DDPG-Two-Wheel-UGV/')
+    ddpg.load_models(path='./DDPG-Two-Wheel-UGV还不错哦/')
     fullFillCount = int(fullFillRatio * ddpg.memory.mem_size)
     fullFillCount = max(min(fullFillCount, ddpg.memory.mem_size), ddpg.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
@@ -36,7 +36,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
         _new_done.clear()
         while not env.is_terminal:
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = ddpg.choose_action(env.current_state, is_optimal=False, sigma=2/3)
+            _action_from_actor = ddpg.choose_action(env.current_state, is_optimal=False, sigma=1 / 2)
             _action = ddpg.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
             env.show_dynamic_image(isWait=False)
@@ -173,9 +173,9 @@ if __name__ == '__main__':
                 epsilon = random.uniform(0, 1)
                 if epsilon < 0.2:
                     # print('...random...')
-                    action_from_actor = ddpg.choose_action_random()     # 有一定探索概率完全随机探索
+                    action_from_actor = ddpg.choose_action_random()  # 有一定探索概率完全随机探索
                 else:
-                    action_from_actor = ddpg.choose_action(env.current_state, False, sigma=1.0)    # 剩下的是神经网络加噪声
+                    action_from_actor = ddpg.choose_action(env.current_state, False, sigma=1/2)  # 剩下的是神经网络加噪声
                 action = ddpg.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = \
                     env.step_update(action)  # 环境更新的action需要是物理的action
@@ -220,13 +220,13 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        ddpg.load_actor_optimal(path='./DDPG-Two-Wheel-UGV还不错哦/', file='Actor_ddpg')
+        ddpg.load_actor_optimal(path='./DDPG-Two-Wheel-UGV-测试1/', file='Actor_ddpg')
         # ddpg.load_models()
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
                              (env.width, env.height))
-        simulation_num = 500
+        simulation_num = 10
         successTotal = []
         timeOutTotal = []
         x_sep = 3
@@ -241,7 +241,7 @@ if __name__ == '__main__':
                     env.reset_random()
                     '''Seperate the map into nine parts'''
                     part = [0 + partIndex_X * env.x_size / x_sep, 0 + (partIndex_X + 1) * env.x_size / x_sep,
-                            0 + partIndex_Y * env.y_size / y_sep, 0 + (partIndex_Y + 1) * env.y_size / y_sep,]
+                            0 + partIndex_Y * env.y_size / y_sep, 0 + (partIndex_Y + 1) * env.y_size / y_sep]
                     env.set_terminal([random.uniform(part[0], part[1]), random.uniform(part[2], part[3])])
                     '''Seperate the map into nine parts'''
                     while not env.is_terminal:
