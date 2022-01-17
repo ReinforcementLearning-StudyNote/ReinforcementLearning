@@ -65,8 +65,6 @@ if __name__ == '__main__':
         print('...Retraining...')
         '''
             3-1: Function 'fullFillReplayMemory_with_Optimal' should be executed here.
-        '''
-        '''
             If the formation of the reward function before retraining and after retraining is different, then:
                 Neural Network must be re-initialized.
             Otherwise:

@@ -21,7 +21,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                                       is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
-    ddpg.load_models()
+    ddpg.load_models(optPath)
     fullFillCount = int(fullFillRatio * ddpg.memory.mem_size)
     fullFillCount = max(min(fullFillCount, ddpg.memory.mem_size), ddpg.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
