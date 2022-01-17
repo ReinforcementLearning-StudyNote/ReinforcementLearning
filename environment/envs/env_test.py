@@ -56,6 +56,6 @@ def test_two_wheel_UGV():
 
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
-    # test_flight_attitude_simulator_continuous()
-    test_two_wheel_UGV()
+    test_flight_attitude_simulator_continuous()
+    # test_two_wheel_UGV()
     pass

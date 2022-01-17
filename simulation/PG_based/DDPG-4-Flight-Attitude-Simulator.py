@@ -1,13 +1,14 @@
 import os
 import sys
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+import datetime
 import copy
+import cv2 as cv
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+
 from environment.envs.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous as flight_sim_con
 from algorithm.actor_critic.DDPG import DDPG
-import cv2 as cv
 from common.common import *
-import datetime
+
 
 cfgPath = '../../environment/config/'
 cfgFile = 'Flight_Attitude_Simulator_Continuous.xml'
@@ -177,13 +178,13 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        ddpg.actor_load_optimal(path='../../datasave/network/', file='ddpg-4-flight-attitude-simulator')
+        ddpg.load_actor_optimal(path='../../datasave/network/', file='ddpg-4-flight-attitude-simulator')
         # ddpg.load_models()
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
                              (env.width, env.height))
-        simulation_num = 100
+        simulation_num = 5
         for i in range(simulation_num):
             print('==========START==========')
             print('episode = ', i)

@@ -190,7 +190,7 @@ class Flight_Attitude_Simulator(rl_base):
         #     self.terminal_flag = 2
         #     print('超出最小角度')
         #     return True
-        if self.time > 5:
+        if self.time > 2:
             self.terminal_flag = 3
             print('超时')
             return True
