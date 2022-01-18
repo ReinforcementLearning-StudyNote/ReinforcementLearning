@@ -12,7 +12,7 @@ from common.common import *
 import datetime
 
 cfgPath = '../../environment/config/'
-cfgFile = 'Two_Wheel_UGV.xml'
+cfgFile = 'UGV_Forward_Continuous.xml'
 optPath = '../../datasave/network/'
 show_per = 1
 
@@ -22,7 +22,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                                       is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
-    agent.load_models(path='./DDPG-Two-Wheel-UGV还不错哦/')
+    agent.load_models(path='.//')
     fullFillCount = int(fullFillRatio * agent.memory.mem_size)
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
@@ -79,7 +79,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
             if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
                 print('replay_count = ', agent.memory.mem_counter)
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = agent.choose_action(env.current_state, False, sigma=1.0)
+            _action_from_actor = agent.choose_action(env.current_state, False, sigma=1/2)
             # _action_from_actor = agent.choose_action_random()
             _action = agent.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
@@ -101,7 +101,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-Two-Wheel-UGV/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward/'
     os.mkdir(simulationPath)
 
     env = UGV_Forward_Continuous(initPhi=deg2rad(0),
@@ -122,7 +122,7 @@ if __name__ == '__main__':
                  path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = False  # 直接训练
+    TRAIN = True  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = True
@@ -148,7 +148,7 @@ if __name__ == '__main__':
         # cv.waitKey(0)
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
-        MAX_EPISODE = 5000
+        MAX_EPISODE = 8000
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=True)
@@ -174,10 +174,9 @@ if __name__ == '__main__':
                     # print('...random...')
                     action_from_actor = agent.choose_action_random()  # 有一定探索概率完全随机探索
                 else:
-                    action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 2)  # 剩下的是神经网络加噪声
+                    action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 3)  # 剩下的是神经网络加噪声
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = \
-                    env.step_update(action)  # 环境更新的action需要是物理的action
+                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
                 if agent.episode % show_per == 0:
                     env.show_dynamic_image(isWait=False)
                 sumr = sumr + env.reward

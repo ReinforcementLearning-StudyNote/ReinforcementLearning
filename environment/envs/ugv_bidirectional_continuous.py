@@ -337,9 +337,9 @@ class UGV_Bidirectional_Continuous(samplingmap, rl_base):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def saveModel2XML(self, filename='Two_Wheel_UGV.xml', filepath='../config/'):
+    def saveModel2XML(self, filename='UGV_Bidirectional_Continuous.xml', filepath='../config/'):
         rootMsg = {
-            'name': 'Flight_Attitude_Simulator_Continuous',
+            'name': 'UGV_Bidirectional_Continuous',
             'author': 'Yefeng YANG',
             'date': '2022.01.11',
             'E-mail': 'yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn'

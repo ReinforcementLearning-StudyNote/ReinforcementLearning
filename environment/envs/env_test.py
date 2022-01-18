@@ -38,7 +38,7 @@ def test_flight_attitude_simulator_continuous():
     # env.saveData(is2file=True, filepath='../../datasave/')
 
 
-def test_ugv_bidirectional():
+def test_ugv_bidirectional_continuous():
     env = UGV_Bidirectional_Continuous(initPhi=deg2rad(-135),
                                        save_cfg=True,
                                        x_size=4.0,
@@ -75,8 +75,8 @@ def test_two_ugv_forward_continuous():
 
 
 if __name__ == '__main__':
-    # test_flight_attitude_simulator()
-    # test_flight_attitude_simulator_continuous()
-    # test_ugv_bidirectional()
+    test_flight_attitude_simulator()
+    test_flight_attitude_simulator_continuous()
+    test_ugv_bidirectional_continuous()
     test_two_ugv_forward_continuous()
     pass

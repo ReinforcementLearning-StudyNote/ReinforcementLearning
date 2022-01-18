@@ -1,4 +1,4 @@
-<Plant name="Flight_Attitude_Simulator_Continuous" author="Yefeng YANG" date="2022.01.03" E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn">
+<Plant E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn" author="Yefeng YANG" date="2022.01.03" name="Flight_Attitude_Simulator_Continuous">
 	<RL_Base>
 		<state_dim>4</state_dim>
 		<state_num>[inf, inf, inf, inf]</state_num>
