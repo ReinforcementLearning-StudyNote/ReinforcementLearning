@@ -38,7 +38,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.L = 2 * self.rBody  # 车主体直径
         self.dt = 0.02  # 50Hz
         self.time = 0.  # time
-        self.miss = 0.1
+        self.miss = self.rBody + 0.05
         self.staticGain = 4
         '''physical parameters'''
 
@@ -188,17 +188,15 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
         r1 = -1  # 常值误差，每运行一步，就 -1
 
-        if currentError > nextError + 1e-2:
-            r2 = 3
+        if currentError > nextError + 1e-3:
+            r2 = 5
         elif 1e-2 + currentError < nextError:
-            r2 = -3
+            r2 = -5
         else:
             r2 = 0
 
-        currentTheta = cal_vector_degree([self.current_state[0], self.current_state[1]],
-                                         [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
-        nextTheta = cal_vector_degree([self.next_state[0], self.next_state[1]],
-                                      [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
+        currentTheta = cal_vector_degree([cex, cey], [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
+        nextTheta = cal_vector_degree([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
         # print(currentTheta, nextTheta)
         if currentTheta > nextTheta + 1e-3:
             r3 = 2
@@ -244,6 +242,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             K4 = self.f(state[2] + h * K3[2])
             state = state + h * (K1 + 2 * K2 + 2 * K3 + K4) / 6
             t_sim += h
+        '''RK-44'''
         '''动力学系统状态更新'''
         [self.x, self.y, self.phi] = list(state)
         self.dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(self.phi)
@@ -251,7 +250,6 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.dphi = self.r / self.rBody * (self.wRight - self.wLeft)
         self.time += self.dt
         '''动力学系统状态更新'''
-        '''RK-44'''
 
         '''出界处理'''
         if self.x + self.rBody > self.x_size:  # Xout

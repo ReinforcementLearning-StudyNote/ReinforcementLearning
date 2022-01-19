@@ -1,9 +1,8 @@
 import os
 import sys
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 from common.common import *
-import random
+import cv2 as cv
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 from environment.envs.flight_attitude_simulator import Flight_Attitude_Simulator
 from environment.envs.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous
 from environment.envs.ugv_bidirectional_continuous import UGV_Bidirectional_Continuous
@@ -56,18 +55,21 @@ def test_ugv_bidirectional_continuous():
 
 
 def test_two_ugv_forward_continuous():
-    env = UGV_Forward_Continuous(initPhi=deg2rad(0),
+    env = UGV_Forward_Continuous(initPhi=deg2rad(-135),
                                  save_cfg=True,
-                                 x_size=4.0,
-                                 y_size=4.0,
-                                 start=[2.0, 2.0],
-                                 terminal=[4.0, 4.0])
+                                 x_size=5.0,
+                                 y_size=5.0,
+                                 start=[2.5, 2.5],
+                                 terminal=[4.8, 4.8])
     while True:
-        env.reset_random()
+        # env.reset_random()
+        env.reset()
         env.show_dynamic_image(isWait=True)
         while not env.is_terminal:
             # print(env.time)
-            env.show_dynamic_image(isWait=False)
+            if cv.waitKey(1) == 27:
+                return
+            env.show_dynamic_image(isWait=True)
             action = [9, 9]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             print(env.reward)
@@ -75,8 +77,8 @@ def test_two_ugv_forward_continuous():
 
 
 if __name__ == '__main__':
-    test_flight_attitude_simulator()
-    test_flight_attitude_simulator_continuous()
-    test_ugv_bidirectional_continuous()
+    # test_flight_attitude_simulator()
+    # test_flight_attitude_simulator_continuous()
+    # test_ugv_bidirectional_continuous()
     test_two_ugv_forward_continuous()
     pass
