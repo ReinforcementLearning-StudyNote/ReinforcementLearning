@@ -2,11 +2,13 @@ import os
 import sys
 from common.common import *
 import cv2 as cv
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 from environment.envs.flight_attitude_simulator import Flight_Attitude_Simulator
 from environment.envs.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous
 from environment.envs.ugv_bidirectional_continuous import UGV_Bidirectional_Continuous
 from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous
+from environment.envs.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
 
 
 # Flight Attitude Simulator Test
@@ -37,6 +39,7 @@ def test_flight_attitude_simulator_continuous():
     # env.saveData(is2file=True, filepath='../../datasave/')
 
 
+# UGV Bidirectional Continuous Test
 def test_ugv_bidirectional_continuous():
     env = UGV_Bidirectional_Continuous(initPhi=deg2rad(-135),
                                        save_cfg=True,
@@ -54,6 +57,7 @@ def test_ugv_bidirectional_continuous():
         # print(env.current_state)
 
 
+# UGV Forward Continuous Test
 def test_two_ugv_forward_continuous():
     env = UGV_Forward_Continuous(initPhi=deg2rad(-135),
                                  save_cfg=True,
@@ -76,9 +80,29 @@ def test_two_ugv_forward_continuous():
             # print(env.current_state)
 
 
+# UGV Forward Obstacles Continuous Test
+def test_ugv_forward_obstacles_continuous():
+    env = UGV_Forward_Obstacle_Continuous(initPhi=deg2rad(0), start=[2.5, 2.5], terminal=[4.0, 4.0], save_cfg=True)
+    while True:
+        # env.reset_random()
+        # env.reset()
+        env.reset_random_with_database()
+        env.show_dynamic_image(isWait=True)
+        while not env.is_terminal:
+            # print(env.time)
+            if cv.waitKey(1) == 27:
+                return
+            env.show_dynamic_image(isWait=False)
+            action = [0, 0]
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            # print(env.reward)
+            # print(env.current _state)
+
+
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
-    test_two_ugv_forward_continuous()
+    # test_two_ugv_forward_continuous()
+    test_ugv_forward_obstacles_continuous()
     pass

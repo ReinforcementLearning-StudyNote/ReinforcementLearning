@@ -30,23 +30,19 @@ class samplingmap(obstacle):
                  start: list = None,
                  terminal: list = None,
                  obs=None,
-                 map_file=None,
                  draw=True):
         super(samplingmap, self).__init__(obs)  # 用obstacle的函数初始化sampling map
         self.width = width
         self.height = height
-        if map_file is None:
-            self.x_size = x_size
-            self.y_size = y_size
-            self.name4image = image_name
-            # self.start = [0.5, 0.5] if start is None else start
-            # self.terminal = [x_size - 0.5, y_size - 0.5] if terminal is None else terminal
-            self.start = start
-            self.terminal = terminal
-            self.obs = self.get_obs()
-            self.obs_num = 0 if obs is None else len(obs)
-        else:
-            pass
+        self.x_size = x_size
+        self.y_size = y_size
+        self.name4image = image_name
+        # self.start = [0.5, 0.5] if start is None else start
+        # self.terminal = [x_size - 0.5, y_size - 0.5] if terminal is None else terminal
+        self.start = start
+        self.terminal = terminal
+        self.obs = self.get_obs()
+        self.obs_num = 0 if obs is None else len(obs)
         self.image = np.zeros([self.width, self.height, 3], np.uint8)
         self.image[:, :, 0] = np.ones([self.width, self.height]) * 255
         self.image[:, :, 1] = np.ones([self.width, self.height]) * 255
@@ -61,6 +57,7 @@ class samplingmap(obstacle):
 
         self.map_draw_boundary()
         self.image_temp = self.image.copy()
+        self.save =  self.image.copy()
         # self.set_random_obstacles(10)
         self.map_draw(draw)
 

@@ -1,43 +1,52 @@
+import random
 import cv2 as cv
 import os
 import sys
-from common.common import *
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
+import math
+import numpy as np
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
+                "/../../")
 from environment.Color import Color
 from environment.envs.pathplanning.samplingmap import samplingmap
 
 
-class rasterizedmap:
-    def __init__(self, _samplingmap: samplingmap, x_grid: int, y_grid: int):
-        self.sampling_map = _samplingmap
+def sind(theta):
+    return math.sin(theta / 180.0 * math.pi)
+
+
+def cosd(theta):
+    return math.cos(theta / 180.0 * math.pi)
+
+
+class rasterizedmap(samplingmap):
+    def __init__(self, width, height, x_size, y_size, image_name, start, terminal, obs, draw, x_grid, y_grid):
+        super(rasterizedmap, self).__init__(width, height, x_size, y_size, image_name, start, terminal, obs, draw)
         self.x_grid = x_grid  # x栅格数
         self.y_grid = y_grid  # y栅格数
-        self.x_meter_per_grid = self.sampling_map.x_size / self.x_grid  # x每格对应的实际距离(米)
-        self.y_meter_per_grid = self.sampling_map.y_size / self.y_grid  # y每格对应的实际距离(米)
-        self.x_pixel_per_grid = self.sampling_map.pixel_per_meter * self.x_meter_per_grid  # x每格对应的实际长度(像素)
-        self.y_pixel_per_grid = self.sampling_map.pixel_per_meter * self.y_meter_per_grid  # y每格对应的实际长度(像素)
+        self.x_meter_per_grid = self.x_size / self.x_grid  # x每格对应的实际距离(米)
+        self.y_meter_per_grid = self.y_size / self.y_grid  # y每格对应的实际距离(米)
+        self.x_pixel_per_grid = self.pixel_per_meter * self.x_meter_per_grid  # x每格对应的实际长度(像素)
+        self.y_pixel_per_grid = self.pixel_per_meter * self.y_meter_per_grid  # y每格对应的实际长度(像素)
         self.map_flag = [[0 for _ in range(x_grid)] for _ in range(y_grid)]
-
-        self.name4image = self.sampling_map.name4image + 'rasterized'
 
         self.map_rasterization()
         self.draw_rasterization_map(isShow=False)
 
     def is_grid_has_obs(self, points: list) -> int:
         for _point in points:
-            if self.sampling_map.point_is_in_obs(_point):
+            if self.point_is_in_obs(_point):
                 return 1
         '''四个顶点都不在障碍物里面'''
 
         assert len(points) == 4
         for i in range(4):
-            if self.sampling_map.line_is_in_obs(points[i % 4], points[(i + 1) % 4]):
+            if self.line_is_in_obs(points[i % 4], points[(i + 1) % 4]):
                 return 1
         '''四个边都不在障碍物里面'''
 
-        for _obs in self.sampling_map.obs:
+        for _obs in self.obs:
             c1 = [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[3][1]) / 2]
-            if self.sampling_map.point_is_in_obs(c1):
+            if self.point_is_in_obs(c1):
                 return 1
         '''格子不在障碍物里面'''
         return 0
@@ -45,53 +54,53 @@ class rasterizedmap:
     def is_grid_has_single_obs(self, points, obs):
         if obs[0] == 'circle':
             for _point in points:
-                if self.sampling_map.point_is_in_circle(obs[2], obs[1][0], _point):
+                if self.point_is_in_circle(obs[2], obs[1][0], _point):
                     return 1
             assert len(points) == 4
             for i in range(4):
-                if self.sampling_map.line_is_in_circle(obs[2], obs[1][0], points[i % 4], points[(i + 1) % 4]):
+                if self.line_is_in_circle(obs[2], obs[1][0], points[i % 4], points[(i + 1) % 4]):
                     return 1
             c1 = [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[3][1]) / 2]
-            if self.sampling_map.point_is_in_circle(obs[2], obs[1][0], c1):
+            if self.point_is_in_circle(obs[2], obs[1][0], c1):
                 return 1
             return 0
         elif obs[0] == 'ellipse':
             for _point in points:
-                if self.sampling_map.point_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], _point):
+                if self.point_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], _point):
                     return 1
             assert len(points) == 4
             for i in range(4):
-                if self.sampling_map.line_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], points[i % 4], points[(i + 1) % 4]):
+                if self.line_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], points[i % 4], points[(i + 1) % 4]):
                     return 1
             c1 = [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[3][1]) / 2]
-            if self.sampling_map.point_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], c1):
+            if self.point_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], c1):
                 return 1
             return 0
         else:
             for _point in points:
-                if self.sampling_map.point_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], _point):
+                if self.point_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], _point):
                     return 1
             assert len(points) == 4
             for i in range(4):
-                if self.sampling_map.line_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], points[i % 4], points[(i + 1) % 4]):
+                if self.line_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], points[i % 4], points[(i + 1) % 4]):
                     return 1
             c1 = [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[3][1]) / 2]
-            if self.sampling_map.point_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], c1):
+            if self.point_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], c1):
                 return 1
             return 0
 
     def map_rasterization(self):
         self.map_flag = [[0 for _ in range(self.x_grid)] for _ in range(self.y_grid)]
-        for _obs in self.sampling_map.obs:
+        for _obs in self.obs:
             obsName = _obs[0]
             if obsName == 'circle' or obsName == 'ellipse':
                 x, y, r = _obs[2][0], _obs[2][1], _obs[1][0]
             else:
                 x, y, r = _obs[1][0], _obs[1][1], _obs[1][2]
-            up = self.point_in_grid(self.sampling_map.point_saturation([x, y + r]))[1]  # up
-            down = self.point_in_grid(self.sampling_map.point_saturation([x, y - r]))[1]  # down
-            left = self.point_in_grid(self.sampling_map.point_saturation([x - r, y]))[0]  # left
-            right = self.point_in_grid(self.sampling_map.point_saturation([x + r, y]))[0]  # right
+            up = self.point_in_grid(self.point_saturation([x, y + r]))[1]  # up
+            down = self.point_in_grid(self.point_saturation([x, y - r]))[1]  # down
+            left = self.point_in_grid(self.point_saturation([x - r, y]))[0]  # left
+            right = self.point_in_grid(self.point_saturation([x + r, y]))[0]  # right
             for i in np.arange(left, right + 1, 1):
                 for j in np.arange(down, up + 1, 1):
                     rec = [[i * self.x_meter_per_grid, j * self.y_meter_per_grid],
@@ -100,27 +109,17 @@ class rasterizedmap:
                            [i * self.x_meter_per_grid, (j + 1) * self.y_meter_per_grid]]
                     self.map_flag[i][j] = self.is_grid_has_single_obs(rec, _obs)
 
-    '''drawing'''
-
-    def map_draw_photo_frame(self):
-        cv.rectangle(self.sampling_map.image, (0, 0), (self.sampling_map.width - 1, self.sampling_map.dis2pixel([self.sampling_map.x_size, self.sampling_map.y_size])[1]), Color().White, -1)
-        cv.rectangle(self.sampling_map.image, (0, 0), (self.sampling_map.dis2pixel([0., 0.])[0], self.sampling_map.height - 1), Color().White, -1)
-        cv.rectangle(self.sampling_map.image, self.sampling_map.dis2pixel([self.sampling_map.x_size, self.sampling_map.y_size]), (self.sampling_map.width - 1, self.sampling_map.height - 1),
-                     Color().White, -1)
-        cv.rectangle(self.sampling_map.image, self.sampling_map.dis2pixel([0., 0.]), (self.sampling_map.width - 1, self.sampling_map.height - 1), Color().White, -1)
-
     def draw_rasterization_map(self, isShow=True, isWait=True):
-        self.sampling_map.image = self.sampling_map.image_temp.copy()
+        self.image = self.image_temp.copy()
         self.map_draw_gird_rectangle()
         self.map_draw_x_grid()
         self.map_draw_y_grid()
-        self.sampling_map.map_draw_start_terminal()
-        self.sampling_map.map_draw_obs()
-        self.sampling_map.map_draw_photo_frame()
-        self.sampling_map.map_draw_boundary()
-        self.sampling_map.map_draw_start_terminal()
+        self.map_draw_start_terminal()
+        self.map_draw_obs()
+        self.map_draw_photo_frame()
+        self.map_draw_boundary()
         if isShow:
-            cv.imshow(self.name4image, self.sampling_map.image)
+            cv.imshow(self.name4image, self.image)
             cv.waitKey(0) if isWait else cv.waitKey(1)
 
     def map_draw_gird_rectangle(self):
@@ -129,7 +128,7 @@ class rasterizedmap:
                 if self.map_flag[i][j] == 1:
                     pt1 = self.grid2pixel(coord_int=[i, j], pos='left-bottom', xoffset=-0, yoffset=0)
                     pt2 = self.grid2pixel(coord_int=[i, j], pos='right-top', xoffset=0, yoffset=0)
-                    cv.rectangle(self.sampling_map.image, pt1, pt2, Color().LightGray, -1)
+                    cv.rectangle(self.image, pt1, pt2, Color().LightGray, -1)
 
     def grid2pixel(self, coord_int: list, pos: str, xoffset=0, yoffset=0) -> tuple:
         """
@@ -141,8 +140,8 @@ class rasterizedmap:
         :return:            pixel [int, int] (left-bottom)
         :tips:              the direction of offset is the same as that of image rather than real world or grid map
         """
-        x = self.sampling_map.x_offset + coord_int[0] * self.x_pixel_per_grid
-        y = self.sampling_map.height - self.sampling_map.y_offset - coord_int[1] * self.y_pixel_per_grid  # sef default to left-bottom
+        x = self.x_offset + coord_int[0] * self.x_pixel_per_grid
+        y = self.height - self.y_offset - coord_int[1] * self.y_pixel_per_grid  # sef default to left-bottom
 
         if pos == 'left-bottom':
             return int(x) + xoffset, int(y) + yoffset
@@ -160,18 +159,16 @@ class rasterizedmap:
         for i in range(self.y_grid + 1):
             pt1 = self.grid2pixel(coord_int=[0, i], pos='left-bottom')
             pt2 = self.grid2pixel(coord_int=[self.x_grid, i], pos='left-bottom')
-            cv.line(self.sampling_map.image, pt1, pt2, Color().Black, 1)
+            cv.line(self.image, pt1, pt2, Color().Black, 1)
 
     def map_draw_y_grid(self):
         for i in range(self.x_grid + 1):
             pt1 = self.grid2pixel(coord_int=[i, 0], pos='left-bottom')
             pt2 = self.grid2pixel(coord_int=[i, self.y_grid], pos='left-bottom')
-            cv.line(self.sampling_map.image, pt1, pt2, Color().Black, 1)
-
-    '''drawing'''
+            cv.line(self.image, pt1, pt2, Color().Black, 1)
 
     def point_in_grid(self, point: list) -> list:
-        if self.sampling_map.point_is_out(point):
+        if self.point_is_out(point):
             return [-1, -1]
 
         return [int(point[0] / self.x_meter_per_grid), int(point[1] / self.y_meter_per_grid)]
@@ -187,32 +184,28 @@ class rasterizedmap:
         """
         f = open(file=filePath + fileName, mode='w')
         '''First part is the basic message'''
-        f.writelines('x_size:' + str(self.sampling_map.x_size) + '\n')
-        f.writelines('y_size:' + str(self.sampling_map.y_size) + '\n')
+        f.writelines('x_size:' + str(self.x_size) + '\n')
+        f.writelines('y_size:' + str(self.y_size) + '\n')
         f.writelines('x_grid:' + str(self.x_grid) + '\n')
         f.writelines('y_grid:' + str(self.y_grid) + '\n')
         '''First part is the basic message'''
         f.writelines('BEGIN' + '\n')
         for i in range(map_num):
             print('num:', i)
-            self.sampling_map.set_start([random.uniform(0.15, self.sampling_map.x_size - 0.15), random.uniform(0.15, self.sampling_map.x_size - 0.15)])
-            self.sampling_map.set_terminal([random.uniform(0.15, self.sampling_map.x_size - 0.15), random.uniform(0.15, self.sampling_map.x_size - 0.15)])
-            # print('...start setting obstacles...')
-            self.sampling_map.set_random_obstacles(20)
-            # print('...finish setting obstacles...')
-            # print('...start map_rasterization...')
+            self.set_start([random.uniform(0.15, self.x_size - 0.15), random.uniform(0.15, self.x_size - 0.15)])
+            self.set_terminal([random.uniform(0.15, self.x_size - 0.15), random.uniform(0.15, self.x_size - 0.15)])
+            self.set_random_obstacles(20)
             self.map_rasterization()
-            # print('...finish map_rasterization...')
             self.draw_rasterization_map(isShow=True, isWait=False)
             '''Second part is the start-terminal message'''
             f.writelines('num' + str(i) + '\n')
-            f.writelines('start:' + str(list(self.sampling_map.start)) + '\n')
-            f.writelines('terminal:' + str(list(self.sampling_map.terminal)) + '\n')
+            f.writelines('start:' + str(list(self.start)) + '\n')
+            f.writelines('terminal:' + str(list(self.terminal)) + '\n')
             '''Second part is the start-terminal message'''
 
             '''Third part is the continuous obstacles' message'''
-            f.writelines('obs num:' + str(len(self.sampling_map.obs)) + '\n')
-            for _obs in self.sampling_map.obs:
+            f.writelines('obs num:' + str(len(self.obs)) + '\n')
+            for _obs in self.obs:
                 f.writelines(str(_obs).replace('array', '').replace('(', '').replace(')', '') + '\n')
             '''Third part is the continuous obstacles' message'''
 
@@ -226,10 +219,10 @@ class rasterizedmap:
         BIG_DATA_BASE = []
         f = open(databaseFile, mode='r')
         ''''检测文件头'''
-        assert str(self.sampling_map.x_size) == f.readline().strip('\n')[7:]
-        assert str(self.sampling_map.y_size) == f.readline().strip('\n')[7:]
-        assert str(self.x_grid) == f.readline().strip('\n')[7:]
-        assert str(self.y_grid) == f.readline().strip('\n')[7:]
+        assert self.x_size == float(f.readline().strip('\n')[7:])
+        assert self.y_size == float(f.readline().strip('\n')[7:])
+        assert self.x_grid == int(f.readline().strip('\n')[7:])
+        assert self.y_grid == int(f.readline().strip('\n')[7:])
         assert f.readline().strip('\n') == 'BEGIN'
         ''''检测文件头'''
 
@@ -322,8 +315,8 @@ class rasterizedmap:
         for database in DataBase:
             # print('new')
             for data in database:
-                self.sampling_map.start = data[0]
-                self.sampling_map.terminal = data[1]
-                self.sampling_map.obs = data[3]
+                self.start = data[0]
+                self.terminal = data[1]
+                self.obs = data[3]
                 self.map_flag = data[4]
                 self.draw_rasterization_map(isShow=True, isWait=False)
