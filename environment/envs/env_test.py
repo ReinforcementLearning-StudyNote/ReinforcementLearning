@@ -70,7 +70,7 @@ def test_two_ugv_forward_continuous():
             if cv.waitKey(1) == 27:
                 return
             env.show_dynamic_image(isWait=True)
-            action = [9, 9]
+            action = [-9, 9]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             print(env.reward)
             # print(env.current_state)

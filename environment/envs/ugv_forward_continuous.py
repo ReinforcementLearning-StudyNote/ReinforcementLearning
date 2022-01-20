@@ -6,8 +6,12 @@ from environment.envs.pathplanning.samplingmap import samplingmap
 class UGV_Forward_Continuous(samplingmap, rl_base):
     def __init__(self, initPhi: float, save_cfg: bool, x_size: float, y_size: float, start: list, terminal: list):
         """
-        :param initPhi:     initial phi
-        :param save_cfg:    svae to model file or not
+        :param initPhi:         initial heading angle
+        :param save_cfg:        save to model file or not
+        :param x_size:          map size X
+        :param y_size:          map size Y
+        :param start:           start position
+        :param terminal:        terminal position
         """
         super(UGV_Forward_Continuous, self).__init__(width=400,
                                                      height=400,
@@ -40,6 +44,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.time = 0.  # time
         self.miss = self.rBody + 0.05
         self.staticGain = 4
+        self.delta_phi_absolute = 0.
         '''physical parameters'''
 
         '''rl_base'''
@@ -137,17 +142,15 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
                 cv.line(self.image, pt1, pt2, Color().Black, 1)
 
     def show_dynamic_image(self, isWait):
-        self.image_temp = self.image.copy()
+        self.image = self.image_temp.copy()
         self.map_draw_boundary()
         self.draw_car()
         self.draw_terminal()
         self.draw_region_grid(xNUm=3, yNum=3)
-
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
         self.save = self.image.copy()
-        self.image = self.image_temp.copy()
 
     def is_out(self):
         """
@@ -163,10 +166,10 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         #     print('...out...')
         #     self.terminal_flag = 1
         #     return True
-        # if math.fabs(self.initPhi - self.phi) > 2 * math.pi:
-        #     print('...转的角度太大了...')
-        #     self.terminal_flag = 1
-        #     return True
+        if self.delta_phi_absolute > 2 * math.pi + deg2rad(45):
+            print('...转的角度太大了...')
+            self.terminal_flag = 1
+            return True
         if self.time > 8.0:
             print('...time out...')
             self.terminal_flag = 2
@@ -188,7 +191,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
         r1 = -1  # 常值误差，每运行一步，就 -1
 
-        if currentError > nextError + 1e-3:
+        if currentError > nextError + 1e-2:
             r2 = 5
         elif 1e-2 + currentError < nextError:
             r2 = -5
@@ -198,7 +201,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         currentTheta = cal_vector_degree([cex, cey], [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
         nextTheta = cal_vector_degree([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
         # print(currentTheta, nextTheta)
-        if currentTheta > nextTheta + 1e-3:
+        if currentTheta > nextTheta + 1e-2:
             r3 = 2
         elif 1e-3 + currentTheta < nextTheta:
             r3 = -2
@@ -265,6 +268,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             self.y = self.rBody
             self.dy = 0
         '''出界处理'''
+        self.delta_phi_absolute += math.fabs(self.phi - self.current_state[4])
         '''角度处理'''
         if self.phi > math.pi:
             self.phi -= 2 * math.pi
@@ -298,6 +302,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.wLeft = 0.
         self.wRight = 0.
         self.time = 0.  # time
+        self.delta_phi_absolute = 0.
         '''physical parameters'''
 
         '''RL_BASE'''
@@ -338,6 +343,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.wLeft = 0.
         self.wRight = 0.
         self.time = 0.  # time
+        self.delta_phi_absolute = 0.
         '''physical parameters'''
 
         '''RL_BASE'''

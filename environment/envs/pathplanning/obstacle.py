@@ -1,36 +1,36 @@
+import math
 import random
-from common.common import *
+
+import numpy as np
+
+
+def sind(theta):
+    return math.sin(theta / 180.0 * math.pi)
+
+
+def cosd(theta):
+    return math.cos(theta / 180.0 * math.pi)
 
 
 class obstacle:
     def __init__(self, obs):
-        self.name_set = ['triangle',        # 三角形(等腰)(就是因为描述方便)(格式统一)
-                         'rectangle',       # 四边形(利用外接圆的方式去定义)
-                         'pentagon',        # 五边形(正)(利用外接圆的方式去定义)
-                         'hexagon',         # 六边形(正)(利用外接圆的方式去定义)
-                         'heptagon'         # 七边形(正)(利用外接圆的方式去定义)
-                         'octagon',         # 八边形(正)(利用外接圆的方式去定义)
-                         'circle',          # 圆形
-                         'ellipse']         # 椭圆形
-        '''
-        This is the input formation of some figures. The storage formation is different, which is implemented in function set_obs()
-        triangle        ['triangle',  [pt1, pt2], [r, theta0, theta_bias]]     pt should be clockwise or counter-clock wise, theta0 is the 顶角 of the triangle
-                                                                            , theta_bias is the rotation angle.
-        rectangle       ['rectangle', [pt1, pt2], [r, theta0, theta_bias]]     pt1 and pt2 are the coordinate of the center
-        pentagon        ['pentagon',  [pt1, pt2], [r, theta_bias]]
-        hexagon         ['hexagon',   [pt1, pt2], [r, theta_bias]]
-        heptagon        ['heptagon',  [pt1, pt2], [r, theta_bias]]
-        octagon         ['octagon',   [pt1, pt2], [r, theta_bias]]
-        circle          ['circle',    [pt1, pt2], [r]]
-        ellipse         ['ellipse',   [pt1, pt2], [long_axis, short_axis, theta_bias]]
-        '''
-        self.obs = self.set_obs(obs)
-        '''
-        The formation is:
-        poly            ['name', [x, y, r], [pts]]          x and y are the coordinate of the center, r is the radius of the circumcircle of the polygon.
-        circle          ['name', [r],       [x, y]]
-        ellipse         ['name', [long_axis, short_axis, theta_bias], [x, y]]
-        '''
+        self.name_set = ['triangle',  # 三角形(等腰)(就是因为描述方便)(格式统一)
+                         'rectangle',  # 四边形(利用外接圆的方式去定义)
+                         'pentagon',  # 五边形(正)(利用外接圆的方式去定义)
+                         'hexagon',  # 六边形(正)(利用外接圆的方式去定义)
+                         'heptagon'  # 七边形(正)(利用外接圆的方式去定义)
+                         'octagon',  # 八边形(正)(利用外接圆的方式去定义)
+                         'circle',  # 圆形
+                         'ellipse']  # 椭圆形
+        self.obs = self.set_obs(obs)  # the formation is ['name', [r], [points]]
+        ''' triangle        ['triangle',  [pt1, pt2], [r, theta0, theta_bias]]     pt should be clockwise or counter-clock wise 
+            rectangle       ['rectangle', [pt1, pt2], [r, theta0, theta_bias]]             pt1 and pt2 are the coordinate of the center
+            pentagon        ['pentagon',  [pt1, pt2], [r, theta_bias]]
+            hexagon         ['hexagon',   [pt1, pt2], [r, theta_bias]]
+            heptagon        ['heptagon',  [pt1, pt2], [r, theta_bias]]
+            octagon         ['octagon',   [pt1, pt2], [r, theta_bias]]
+            circle          ['circle',    [pt1, pt2], [r]]
+            ellipse         ['ellipse',   [pt1, pt2], [long_axis, short_axis, theta_bias]]'''
 
     @staticmethod
     def set_obs(message: list):
@@ -48,42 +48,42 @@ class obstacle:
                 pt1 = [x + r * cosd(90 + theta_bias), y + r * sind(90 + theta_bias)]
                 pt2 = [x + r * cosd(270 - theta0 + theta_bias), y + r * sind(270 - theta0 + theta_bias)]
                 pt3 = [x + r * cosd(theta0 - 90 + theta_bias), y + r * sind(theta0 - 90 + theta_bias)]
-                obs.append([name, [x, y, r], [pt1, pt2, pt3]])
+                obs.append([name, list(np.around([x, y, r], 3)), list(np.around([pt1, pt2, pt3], 3))])
             elif name == 'rectangle':
                 [r, theta0, theta_bias] = constraints
                 pt1 = [x + r * cosd(theta0 + theta_bias), y + r * sind(theta0 + theta_bias)]
                 pt2 = [x + r * cosd(180 - theta0 + theta_bias), y + r * sind(180 - theta0 + theta_bias)]
                 pt3 = [x + r * cosd(180 + theta0 + theta_bias), y + r * sind(180 + theta0 + theta_bias)]
                 pt4 = [x + r * cosd(-theta0 + theta_bias), y + r * sind(-theta0 + theta_bias)]
-                obs.append([name, [x, y, r], [pt1, pt2, pt3, pt4]])
+                obs.append([name, list(np.around([x, y, r], 3)), list(np.around([pt1, pt2, pt3, pt4], 3))])
             elif name == 'pentagon':
                 [r, theta_bias] = constraints
                 pt = []
                 for i in range(5):
                     pt.append([x + r * cosd(90 + 72 * i + theta_bias), y + r * sind(90 + 72 * i + theta_bias)])
-                obs.append([name, [x, y, r], pt])
+                obs.append([name, list(np.around([x, y, r], 3)), list(np.around(pt, 3))])
             elif name == 'hexagon':
                 [r, theta_bias] = constraints
                 pt = []
                 for i in range(6):
                     pt.append([x + r * cosd(90 + 60 * i + theta_bias), y + r * sind(90 + 60 * i + theta_bias)])
-                obs.append([name, [x, y, r], pt])
+                obs.append([name, list(np.around([x, y, r], 3)), list(np.around(pt, 3))])
             elif name == 'heptagon':
                 [r, theta_bias] = constraints
                 pt = []
                 for i in range(7):
                     pt.append([x + r * cosd(90 + 360 / 7 * i + theta_bias), y + r * sind(90 + 360 / 7 * i + theta_bias)])
-                obs.append([name, [x, y, r], pt])
+                obs.append([name, list(np.around([x, y, r], 3)), list(np.around(pt, 3))])
             elif name == 'octagon':
                 [r, theta_bias] = constraints
                 pt = []
                 for i in range(8):
                     pt.append([x + r * cosd(90 + 45 * i + theta_bias), y + r * sind(90 + 45 * i + theta_bias)])
-                obs.append([name, [x, y, r], pt])
+                obs.append([name, list(np.around([x, y, r], 3)), list(np.around(pt, 3))])
             elif name == 'circle':
-                obs.append([name, constraints, [x, y]])
+                obs.append([name, list(np.around(constraints, 3)), list(np.around([x, y], 3))])
             elif name == 'ellipse':
-                obs.append([name, constraints, [x, y]])
+                obs.append([name, list(np.around(constraints, 3)), list(np.around([x, y], 3))])
             else:
                 print('Unknown obstacle type')
         return obs
@@ -94,7 +94,7 @@ class obstacle:
     @staticmethod
     def set_random_circle(xRange, yRange, rRange=None):
         if rRange is None:
-            rRange = [0.7, 1.3]
+            rRange = [0.2, 0.4]
         x = random.uniform(xRange[0], xRange[1])
         y = random.uniform(yRange[0], yRange[1])
         r = random.uniform(rRange[0], rRange[1])
@@ -103,9 +103,9 @@ class obstacle:
     @staticmethod
     def set_random_ellipse(xRange, yRange, longRange=None, shortRange=None, thetaMax=60):  # 都用的角度，这里也用角度把
         if longRange is None:
-            longRange = [0.7, 1.3]
+            longRange = [0.2, 0.4]
         if shortRange is None:
-            shortRange = [0.7, 1.3]
+            shortRange = [0.2, 0.4]
         x = random.uniform(xRange[0], xRange[1])
         y = random.uniform(yRange[0], yRange[1])
         long = random.uniform(longRange[0], longRange[1])
@@ -116,9 +116,9 @@ class obstacle:
     @staticmethod
     def set_random_poly(xRange, yRange, rRange=None, thetaMax=30, theta0Range=None):
         if theta0Range is None:
-            theta0Range = [20, 70]
+            theta0Range = [0, 180]
         if rRange is None:
-            rRange = [0.7, 1.3]
+            rRange = [0.2, 0.4]
         namelist = ['triangle', 'rectangle', 'pentagon', 'hexagon', 'heptagon', 'octagon']
         edge = random.sample([0, 1, 2, 3, 4, 5], 1)[0]
         x = random.uniform(xRange[0], xRange[1])
