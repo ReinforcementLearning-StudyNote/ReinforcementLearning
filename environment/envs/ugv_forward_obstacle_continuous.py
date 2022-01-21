@@ -1,3 +1,5 @@
+import math
+
 from common.common import *
 from environment.envs import *
 from environment.envs.pathplanning.rasterizedmap import rasterizedmap
@@ -59,18 +61,28 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         self.miss = self.rBody + 0.05
         self.staticGain = 4
         self.delta_phi_absolute = 0.
+        self.laser_dis = 4  # 假设车的中心所在grid沿着某一方向延申4个grid为探测中心
+        self.laser_range = 3  # 以探测中心位中心，向 ‘两侧’各扩展3个格子
         '''physical parameters'''
 
         '''map database'''
-        self.database = self.load_database(dataBasePath)        # 地图数据库
-        self.numData = len(self.database)                       # 数据库里面的数据数量
+        self.database = self.load_database(dataBasePath)  # 地图数据库
+        self.numData = len(self.database)  # 数据库里面的数据数量
         '''map database'''
 
         '''rl_base'''  # TODO 还需要仔细考虑
-        self.state_dim = 8  # [ex/sizeX, ey/sizeY, x/sizeX, y/sizeY, phi, dx, dy, dphi]
+        laser_state = 1 + 2 * self.laser_range
+        self.state_dim = 8 + laser_state
+        '''[ex/sizeX, ey/sizeY, x/sizeX, y/sizeY, phi, dx, dy, dphi, laser0, laser1. laser2. laser3. laser4, laser5, laser6]'''
         self.state_num = [math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf]
         self.state_step = [None, None, None, None, None, None, None, None]
         self.state_space = [None, None, None, None, None, None, None, None]
+        self.isStateContinuous = [True, True, True, True, True, True, True, True]
+        for _ in range(laser_state):
+            self.state_num.append(2)
+            self.state_step.append(None)
+            self.state_space.append([0, 1])
+            self.isStateContinuous.append(False)
         self.state_range = [[-self.staticGain, self.staticGain],
                             [-self.staticGain, self.staticGain],
                             [0, self.staticGain],
@@ -78,8 +90,8 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                             [-math.pi, math.pi],
                             [-self.r * self.wMax, self.r * self.wMax],
                             [-self.r * self.wMax, self.r * self.wMax],
-                            [-self.r / self.L * 2 * self.r * self.wMax, self.r / self.L * 2 * self.r * self.wMax]]
-        self.isStateContinuous = [True, True, True, True, True, True, True, True]
+                            [-self.r / self.L * 2 * self.r * self.wMax, self.r / self.L * 2 * self.r * self.wMax],
+                            [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]]
         self.initial_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
@@ -123,6 +135,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
     def draw_car(self):
         # self.image = self.image_temp.copy()
         cv.circle(self.image, self.dis2pixel([self.x, self.y]), self.length2pixel(self.rBody), Color().Orange, -1)  # 主体
+        cv.circle(self.image, self.dis2pixel([self.x, self.y]), self.length2pixel(0.05), Color().White, -1)  # 主体
         '''两个车轮'''
         # left
         pts_left = [[self.r, self.rBody], [self.r, self.rBody - self.l_wheel], [-self.r, self.rBody - self.l_wheel], [-self.r, self.rBody]]
@@ -136,7 +149,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         cv.fillConvexPoly(self.image, points=np.array([list(self.dis2pixel(pt)) for pt in pts_right]), color=Color().Red)
         '''两个车轮'''
         # 额外画一个圆形，标志头
-        head = [self.r - 0.02, 0]
+        head = [self.r + 0.05, 0]
         head = points_rotate(head, self.phi)
         head = points_move(head, [self.x, self.y])
         cv.circle(self.image, self.dis2pixel(head), self.length2pixel(0.04), Color().Black, -1)  # 主体
@@ -162,15 +175,15 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
 
     def show_dynamic_image(self, isWait):
         self.image = self.image_temp.copy()
-        self.map_draw_gird_rectangle()          # 涂栅格
-        self.map_draw_x_grid()                  # 画栅格
-        self.map_draw_y_grid()                  # 画栅格
-        self.draw_region_grid(xNUm=3, yNum=3)   # 画区域
+        self.map_draw_gird_rectangle()  # 涂栅格
+        self.map_draw_x_grid()  # 画栅格
+        self.map_draw_y_grid()  # 画栅格
+        self.draw_region_grid(xNUm=3, yNum=3)  # 画区域
         self.map_draw_obs()  # 画障碍物
         self.draw_car()  # 画车
         self.draw_terminal()  # 画终点
-        self.map_draw_photo_frame()             # 画最外边的白框
-        self.map_draw_boundary()                # 画边界
+        self.map_draw_photo_frame()  # 画最外边的白框
+        self.map_draw_boundary()  # 画边界
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
@@ -204,6 +217,24 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
             return True
         self.terminal_flag = 0
         return False
+
+    def get_fake_laser(self):
+        """
+        :return:        the fake laser data
+        """
+        car_origin = self.point_in_grid([self.x, self.y])
+        '''根据角度来确定模拟雷达的数据范围'''
+        if -math.pi / 4 <= self.phi < math.pi / 4:  # 左
+            crossPoint = [4.0, math.tan(self.phi) * 4.0]
+        elif math.pi / 4 <= self.phi < 3 * math.pi / 4:  # 上
+            crossPoint = [4.0 / math.tan(self.phi), 4.0]
+        elif -3 * math.pi / 4 <= self.phi < -math.pi / 4:  # 下
+            crossPoint = [-4.0 / math.tan(self.phi), -4.0]
+        else:  # 右
+            crossPoint = [-4.0, math.tan(self.phi) * 4.0]
+        laser_center = self.point_in_grid(crossPoint)       # 获得探测中心
+
+        '''根据角度来确定模拟雷达的数据范围'''
 
     def get_reward(self, param=None):
         cex = self.current_state[0] * self.x_size / self.staticGain
