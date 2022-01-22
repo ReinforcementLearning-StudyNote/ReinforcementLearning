@@ -19,7 +19,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                  save_cfg: bool = True,
                  x_grid: int = 50,
                  y_grid: int = 50,
-                 dataBasePath: str = './pathplanning/5X5-50X50-DataBase-Random/'):
+                 dataBasePath: str = './pathplanning/5X5-50X50-DataBase-Random0/'):
         """
         :param width:               width of the figure
         :param height:              width of the figure
@@ -213,7 +213,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
             return True
         return False
 
-    def is_Terminal(self):
+    def is_Terminal(self, param=None):
         # if self.is_out():
         #     print('...out...')
         #     self.terminal_flag = 1

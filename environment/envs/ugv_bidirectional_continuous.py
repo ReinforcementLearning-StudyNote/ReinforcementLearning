@@ -3,6 +3,7 @@ import math
 from common.common import *
 from environment.envs import *
 from environment.envs.pathplanning.samplingmap import samplingmap
+from environment.envs.pathplanning.basic_geometry import *
 
 
 class UGV_Bidirectional_Continuous(samplingmap, rl_base):
@@ -156,7 +157,7 @@ class UGV_Bidirectional_Continuous(samplingmap, rl_base):
             return True
         return False
 
-    def is_Terminal(self):
+    def is_Terminal(self, param=None):
         # if self.is_out():
         #     print('...out...')
         #     self.terminal_flag = 1
@@ -169,7 +170,7 @@ class UGV_Bidirectional_Continuous(samplingmap, rl_base):
             print('...time out...')
             self.terminal_flag = 2
             return True
-        if self.dis_two_points([self.x, self.y], self.terminal) <= self.miss:
+        if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
             print('...success...')
             self.terminal_flag = 3
             return True

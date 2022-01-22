@@ -177,7 +177,7 @@ class Flight_Attitude_Simulator(rl_base):
         self.save = self.show.copy()
         self.show = self.image.copy()
 
-    def is_Terminal(self):
+    def is_Terminal(self, param=None):
         """
         :brief:     判断回合是否结束
         :return:    是否结束

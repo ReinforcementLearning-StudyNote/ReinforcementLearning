@@ -131,6 +131,9 @@ class rl_base:
         '''should be the function of current state, time, or next state. It needs to be re-written in a specific environment.'''
         pass
 
+    def is_Terminal(self, param=None):
+        return False
+
     def reset(self):
         # self.current_state = self.initial_state.copy()
         # self.next_state = []
