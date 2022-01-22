@@ -114,9 +114,9 @@ class obstacle:
         return ['ellipse', [x, y], [long, short, theta_bias]]
 
     @staticmethod
-    def set_random_poly(xRange, yRange, rRange=None, thetaMax=30, theta0Range=None):
+    def set_random_poly(xRange, yRange, rRange=None, thetaMin=30, thetaMax=60, theta0Range=None):
         if theta0Range is None:
-            theta0Range = [0, 180]
+            theta0Range = [60, 90]
         if rRange is None:
             rRange = [0.2, 0.4]
         namelist = ['triangle', 'rectangle', 'pentagon', 'hexagon', 'heptagon', 'octagon']
@@ -124,7 +124,7 @@ class obstacle:
         x = random.uniform(xRange[0], xRange[1])
         y = random.uniform(yRange[0], yRange[1])
         r = random.uniform(rRange[0], rRange[1])
-        theta_bias = random.uniform(-thetaMax, thetaMax)
+        theta_bias = random.uniform(thetaMin, thetaMax)
         theta0 = random.uniform(theta0Range[0], theta0Range[1])
         if edge == 0 or edge == 1:
             return [namelist[edge], [x, y], [r, theta0, theta_bias]]

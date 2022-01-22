@@ -104,6 +104,54 @@ class rasterizedmap(samplingmap):
                 return 1
             return 0
 
+    def is_grid_has_single_obs3(self, points, obs):
+        count = 0
+        if obs[0] == 'circle':
+            for _point in points:
+                if self.point_is_in_circle(obs[2], obs[1][0], _point):
+                    count += 1
+                    # return 1
+            assert len(points) == 4
+            for i in range(4):
+                if self.line_is_in_circle(obs[2], obs[1][0], points[i % 4], points[(i + 1) % 4]):
+                    count += 1
+                    # return 1
+            if self.point_is_in_circle(obs[2], obs[1][0], [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[3][1]) / 2]):
+                return 1
+            if count >= 3:
+                return 1
+            return 0
+        elif obs[0] == 'ellipse':
+            for _point in points:
+                if self.point_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], _point):
+                    count += 1
+                    # return 1
+            assert len(points) == 4
+            for i in range(4):
+                if self.line_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], points[i % 4], points[(i + 1) % 4]):
+                    count += 1
+                    # return 1
+            if self.point_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[3][1]) / 2]):
+                return 1
+            if count >= 3:
+                return 1
+            return 0
+        else:
+            for _point in points:
+                if self.point_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], _point):
+                    count += 1
+                    # return 1
+            assert len(points) == 4
+            for i in range(4):
+                if self.line_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], points[i % 4], points[(i + 1) % 4]):
+                    count += 1
+                    # return 1
+            if self.point_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[3][1]) / 2]):
+                return 1
+            if count >= 3:
+                return 1
+            return 0
+
     def map_rasterization(self):
         self.map_flag = [[0 for _ in range(self.x_grid)] for _ in range(self.y_grid)]
         for _obs in self.obs:
@@ -123,7 +171,8 @@ class rasterizedmap(samplingmap):
                            [(i + 1) * self.x_meter_per_grid, (j + 1) * self.y_meter_per_grid],
                            [i * self.x_meter_per_grid, (j + 1) * self.y_meter_per_grid]]
                     # self.map_flag[i][j] = self.is_grid_has_single_obs(rec, _obs)
-                    self.map_flag[i][j] = self.is_grid_has_single_obs2(rec, _obs)
+                    # self.map_flag[i][j] = self.is_grid_has_single_obs2(rec, _obs)
+                    self.map_flag[i][j] = self.is_grid_has_single_obs3(rec, _obs)
 
     def draw_rasterization_map(self, isShow=True, isWait=True):
         self.image = self.image_temp.copy()

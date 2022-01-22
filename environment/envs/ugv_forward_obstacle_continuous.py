@@ -194,7 +194,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         self.map_draw_x_grid()  # 画栅格
         self.map_draw_y_grid()  # 画栅格
         self.draw_region_grid(xNUm=3, yNum=3)  # 画区域
-        self.map_draw_obs()  # 画障碍物
+        # self.map_draw_obs()  # 画障碍物
         self.draw_fake_laser()  # 画雷达
         self.draw_car()  # 画车
         self.draw_terminal()  # 画终点
@@ -286,18 +286,13 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         """
         '''简化查找过程，直接圆心周围一圈的网格中心，虽不精确，但是相差无几'''
         carCenterIndex = self.point_in_grid([self.x, self.y])
-        indexBias = [[3, 3], [3, 2], [3, 1], [3, 0], [3, -1], [3, -2],
-                     [3, -3], [2, -3], [1, -3], [0, -3], [-1, -3], [-2, -3],
-                     [-3, -3], [-3, -2], [-3, -1], [-3, 0], [-3, 1], [-3, 2],
-                     [-3, 3], [-2, 3], [-1, 3], [0, 3], [1, 3], [2, 3]]
-        for item in indexBias:
-            index = [carCenterIndex[i] + item[i] for i in [0, 1]]
-            index[0] = max(min(index[0], self.x_grid - 1), 0)
-            index[1] = max(min(index[1], self.y_grid - 1), 0)
-            if self.map_flag[index[0]][index[1]] == 0:
-                continue
-            if self.point_is_in_circle([self.x, self.y], self.rBody, self.grid_center_point(index)):
-                return True
+        for i in [-2, -1, 0, 1, 2]:
+            for j in [-2, -1, 0, 1, 2]:
+                index = [carCenterIndex[0] + i, carCenterIndex[1] + j]
+                index[0] = max(min(index[0], self.x_grid - 1), 0)
+                index[1] = max(min(index[1], self.y_grid - 1), 0)
+                if (self.map_flag[index[0]][index[1]] == 1) and self.point_is_in_circle([self.x, self.y], self.rBody, self.grid_center_point(index)):
+                    return True
         return False
 
     def get_reward(self, param=None):
@@ -329,11 +324,11 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
 
         '''4. 其他'''
         r4 = 0
-        if self.terminal_flag == 3:         # 成功
+        if self.terminal_flag == 3:  # 成功
             r4 = 500
-        if self.terminal_flag == 1:         # 出界
+        if self.terminal_flag == 1:  # 出界
             r4 = -200
-        if self.terminal_flag == 4:         # 碰撞
+        if self.terminal_flag == 4:  # 碰撞
             r4 = -50
         '''4. 其他'''
         # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)

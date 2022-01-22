@@ -1,4 +1,4 @@
-<Plant name="UGV_Forward_Obstacle_Continuous" author="Yefeng YANG" date="2022.01.20" E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn">
+<Plant E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn" author="Yefeng YANG" date="2022.01.20" name="UGV_Forward_Obstacle_Continuous">
 	<RL_Base>
 		<state_dim>17</state_dim>
 		<state_num>[inf, inf, inf, inf, inf, inf, inf, inf, 2, 2, 2, 2, 2, 2, 2, 2, 2]</state_num>

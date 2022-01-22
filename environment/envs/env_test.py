@@ -92,7 +92,7 @@ def test_ugv_forward_obstacles_continuous():
             # print(env.time)
             if cv.waitKey(1) == 27:
                 return
-            env.show_dynamic_image(isWait=True)
+            env.show_dynamic_image(isWait=False)
             action = [3, 3]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             # print(env.reward)
