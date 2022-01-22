@@ -1,8 +1,7 @@
-import math
-
 from common.common import *
 from environment.envs import *
 from environment.envs.pathplanning.rasterizedmap import rasterizedmap
+from environment.envs.pathplanning.basic_geometry import *
 
 
 class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
@@ -227,7 +226,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
             print('...time out...')
             self.terminal_flag = 2
             return True
-        if self.dis_two_points([self.x, self.y], self.terminal) <= self.miss:
+        if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
             print('...success...')
             self.terminal_flag = 3
             return True
@@ -291,7 +290,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                 index = [carCenterIndex[0] + i, carCenterIndex[1] + j]
                 index[0] = max(min(index[0], self.x_grid - 1), 0)
                 index[1] = max(min(index[1], self.y_grid - 1), 0)
-                if (self.map_flag[index[0]][index[1]] == 1) and self.point_is_in_circle([self.x, self.y], self.rBody, self.grid_center_point(index)):
+                if (self.map_flag[index[0]][index[1]] == 1) and point_is_in_circle([self.x, self.y], self.rBody, self.grid_center_point(index)):
                     return True
         return False
 
