@@ -89,6 +89,21 @@ class rasterizedmap(samplingmap):
                 return 1
             return 0
 
+    def is_grid_has_single_obs2(self, points, obs):
+        c1 = [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[3][1]) / 2]
+        if obs[0] == 'circle':
+            if self.point_is_in_circle(obs[2], obs[1][0], c1):
+                return 1
+            return 0
+        elif obs[0] == 'ellipse':
+            if self.point_is_in_ellipse(obs[1][0], obs[1][1], obs[1][2], obs[2], c1):
+                return 1
+            return 0
+        else:
+            if self.point_is_in_poly([obs[1][0], obs[1][1]], obs[1][2], obs[2], c1):
+                return 1
+            return 0
+
     def map_rasterization(self):
         self.map_flag = [[0 for _ in range(self.x_grid)] for _ in range(self.y_grid)]
         for _obs in self.obs:
@@ -107,7 +122,8 @@ class rasterizedmap(samplingmap):
                            [(i + 1) * self.x_meter_per_grid, j * self.y_meter_per_grid],
                            [(i + 1) * self.x_meter_per_grid, (j + 1) * self.y_meter_per_grid],
                            [i * self.x_meter_per_grid, (j + 1) * self.y_meter_per_grid]]
-                    self.map_flag[i][j] = self.is_grid_has_single_obs(rec, _obs)
+                    # self.map_flag[i][j] = self.is_grid_has_single_obs(rec, _obs)
+                    self.map_flag[i][j] = self.is_grid_has_single_obs2(rec, _obs)
 
     def draw_rasterization_map(self, isShow=True, isWait=True):
         self.image = self.image_temp.copy()
@@ -172,6 +188,17 @@ class rasterizedmap(samplingmap):
             return [-1, -1]
 
         return [int(point[0] / self.x_meter_per_grid), int(point[1] / self.y_meter_per_grid)]
+
+    def grid_2_point(self, grid):
+        x, y = grid[0], grid[1]
+        return [[x * self.x_meter_per_grid, y * self.y_meter_per_grid],                 # left-bottom
+                [(x + 1) * self.x_meter_per_grid, y * self.y_meter_per_grid],           # right-bottom
+                [(x + 1) * self.x_meter_per_grid, (y + 1) * self.y_meter_per_grid],     # right-top
+                [x * self.x_meter_per_grid, (y + 1) * self.y_meter_per_grid]            # left-top
+                ]
+
+    def grid_center_point(self, grid):
+        return [(grid[0] + 0.5) * self.x_meter_per_grid, (grid[1] + 0.5) * self.y_meter_per_grid]
 
     def is_grid_available(self, grid: list) -> bool:
         return True if self.map_flag[grid[0]][grid[1]] == 0 else False
