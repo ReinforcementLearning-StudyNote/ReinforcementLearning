@@ -231,6 +231,10 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
             print('...success...')
             self.terminal_flag = 3
             return True
+        if self.collision_check():
+            print('...collision...')
+            self.terminal_flag = 4
+            return True
         self.terminal_flag = 0
         return False
 
@@ -325,10 +329,12 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
 
         '''4. 其他'''
         r4 = 0
-        if self.terminal_flag == 3:
+        if self.terminal_flag == 3:         # 成功
             r4 = 500
-        if self.terminal_flag == 1:  # 惩罚
+        if self.terminal_flag == 1:         # 出界
             r4 = -200
+        if self.terminal_flag == 4:         # 碰撞
+            r4 = -50
         '''4. 其他'''
         # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
         self.reward = r1 + r2 + r3 + r4
