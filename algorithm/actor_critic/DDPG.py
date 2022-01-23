@@ -8,7 +8,7 @@ import pandas as pd
 
 """use CPU or GPU"""
 use_cuda = torch.cuda.is_available()
-use_cpu_only = True
+use_cpu_only = False
 device = torch.device("cpu") if use_cpu_only else torch.device("cuda" if use_cuda else "cpu")
 """use CPU or GPU"""
 
@@ -170,11 +170,11 @@ class DDPG:
         '''DDPG'''
 
         '''network'''
-        self.actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='Actor', chkpt_dir=path)
-        self.target_actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetActor', chkpt_dir=path)
+        self.actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 256, 256, self.action_dim_nn, name='Actor', chkpt_dir=path)
+        self.target_actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 256, 256, self.action_dim_nn, name='TargetActor', chkpt_dir=path)
 
-        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='Critic', chkpt_dir=path)
-        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
+        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 256, 256, self.action_dim_nn, name='Critic', chkpt_dir=path)
+        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 256, 256, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
         '''network'''
 
         self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))

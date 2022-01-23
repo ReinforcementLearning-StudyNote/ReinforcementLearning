@@ -1,3 +1,4 @@
+import math
 import os
 import sys
 
@@ -12,6 +13,7 @@ import datetime
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'
 optPath = '../../datasave/network/'
+dataBasePath = '../../environment/envs/pathplanning/5X5-50X50-DataBase-Random0/'
 show_per = 1
 
 
@@ -92,7 +94,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                if env.reward >= -3:
+                if (env.reward >= -3) or (env.reward == -10):
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -103,13 +105,16 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward-Obstacle/'
     os.mkdir(simulationPath)
 
     env = UGV_Forward_Obstacle_Continuous(image_name='ugv_forward_obstacle',
-                                          save_cfg=False)       # 其余参数默认，不写了
+                                          start=[2.5, 2.5],
+                                          terminal=[4, 4],
+                                          dataBasePath=dataBasePath,
+                                          save_cfg=False)  # 其余参数默认，不写了
     '''初始位置，初始角度，目标位置均为随机'''
-    agent = DDPG(gamma=0.9,
+    agent = DDPG(gamma=0.99,
                  actor_learning_rate=1e-4,
                  critic_learning_rate=1e-3,
                  actor_soft_update=1e-2,
@@ -146,7 +151,7 @@ if __name__ == '__main__':
         cv.waitKey(0)
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
-        MAX_EPISODE = 8000
+        MAX_EPISODE = math.inf
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=is_storage_only_success)
@@ -186,7 +191,7 @@ if __name__ == '__main__':
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                    if env.reward >= -3:
+                    if (env.reward >= -3) or (env.reward == -10):
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.learn(is_reward_ascent=False)
             # cv.destroyAllWindows()
