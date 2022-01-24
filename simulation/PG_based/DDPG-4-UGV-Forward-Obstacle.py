@@ -13,7 +13,7 @@ import datetime
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'
 optPath = '../../datasave/network/'
-dataBasePath = '../../environment/envs/pathplanning/5X5-50X50-DataBase-Random0/'
+dataBasePath = '../../environment/envs/pathplanning/5X5-50X50-DataBase-AllCircle/'
 show_per = 1
 
 
@@ -94,7 +94,8 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                if (env.reward >= -3) or (env.reward == -10):
+                # if (env.reward >= -3) or (env.reward == -10):
+                if True:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -173,7 +174,7 @@ if __name__ == '__main__':
                 c = cv.waitKey(1)
                 env.current_state = env.next_state.copy()
                 epsilon = random.uniform(0, 1)
-                if epsilon < 0.2:
+                if epsilon < 0.1:
                     # print('...random...')
                     action_from_actor = agent.choose_action_random()  # 有一定探索概率完全随机探索
                 else:
@@ -191,7 +192,8 @@ if __name__ == '__main__':
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                    if (env.reward >= -3) or (env.reward == -10):
+                    # if (env.reward >= -3) or (env.reward == -10):
+                    if True:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.learn(is_reward_ascent=False)
             # cv.destroyAllWindows()

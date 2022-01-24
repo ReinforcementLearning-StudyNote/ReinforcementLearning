@@ -120,6 +120,21 @@ class rl_base:
         self.reward = 0.0
         self.is_terminal = False
 
+    def state_normalization(self, state: list, gain: float=1.0):
+        """
+        :brief:             default for [-gain, gain]
+        :param state:       state
+        :param gain:        gain
+        :return:            normalized state
+        """
+        length = len(state)
+        assert length == self.state_dim
+        for i in range(length):
+            bound = self.state_range[i]
+            k = 2 / (bound[1] - bound[0])
+            b = 1 - bound[1] * k
+            state[i] = (k * state[i] + b) * gain
+
     def step_update(self, action):
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
 
