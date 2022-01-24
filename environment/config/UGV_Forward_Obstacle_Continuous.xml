@@ -1,14 +1,14 @@
-<Plant E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn" author="Yefeng YANG" date="2022.01.20" name="UGV_Forward_Obstacle_Continuous">
+<Plant name="UGV_Forward_Obstacle_Continuous" author="Yefeng YANG" date="2022.01.20" E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn">
 	<RL_Base>
-		<state_dim>23</state_dim>
-		<state_num>[inf, inf, inf, inf, inf, inf, inf, inf, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]</state_num>
-		<state_step>[None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]</state_step>
-		<state_space>[None, None, None, None, None, None, None, None, [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]]</state_space>
-		<state_range>[[-4, 4], [-4, 4], [0, 4], [0, 4], [-3.141592653589793, 3.141592653589793], [-1.0, 1.0], [-1.0, 1.0], [-0.6666666666666667, 0.6666666666666667], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]]</state_range>
-		<isStateContinuous>[True, True, True, True, True, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]</isStateContinuous>
-		<initial_state>[1.0, 1.0, 2.2, 2.2, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]</initial_state>
-		<current_state>[1.0, 1.0, 2.2, 2.2, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]</current_state>
-		<next_state>[1.0, 1.0, 2.2, 2.2, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]</next_state>
+		<state_dim>27</state_dim>
+		<state_num>[inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf]</state_num>
+		<state_step>[None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]</state_step>
+		<state_space>[None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]</state_space>
+		<state_range>[[-4, 4], [-4, 4], [0, 4], [0, 4], [-3.141592653589793, 3.141592653589793], [-1.0, 1.0], [-1.0, 1.0], [-0.6666666666666667, 0.6666666666666667], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661], [0, 4.123105625617661]]</state_range>
+		<isStateContinuous>[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]</isStateContinuous>
+		<initial_state>[0.0, 2.4, 3.2, 0.8, 1.5707963267948966, 0, 0, 0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.8460498941515415, 1.9235384061671346, 1.4212670403551897, 1.2041594578792296, 1.0295630140987, 0.9486832980505139, 0.9055385138137417, 0.9]</initial_state>
+		<current_state>[0.0, 2.4, 3.2, 0.8, 1.5707963267948966, 0, 0, 0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.8460498941515415, 1.9235384061671346, 1.4212670403551897, 1.2041594578792296, 1.0295630140987, 0.9486832980505139, 0.9055385138137417, 0.9]</current_state>
+		<next_state>[0.0, 2.4, 3.2, 0.8, 1.5707963267948966, 0, 0, 0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 2.8460498941515415, 1.9235384061671346, 1.4212670403551897, 1.2041594578792296, 1.0295630140987, 0.9486832980505139, 0.9055385138137417, 0.9]</next_state>
 		<action_dim>2</action_dim>
 		<action_step>[None, None]</action_step>
 		<action_range>[[0, 10], [0, 10]]</action_range>
@@ -20,12 +20,12 @@
 		<is_terminal>False</is_terminal>
 	</RL_Base>
 	<Physical>
-		<initX>2.75</initX>
-		<initY>2.75</initY>
-		<initPhi>0.0</initPhi>
-		<x>2.75</x>
-		<y>2.75</y>
-		<phi>0.0</phi>
+		<initX>4</initX>
+		<initY>1</initY>
+		<initPhi>1.5707963267948966</initPhi>
+		<x>4</x>
+		<y>1</y>
+		<phi>1.5707963267948966</phi>
 		<dx>0</dx>
 		<dy>0</dy>
 		<dphi>0</dphi>

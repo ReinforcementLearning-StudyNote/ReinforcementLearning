@@ -46,22 +46,6 @@ import pandas as pd
 # 测试数据
 
 if __name__ == '__main__':
-    # # import random
-    # # random.seed(54)
-    # a = [random.randint(0,10) for _ in range(5)]
-    # # print("原始数据：", a)
-    # # quick_sort(arr)
-    # # print("快速排序结果：", a)
-    #
-    # # df = pd.DataFrame({'A': [3, 4, 10, 23, 0, -2],
-    # #                    'B': [2, 1, 9, 8, 7, 7],
-    # #                    'C': [0, 1, 9, 4, 2, 8]})
-    # # df = df.sort_values(by=['A'], ascending=True)
-    # # print(df['B'])
-    # sorted_id = sorted(range(len(a)), key=lambda k: a[k], reverse=False)
-    # print(a)
-    # print(a[-3:])
-    # print(sorted_id)
-    for _ in range(10):
-        print(random.randint(0, 4))
+    detectPhi = np.linspace(-deg2rad(90), deg2rad(90), 19)
+    # print(np.tan(detectPhi))
     pass

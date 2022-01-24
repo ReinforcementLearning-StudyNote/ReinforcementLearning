@@ -63,7 +63,7 @@ class samplingmap(obstacle):
         :param point:   the position of the robot
         :return:        bool
         """
-        return min(point) < 0 or point[0] >= self.x_size or point[1] >= self.y_size
+        return min(point) < -1e2 or point[0] > self.x_size + 1e-2 or point[1] > self.y_size + 1e-2
 
     def point_saturation(self, point):
         return [max(min(point[0], self.y_size - 1e-3), 1e-3), max(min(point[1], self.y_size - 1e-3), 1e-3)]

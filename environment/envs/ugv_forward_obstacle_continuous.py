@@ -61,28 +61,21 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         self.staticGain = 4
         self.delta_phi_absolute = 0.
 
-        self.laser_dis1 = 5
-        self.laser_range1 = 7
-        self.laser_state1 = 1 + 2 * self.laser_range1
-        self.visualLaser1 = [[0, 0] for _ in range(self.laser_state1)]
-        self.regionChain1 = self.get_regionChain1()
-
-        # self.laser_dis2 = 4
-        # self.laser_range2 = 5
-        # self.laser_state2 = 1 + 2 * self.laser_range2
-        # self.visualLaser2 = [[0, 0] for _ in range(self.laser_state2)]
-        # self.regionChain2 = self.get_regionChain2()
-        # print(self.regionChain)
+        self.laserDis = 3.0
+        self.laserRange = deg2rad(90)  # 左右各90度，一共180度
+        self.laserStep = deg2rad(10)
+        self.laserState = int(2 * self.laserRange / self.laserStep) + 1
+        self.visualLaser = [[0, 0] for _ in range(self.laserState)]
 
         '''physical parameters'''
 
         '''map database'''
-        self.database = self.load_database(dataBasePath)  # 地图数据库
-        self.numData = len(self.database)  # 数据库里面的数据数量
+        # self.database = self.load_database(dataBasePath)  # 地图数据库
+        # self.numData = len(self.database)  # 数据库里面的数据数量
         '''map database'''
 
         '''rl_base'''
-        self.state_dim = 8 + self.laser_state1  # + self.laser_state2
+        self.state_dim = 8 + self.laserState
         '''[ex/sizeX, ey/sizeY, x/sizeX, y/sizeY, phi, dx, dy, dphi,
             1laser-4, 1laser-3, 1laser-2. 1laser-1. 1laser0, 1laser1, 1laser2, 1laser3, 1laser4,
                       2laser-3, 2laser-2. 2laser-1. 2laser0, 2laser1, 2laser2, 2laser3]'''
@@ -98,24 +91,18 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                             [-self.r * self.wMax, self.r * self.wMax],
                             [-self.r * self.wMax, self.r * self.wMax],
                             [-self.r / self.L * 2 * self.r * self.wMax, self.r / self.L * 2 * self.r * self.wMax]]
-        for _ in range(self.laser_state1):
-            self.state_num.append(2)
+        for _ in range(self.laserState):
+            self.state_num.append(math.inf)
             self.state_step.append(None)
-            self.state_space.append([0, 1])
-            self.isStateContinuous.append(False)
-            self.state_range.append([0, 1])
-        # for _ in range(self.laser_state2):
-        #     self.state_num.append(2)
-        #     self.state_step.append(None)
-        #     self.state_space.append([0, 1])
-        #     self.isStateContinuous.append(False)
-        #     self.state_range.append([0, 1])
+            self.state_space.append(None)
+            self.isStateContinuous.append(True)
+            self.state_range.append([0, math.sqrt(self.x ** 2 + self.y ** 2)])
 
         self.initial_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser1()  # + self.get_fake_laser2()
+                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
 
@@ -193,20 +180,13 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                 cv.line(self.image, pt1, pt2, Color().Red, 1)
 
     def draw_fake_laser(self):
-        for item in self.visualLaser1:
+        for item in self.visualLaser:
             pt1 = self.grid2pixel(coord_int=item, pos='left-bottom', xoffset=-0, yoffset=0)
             pt2 = self.grid2pixel(coord_int=item, pos='right-top', xoffset=0, yoffset=0)
             if self.map_flag[item[0]][item[1]] == 1:
                 cv.rectangle(self.image, pt1, pt2, Color().Magenta, -1)
             else:
                 cv.rectangle(self.image, pt1, pt2, Color().LightPink, -1)
-        # for item in self.visualLaser2:
-        #     pt1 = self.grid2pixel(coord_int=item, pos='left-bottom', xoffset=-0, yoffset=0)
-        #     pt2 = self.grid2pixel(coord_int=item, pos='right-top', xoffset=0, yoffset=0)
-        #     if self.map_flag[item[0]][item[1]] == 1:
-        #         cv.rectangle(self.image, pt1, pt2, Color().Magenta, -1)
-        #     else:
-        #         cv.rectangle(self.image, pt1, pt2, Color().LightPink, -1)
 
     def show_dynamic_image(self, isWait):
         self.image = self.image_temp.copy()
@@ -259,93 +239,136 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         self.terminal_flag = 0
         return False
 
-    '''处理模拟雷达'''
-
-    def get_regionChain1(self):
-        regionChain = []
-        for i in range(2 * self.laser_dis1):
-            regionChain.append([self.laser_dis1, -self.laser_dis1 + i])
-        for i in range(2 * self.laser_dis1):
-            regionChain.append([self.laser_dis1 - i, self.laser_dis1])
-        for i in range(2 * self.laser_dis1):
-            regionChain.append([-self.laser_dis1, self.laser_dis1 - i])
-        for i in range(2 * self.laser_dis1):
-            regionChain.append([-self.laser_dis1 + i, -self.laser_dis1])
-        return regionChain
-
-    # def get_regionChain2(self):
-    #     regionChain = []
-    #     for i in range(2 * self.laser_dis2):
-    #         regionChain.append([self.laser_dis2, -self.laser_dis2 + i])
-    #     for i in range(2 * self.laser_dis2):
-    #         regionChain.append([self.laser_dis2 - i, self.laser_dis2])
-    #     for i in range(2 * self.laser_dis2):
-    #         regionChain.append([-self.laser_dis2, self.laser_dis2 - i])
-    #     for i in range(2 * self.laser_dis2):
-    #         regionChain.append([-self.laser_dis2 + i, -self.laser_dis2])
-    #     return regionChain
-
-    def get_fake_laser1(self):
+    def get_fake_laser(self):
         """
         :return:        the fake laser data
         """
-        head_origin = self.point_in_grid([self.x, self.y])
-        '''根据角度来确定模拟雷达的探测中心'''
-        if -math.pi / 4 <= self.phi < math.pi / 4:  # 左
-            crossPoint = [self.laser_dis1, int(math.tan(self.phi) * self.laser_dis1)]
-        elif math.pi / 4 <= self.phi < 3 * math.pi / 4:  # 上
-            crossPoint = [int(self.laser_dis1 / math.tan(self.phi)), self.laser_dis1]
-        elif -3 * math.pi / 4 <= self.phi < -math.pi / 4:  # 下
-            crossPoint = [-int(self.laser_dis1 / math.tan(self.phi)), -self.laser_dis1]
-        else:  # 右
-            crossPoint = [-self.laser_dis1, -int(math.tan(self.phi) * self.laser_dis1)]
-        centerIndex = self.regionChain1.index(crossPoint)  # 获得探测中心索引
-        '''根据角度来确定模拟雷达的探测中心'''
-        '''确定探测范围'''
         laser = []
-        for i in range(1 + 2 * self.laser_range1):
-            index = centerIndex + (-self.laser_range1 + i)
-            if index >= len(self.regionChain1):
-                index -= len(self.regionChain1)
-            grid = [head_origin[j] + self.regionChain1[index][j] for j in [0, 1]]
-            grid[0] = max(min(grid[0], self.x_grid - 1), 0)
-            grid[1] = max(min(grid[1], self.y_grid - 1), 0)
-            self.visualLaser1[i] = grid.copy()
-            laser.append(self.map_flag[grid[0]][grid[1]])
-        '''确定探测范围'''
+        # detectPhi = np.linspace(self.phi - self.laserRange, self.phi + self.laserRange, self.laserState)  # 所有的角度
+        detectPhi = np.linspace(self.phi + self.laserRange, self.phi - self.laserRange, self.laserState)  # 所有的角度
+        yyf = 0
+        for phi in detectPhi:  # 每一条射线
+            if phi > math.pi:
+                phi -= 2 * math.pi
+            if phi < -math.pi:
+                phi += 2 * math.pi
+            m = np.tan(phi)  # 斜率
+            b = self.y - m * self.x  # 截距
+            '''确定当前机器人与四个角点的连接'''
+            theta1 = cal_vector_degree([1, 0], [self.x_size - self.x, self.y_size - self.y])  # 左上
+            theta2 = cal_vector_degree([1, 0], [0 - self.x, self.y_size - self.y])  # 右上
+            theta3 = -cal_vector_degree([1, 0], [0 - self.x, 0 - self.y])  # 右下
+            theta4 = -cal_vector_degree([1, 0], [self.x_size - self.x, 0 - self.y])  # 左下
+            '''确定当前机器人与四个角点的连接'''
+            start = [self.x, self.y]
+            '''找到终点'''
+            if theta4 < phi <= theta1:
+                terminal = [self.x_size, m * self.x_size + b]
+            elif theta1 < phi <= theta2:
+                terminal = [(self.y_size - b) / m, self.y_size] if math.fabs(m) < 1e8 else [self.x, self.y_size]
+            elif theta3 < phi <= theta4:
+                terminal = [-b / m, 0] if math.fabs(m) < 1e8 else [self.x, 0]
+            else:
+                terminal = [0, b]
+            '''找到终点'''
+            '''Bresenham'''
+            dx = terminal[0] - start[0]
+            dy = terminal[1] - start[1]
+            start = self.point_in_grid(start)
+            terminal = self.point_in_grid(terminal)
+
+            if math.fabs(m) > 1:
+                p = 2 * math.fabs(dx) - math.fabs(dy)
+            else:
+                p = 2 * math.fabs(dy) - math.fabs(dx)
+            x_iter = start[0]
+            y_iter = start[1]
+
+            def subFunc(_dx, _dy, _fabsm, _p, _x, _y):
+                if _dx >= 0:
+                    if _dy >= 0:
+                        if _fabsm < 1:  # dx > 0, dy > 0, _fabsm < 1
+                            if _p < 0:
+                                return _p + 2 * _dy, _x + 1, _y
+                            else:
+                                return _p + 2 * _dy - 2 * _dx, _x + 1, _y + 1
+                        else:  # dx > 0, dy > 0, _fabsm > 1
+                            if _p < 0:
+                                return _p + 2 * _dx, _x, _y + 1
+                            else:
+                                return _p + 2 * _dx - 2 * _dy, _x + 1, _y + 1
+                    else:
+                        if _fabsm < 1:  # dx > 0, dy < 0, _fabsm < 1
+                            if _p < 0:
+                                return _p - 2 * _dy, _x + 1, _y
+                            else:
+                                return _p - 2 * _dy - 2 * _dx, _x + 1, _y - 1
+                        else:  # dx > 0, dy < 0, _fabsm > 1
+                            if _p < 0:
+                                return _p + 2 * _dx, _x, _y - 1
+                            else:
+                                return _p + 2 * _dx + 2 * _dy, _x + 1, _y - 1
+                else:
+                    if _dy >= 0:
+                        if _fabsm < 1:  # dx < 0, dy > 0, _fabsm < 1
+                            if _p < 0:
+                                return _p + 2 * _dy, _x - 1, _y
+                            else:
+                                return _p + 2 * _dy + 2 * _dx, _x - 1, _y + 1
+                        else:  # dx < 0, dy > 0, _fabsm > 1
+                            if _p < 0:
+                                return _p - 2 * _dx, _x, _y + 1
+                            else:
+                                return _p - 2 * _dx - 2 * _dy, _x - 1, _y + 1
+                    else:
+                        if _fabsm < 1:  # dx < 0, dy < 0, _fabsm < 1
+                            if _p < 0:
+                                return _p - 2 * _dy, _x - 1, _y
+                            else:
+                                return _p - 2 * _dy + 2 * _dx, _x - 1, _y - 1
+                        else:  # dx < 0, dy < 0, _fabsm > 1
+                            if _p < 0:
+                                return _p - 2 * _dx, _x, _y - 1
+                            else:
+                                return _p - 2 * _dx + 2 * _dy, _x - 1, _y - 1
+
+            has_obs = False
+            while math.fabs(x_iter - terminal[0]) + math.fabs(y_iter - terminal[1]) > 1:        # 不想算了，近似处理，其实不差那一个点
+                p, x_iter, y_iter = subFunc(dx, dy, math.fabs(m), p, x_iter, y_iter)
+                x_iter = min(max(x_iter, 0), self.x_grid - 1)
+                y_iter = min(max(y_iter, 0), self.y_grid - 1)
+
+                if self.map_flag[x_iter][y_iter] == 1:  # 这个点已经有障碍物了
+                    disX = math.fabs(start[0] - x_iter) * self.x_meter_per_grid
+                    disY = math.fabs(start[1] - y_iter) * self.y_meter_per_grid
+                    dis = math.sqrt(disX ** 2 + disY ** 2)
+                    if dis > self.laserDis:
+                        laser.append(self.laserDis)
+                        self.visualLaser[yyf] = self.point_in_grid([self.laserDis / math.sqrt(1 + m ** 2) * np.sign(dx) + self.x,
+                                                                    m * self.laserDis / math.sqrt(1 + m ** 2) + self.y])
+                    else:
+                        laser.append(dis)
+                        self.visualLaser[yyf] = [x_iter, y_iter].copy()
+                    yyf += 1
+                    has_obs = True
+                    break  # 直接开始查找下一个
+
+            # 如果这条射线上没有
+            if not has_obs:
+                disX = (start[0] - terminal[0]) * self.x_meter_per_grid
+                disY = (start[1] - terminal[1]) * self.y_meter_per_grid
+                dis = math.sqrt(disX ** 2 + disY ** 2)
+                if dis > self.laserDis:
+                    laser.append(self.laserDis)
+                    self.visualLaser[yyf] = self.point_in_grid([self.laserDis / math.sqrt(1 + m ** 2) * np.sign(dx) + self.x,
+                                                                math.fabs(m) * self.laserDis / math.sqrt(1 + m ** 2) * np.sign(dy) + self.y])
+                else:
+                    laser.append(dis)
+                    self.visualLaser[yyf] = terminal.copy()
+                yyf += 1
+            '''Bresenham'''
+        # print(laser)
         return laser
-
-    # def get_fake_laser2(self):
-    #     """
-    #     :return:        the fake laser data
-    #     """
-    #     head_origin = self.point_in_grid([self.x, self.y])
-    #     '''根据角度来确定模拟雷达的探测中心'''
-    #     if -math.pi / 4 <= self.phi < math.pi / 4:  # 左
-    #         crossPoint = [self.laser_dis2, int(math.tan(self.phi) * self.laser_dis2)]
-    #     elif math.pi / 4 <= self.phi < 3 * math.pi / 4:  # 上
-    #         crossPoint = [int(self.laser_dis2 / math.tan(self.phi)), self.laser_dis2]
-    #     elif -3 * math.pi / 4 <= self.phi < -math.pi / 4:  # 下
-    #         crossPoint = [-int(self.laser_dis2 / math.tan(self.phi)), -self.laser_dis2]
-    #     else:  # 右
-    #         crossPoint = [-self.laser_dis2, -int(math.tan(self.phi) * self.laser_dis2)]
-    #     centerIndex = self.regionChain2.index(crossPoint)  # 获得探测中心索引
-    #     '''根据角度来确定模拟雷达的探测中心'''
-    #     '''确定探测范围'''
-    #     laser = []
-    #     for i in range(1 + 2 * self.laser_range2):
-    #         index = centerIndex + (-self.laser_range2 + i)
-    #         if index >= len(self.regionChain2):
-    #             index -= len(self.regionChain2)
-    #         grid = [head_origin[j] + self.regionChain2[index][j] for j in [0, 1]]
-    #         grid[0] = max(min(grid[0], self.x_grid - 1), 0)
-    #         grid[1] = max(min(grid[1], self.y_grid - 1), 0)
-    #         self.visualLaser2[i] = grid.copy()
-    #         laser.append(self.map_flag[grid[0]][grid[1]])
-    #     '''确定探测范围'''
-    #     return laser
-
-    '''处理模拟雷达'''
 
     def collision_check(self):
         """
@@ -355,9 +378,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         carCenterIndex = self.point_in_grid([self.x, self.y])
         for i in [-2, -1, 0, 1, 2]:
             for j in [-2, -1, 0, 1, 2]:
-                index = [carCenterIndex[0] + i, carCenterIndex[1] + j]
-                index[0] = max(min(index[0], self.x_grid - 1), 0)
-                index[1] = max(min(index[1], self.y_grid - 1), 0)
+                index = [max(min(carCenterIndex[0] + i, self.x_grid - 1), 0), max(min(carCenterIndex[1] + j, self.y_grid - 1), 0)]
                 if (self.map_flag[index[0]][index[1]] == 1) and point_is_in_circle([self.x, self.y], self.rBody, self.grid_center_point(index)):
                     return True
         return False
@@ -416,7 +437,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser1()  # + self.get_fake_laser2()
+                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
 
         '''RK-44'''
         h = self.dt / 10
@@ -465,7 +486,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                            (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                            self.x / self.x_size * self.staticGain,
                            self.y / self.y_size * self.staticGain,
-                           self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser1()  # + self.get_fake_laser2()
+                           self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
         self.get_reward()
         self.saveData()
 
@@ -537,7 +558,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser1()  # + self.get_fake_laser2()
+                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
         self.current_action = self.initial_action.copy()
@@ -593,7 +614,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser1()  # + self.get_fake_laser2()
+                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
         self.current_action = self.initial_action.copy()
