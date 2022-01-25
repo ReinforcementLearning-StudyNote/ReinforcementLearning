@@ -1,14 +1,15 @@
 import math
 import os
 import sys
+import matplotlib.pyplot as plt
+import datetime
+import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
 from environment.envs.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
 from algorithm.actor_critic.DDPG import DDPG
-import cv2 as cv
 from common.common import *
-import datetime
 
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'
@@ -95,7 +96,8 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                 # if (env.reward >= -3) or (env.reward == -10):
-                if True:
+                if env.reward >= -3:
+                # if True:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -120,7 +122,7 @@ if __name__ == '__main__':
                  critic_learning_rate=1e-3,
                  actor_soft_update=1e-2,
                  critic_soft_update=1e-2,
-                 memory_capacity=40000,
+                 memory_capacity=60000,
                  batch_size=512,
                  modelFileXML=cfgPath + cfgFile,
                  path=simulationPath)
@@ -145,10 +147,12 @@ if __name__ == '__main__':
         '''生成初始数据之后要再次初始化网络'''
 
     if TRAIN:
+        globalStep = 0
         # random.seed(23)
         agent.DDPG_info()
         successCounter = 0
         timeOutCounter = 0
+        collisionCounter = 0
         cv.waitKey(0)
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
@@ -159,6 +163,9 @@ if __name__ == '__main__':
             '''fullFillReplayMemory_Random'''
         print('Start to train...')
         new_state, new_action, new_reward, new_state_, new_done = [], [], [], [], []
+
+        stepPlot = [0, 1]
+        stepReward = [0, 0]
         while agent.episode <= MAX_EPISODE:
             # env.reset()
             print('=========START=========')
@@ -193,11 +200,15 @@ if __name__ == '__main__':
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                     # if (env.reward >= -3) or (env.reward == -10):
-                    if True:
+                    if env.reward >= -3:
+                    # if True:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+                agent.saveData_Step_Reward(globalStep, env.reward, False, 'StepReward.csv', simulationPath)
                 agent.learn(is_reward_ascent=False)
             # cv.destroyAllWindows()
             '''跳出循环代表回合结束'''
+            if env.terminal_flag == 4:
+                collisionCounter += 1
             if env.terminal_flag == 3:
                 successCounter += 1
             if env.terminal_flag == 2:
@@ -209,7 +220,9 @@ if __name__ == '__main__':
                     # agent.memory.get_reward_resort(per=5)
             '''跳出循环代表回合结束'''
             print('Cumulative reward:', round(sumr, 3))
-            print('共：', agent.episode, ' 回合，成功', successCounter, ' 回合，超时', timeOutCounter, ' 回合')
+            print('共：', agent.episode, ' 回合，成功', successCounter, ' 回合，超时', timeOutCounter, ' 回合，超时', collisionCounter, '回合')
+            if agent.episode > 0:
+                print('成功率：', round(successCounter / agent.episode * 100, 3), '%')
             print('==========END=========')
             print()
             agent.saveData_EpisodeReward(agent.episode, sumr)
@@ -221,8 +234,8 @@ if __name__ == '__main__':
                 break
         '''dataSave'''
         agent.saveData_EpisodeReward(0.0, 0.0, True, 'EpisodeReward.csv', simulationPath)
+        agent.saveData_Step_Reward(0, 0, True, 'StepReward.csv', simulationPath)
         '''dataSave'''
-
     if TEST:
         print('TESTing...')
         agent.load_actor_optimal(path='./DDPG-UGV-Forward测试/', file='Actor_ddpg')

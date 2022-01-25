@@ -184,8 +184,10 @@ class DDPG:
         self.episode = 0
         self.reward = 0
 
-        self.save_episode = [self.episode]
-        self.save_reward = [self.reward]
+        self.save_episode = []
+        self.save_reward = []
+        self.save_step = []
+        self.save_stepreward = []
 
     def choose_action_random(self):
         """
@@ -194,7 +196,7 @@ class DDPG:
         """
         return np.random.uniform(low=-1, high=1, size=self.action_dim_nn)
 
-    def choose_action(self, state, is_optimal=False, sigma=1/3):
+    def choose_action(self, state, is_optimal=False, sigma=1 / 3):
         self.actor.eval()  # 切换到测试模式
         t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)  # get the tensor of the state
         mu = self.actor(t_state).to(self.actor.device)  # choose action
@@ -314,6 +316,22 @@ class DDPG:
             b = (maxa + mina) / 2
             linear_action.append(k * a + b)
         return linear_action
+
+    def saveData_Step_Reward(self,
+                             step,
+                             reward,
+                             is2file=False,
+                             filename='StepReward.csv',
+                             filepath=''):
+        if is2file:
+            data = pd.DataFrame({
+                'step:': self.save_step,
+                'stepreward': self.save_stepreward,
+            })
+            data.to_csv(filepath + filename, index=False, sep=',')
+        else:
+            self.save_step.append(step)
+            self.save_stepreward.append(reward)
 
     def saveData_EpisodeReward(self,
                                episode,

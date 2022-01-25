@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
 from environment.Color import Color
 from environment.envs.pathplanning.obstacle import obstacle
-from environment.envs.pathplanning.basic_geometry import *
+from common.common import *
 
 
 class samplingmap(obstacle):

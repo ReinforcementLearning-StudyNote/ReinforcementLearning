@@ -1,22 +1,12 @@
 import os
 import random
 import sys
-
 import cv2 as cv
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../")
 from environment.Color import Color
 from environment.envs.pathplanning.samplingmap import samplingmap
-from environment.envs.pathplanning.basic_geometry import *
-
-
-def sind(theta):
-    return math.sin(theta / 180.0 * math.pi)
-
-
-def cosd(theta):
-    return math.cos(theta / 180.0 * math.pi)
+from common.common import *
 
 
 class rasterizedmap(samplingmap):
