@@ -88,8 +88,9 @@ def test_ugv_forward_obstacles_continuous():
     while num < 30:
         # cap = cv.VideoWriter('test' +str(num)+'.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 120.0, (env.width, env.height))
         # env.reset_random()
-        # env.reset()
-        env.reset_random_with_database()
+        env.reset()
+        # env.obs = env.set_obs([['circle',[2.5, 2.5] , [0.5]]])
+        # env.reset_random_with_database()
         env.show_dynamic_image(isWait=False)
         while not env.is_terminal:
             # print(env.time)
@@ -97,7 +98,7 @@ def test_ugv_forward_obstacles_continuous():
                 return
             env.show_dynamic_image(isWait=True)
             # cap.write(env.save)
-            action = [6*math.pi, 6*math.pi]
+            action = [0, 3 * math.pi]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             if env.terminal_flag == 4:
                 print(env.reward)

@@ -85,7 +85,7 @@ def points_move(pts, dis):
         return [pts[0] + dis[0], pts[1] + dis[1]]
 
 
-def cal_vector_degree(v1, v2):
+def cal_vector_rad(v1, v2):
     """
     :brief:         calculate the rad between two vectors
     :param v1:      vector1
