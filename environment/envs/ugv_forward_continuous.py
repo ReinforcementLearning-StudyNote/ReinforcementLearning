@@ -71,7 +71,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
         self.action_dim = 2
         self.action_step = [None, None]
-        self.action_range = [[self.wMax/2, self.wMax], [self.wMax/2, self.wMax]]  # only forward
+        self.action_range = [[0, self.wMax], [0, self.wMax]]  # only forward
         self.action_num = [math.inf, math.inf]
         self.action_space = [None, None]
         self.isActionContinuous = [True, True]
@@ -162,23 +162,23 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         return False
 
     def is_Terminal(self, param=None):
-        if self.is_out():
-            print('...out...')
-            self.terminal_flag = 1
+        self.terminal_flag = 0
+        if self.time > 8.0:
+            print('...time out...')
+            self.terminal_flag = 2
             return True
         if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
             print('...转的角度太大了...')
             self.terminal_flag = 1
             return True
-        if self.time > 8.0:
-            print('...time out...')
-            self.terminal_flag = 2
-            return True
         if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
             print('...success...')
             self.terminal_flag = 3
             return True
-        self.terminal_flag = 0
+        if self.is_out():
+            # print('...out...')
+            # self.terminal_flag = 1
+            return True
         return False
 
     def get_reward(self, param=None):
@@ -190,8 +190,6 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         nextError = math.sqrt(nex ** 2 + ney ** 2)
 
         r1 = -1  # 常值误差，每运行一步，就 -1
-
-        v_abs = math.fabs(self.dx ** 2 + self.dy ** 2)   # 机器人速度
 
         if currentError > nextError + 1e-2:
             r2 = 5
@@ -218,7 +216,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             r4 = -2
         '''4. 其他'''
         # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
-        self.reward = (r1 + r2 + r3 + r4) * v_abs
+        self.reward = r1 + (r2 + r3 + r4)
 
     def f(self, _phi):
         _dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(_phi)
@@ -263,20 +261,20 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             self.phi += 2 * math.pi
         '''角度处理'''
         self.is_terminal = self.is_Terminal()
-        # '''出界处理'''
-        # if self.x + self.rBody > self.x_size:  # Xout
-        #     self.x = self.x_size - self.rBody
-        #     self.dx = 0
-        # if self.x - self.rBody < 0:
-        #     self.x = self.rBody
-        #     self.dx = 0
-        # if self.y + self.rBody > self.y_size:  # Yout
-        #     self.y = self.y_size - self.rBody
-        #     self.dy = 0
-        # if self.y - self.rBody < 0:
-        #     self.y = self.rBody
-        #     self.dy = 0
-        # '''出界处理'''
+        '''出界处理'''
+        if self.x + self.rBody > self.x_size:  # Xout
+            self.x = self.x_size - self.rBody
+            self.dx = 0
+        if self.x - self.rBody < 0:
+            self.x = self.rBody
+            self.dx = 0
+        if self.y + self.rBody > self.y_size:  # Yout
+            self.y = self.y_size - self.rBody
+            self.dy = 0
+        if self.y - self.rBody < 0:
+            self.y = self.rBody
+            self.dy = 0
+        '''出界处理'''
 
         self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
                            (self.terminal[1] - self.y) / self.y_size * self.staticGain,
