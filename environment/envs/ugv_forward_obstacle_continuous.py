@@ -319,6 +319,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                     find = True
                     dis = math.fabs(crossPtx - start[0]) * math.sqrt(m ** 2 + 1)
                     if dis < self.laserBlind:  # too close
+                        laser.append(self.laserBlind)
                         newX = start[0] + self.laserBlind / math.sqrt(m ** 2 + 1) * np.sign(terminal[0] - start[0])
                         self.visualLaser[count] = [newX, m * newX + b]
                         self.visualFlag[count] = 2
