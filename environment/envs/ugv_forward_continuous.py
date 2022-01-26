@@ -1,7 +1,6 @@
 from common.common import *
 from environment.envs import *
 from environment.envs.pathplanning.samplingmap import samplingmap
-from environment.envs.pathplanning.basic_geometry import *
 
 
 class UGV_Forward_Continuous(samplingmap, rl_base):
@@ -14,8 +13,8 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         :param start:           start position
         :param terminal:        terminal position
         """
-        super(UGV_Forward_Continuous, self).__init__(width=400,
-                                                     height=400,
+        super(UGV_Forward_Continuous, self).__init__(width=500,
+                                                     height=500,
                                                      x_size=x_size,
                                                      y_size=y_size,
                                                      image_name='TwoWheelUGV',
@@ -167,7 +166,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         #     print('...out...')
         #     self.terminal_flag = 1
         #     return True
-        if self.delta_phi_absolute > 2 * math.pi + deg2rad(45):
+        if self.delta_phi_absolute > 4 * math.pi + deg2rad(0):
             print('...转的角度太大了...')
             self.terminal_flag = 1
             return True
@@ -199,8 +198,8 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         else:
             r2 = 0
 
-        currentTheta = cal_vector_degree([cex, cey], [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
-        nextTheta = cal_vector_degree([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
+        currentTheta = cal_vector_rad([cex, cey], [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
+        nextTheta = cal_vector_rad([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
         # print(currentTheta, nextTheta)
         if currentTheta > nextTheta + 1e-2:
             r3 = 2

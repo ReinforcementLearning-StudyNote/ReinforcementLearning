@@ -71,7 +71,8 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random_with_database() if randomEnv else env.reset()
+        # env.reset_random_with_database() if randomEnv else env.reset()
+        env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -95,7 +96,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                 # if (env.reward >= -3) or (env.reward == -10):
-                if env.reward >= -5.5:
+                if env.reward >= -2.5:
                 # if True:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
@@ -169,7 +170,8 @@ if __name__ == '__main__':
             # env.reset()
             print('=========START=========')
             print('Episode:', agent.episode)
-            env.reset_random_with_database()
+            # env.reset_random_with_database()
+            env.reset_random()
             sumr = 0
             new_state.clear()
             new_action.clear()
@@ -199,7 +201,7 @@ if __name__ == '__main__':
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                     # if (env.reward >= -3) or (env.reward == -10):
-                    if env.reward >= -5.5:
+                    if env.reward >= -2.5:
                     # if True:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.saveData_Step_Reward(globalStep, env.reward, False, 'StepReward.csv', simulationPath)
