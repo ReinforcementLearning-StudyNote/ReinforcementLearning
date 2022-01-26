@@ -12,7 +12,6 @@ use_cpu_only = True
 device = torch.device("cpu") if use_cpu_only else torch.device("cuda" if use_cuda else "cpu")
 """use CPU or GPU"""
 
-
 class CriticNetWork(nn.Module):
     def __init__(self, beta, state_dim, fc1_dims, fc2_dims, action_dim, name, chkpt_dir):
         super(CriticNetWork, self).__init__()

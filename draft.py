@@ -15,7 +15,12 @@ def add(a):
         a[i] += 1
 
 if __name__ == '__main__':
-    a = [1, 2, 3, 4, 5, 6, 7]
-    add(a)
-    print(a)
+    x = np.linspace(-10, 10, 10000)
+    y1 = np.tanh(x)
+    k = 0.5
+    y2 = (np.exp(k * x) - 1) / (np.exp(k * x) + 1)
+    plt.plot(x,y1)
+    plt.plot(x, y2)
+    plt.grid(True)
+    plt.show()
     pass

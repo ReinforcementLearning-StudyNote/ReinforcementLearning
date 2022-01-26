@@ -71,7 +71,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
         self.action_dim = 2
         self.action_step = [None, None]
-        self.action_range = [[0, self.wMax], [0, self.wMax]]  # only forward
+        self.action_range = [[self.wMax/2, self.wMax], [self.wMax/2, self.wMax]]  # only forward
         self.action_num = [math.inf, math.inf]
         self.action_space = [None, None]
         self.isActionContinuous = [True, True]
@@ -191,6 +191,8 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
         r1 = -1  # 常值误差，每运行一步，就 -1
 
+        v_abs = math.fabs(self.dx ** 2 + self.dy ** 2)   # 机器人速度
+
         if currentError > nextError + 1e-2:
             r2 = 5
         elif 1e-2 + currentError < nextError:
@@ -212,11 +214,11 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         r4 = 0
         if self.terminal_flag == 3:
             r4 = 500
-        if self.terminal_flag == 1:  # 惩罚
-            r4 = -200
+        if self.terminal_flag == 1:  # 出界
+            r4 = -2
         '''4. 其他'''
         # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
-        self.reward = r1 + r2 + r3 + r4
+        self.reward = (r1 + r2 + r3 + r4) * v_abs
 
     def f(self, _phi):
         _dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(_phi)

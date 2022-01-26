@@ -1,6 +1,6 @@
 import os
 import sys
-
+# from torchviz import make_dot
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
 from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous
@@ -92,7 +92,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                if env.reward >= -3.5:
+                if env.reward >= -3.5*0.5:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                    if env.reward >= -3.5:
+                    if env.reward >= -3.5*0.5:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.learn(is_reward_ascent=False)
             # cv.destroyAllWindows()
