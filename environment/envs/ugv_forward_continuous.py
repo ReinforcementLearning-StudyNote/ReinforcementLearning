@@ -162,11 +162,11 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         return False
 
     def is_Terminal(self, param=None):
-        # if self.is_out():
-        #     print('...out...')
-        #     self.terminal_flag = 1
-        #     return True
-        if self.delta_phi_absolute > 4 * math.pi + deg2rad(0):
+        if self.is_out():
+            print('...out...')
+            self.terminal_flag = 1
+            return True
+        if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
             print('...转的角度太大了...')
             self.terminal_flag = 1
             return True
@@ -253,21 +253,6 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.dphi = self.r / self.rBody * (self.wRight - self.wLeft)
         self.time += self.dt
         '''动力学系统状态更新'''
-
-        '''出界处理'''
-        if self.x + self.rBody > self.x_size:  # Xout
-            self.x = self.x_size - self.rBody
-            self.dx = 0
-        if self.x - self.rBody < 0:
-            self.x = self.rBody
-            self.dx = 0
-        if self.y + self.rBody > self.y_size:  # Yout
-            self.y = self.y_size - self.rBody
-            self.dy = 0
-        if self.y - self.rBody < 0:
-            self.y = self.rBody
-            self.dy = 0
-        '''出界处理'''
         self.delta_phi_absolute += math.fabs(self.phi - self.current_state[4])
         '''角度处理'''
         if self.phi > math.pi:
@@ -275,8 +260,22 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         if self.phi < -math.pi:
             self.phi += 2 * math.pi
         '''角度处理'''
-
         self.is_terminal = self.is_Terminal()
+        # '''出界处理'''
+        # if self.x + self.rBody > self.x_size:  # Xout
+        #     self.x = self.x_size - self.rBody
+        #     self.dx = 0
+        # if self.x - self.rBody < 0:
+        #     self.x = self.rBody
+        #     self.dx = 0
+        # if self.y + self.rBody > self.y_size:  # Yout
+        #     self.y = self.y_size - self.rBody
+        #     self.dy = 0
+        # if self.y - self.rBody < 0:
+        #     self.y = self.rBody
+        #     self.dy = 0
+        # '''出界处理'''
+
         self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
                            (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                            self.x / self.x_size * self.staticGain,
@@ -335,8 +334,19 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.y = self.start[1]  # Y
         self.initX = self.start[0]
         self.initY = self.start[1]
-        self.phi = random.uniform(-math.pi, math.pi)
+
+        phi0 = cal_vector_rad([self.terminal[0] - self.x, self.terminal[1] - self.y], [1, 0])
+        phi0 = phi0 if self.y <= self.terminal[1] else -phi0
+        # print(rad2deg(phi0))
+        self.phi = random.uniform(phi0 - deg2rad(45), phi0 + deg2rad(45))  # 将初始化的角度放在初始对准目标的90度范围内
+        '''角度处理'''
+        if self.phi > math.pi:
+            self.phi -= 2 * math.pi
+        if self.phi < -math.pi:
+            self.phi += 2 * math.pi
+        '''角度处理'''
         self.initPhi = self.phi
+
         self.dx = 0
         self.dy = 0
         self.dphi = 0

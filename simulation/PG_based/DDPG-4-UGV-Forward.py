@@ -20,7 +20,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                                       is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
-    agent.load_models(path='./DDPG-UGV-Forward测试/')
+    agent.load_models(path='./DDPG-UGV-Forward-Temp/')
     fullFillCount = int(fullFillRatio * agent.memory.mem_size)
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
@@ -47,7 +47,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                 if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                if env.reward >= -3:
+                if env.reward >= -3.5:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -207,6 +207,8 @@ if __name__ == '__main__':
             '''跳出循环代表回合结束'''
             print('Cumulative reward:', round(sumr, 3))
             print('共：', agent.episode, ' 回合，成功', successCounter, ' 回合，超时', timeOutCounter, ' 回合')
+            if agent.episode > 0:
+                print('成功率：', round(successCounter / agent.episode, 3))
             print('==========END=========')
             print()
             agent.saveData_EpisodeReward(agent.episode, sumr)
@@ -250,5 +252,6 @@ if __name__ == '__main__':
             if env.terminal_flag == 3:
                 successCounter += 1
         print('Total:', simulation_num, '  successful:', successCounter, '  timeout:', timeOutCounter)
+        print('success rate:', round(successCounter / simulation_num))
         cv.waitKey(0)
         env.saveData(is2file=True, filepath=simulationPath)

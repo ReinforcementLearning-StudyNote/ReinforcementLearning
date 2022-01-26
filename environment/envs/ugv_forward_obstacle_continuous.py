@@ -530,7 +530,6 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
             self.phi += 2 * math.pi
         '''角度处理'''
         self.initPhi = self.phi
-        self.initPhi = self.phi
 
         self.dx = 0
         self.dy = 0
