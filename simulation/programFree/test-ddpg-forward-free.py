@@ -37,8 +37,8 @@ if __name__ == '__main__':
     c = cv.waitKey(1)
 
     print('TESTing...')
-    agent.load_actor_optimal(path='../PG_based/DDPG-UGV-Forward测试/', file='Actor_ddpg')
-    simulation_num = 50
+    agent.load_actor_optimal(path='./DDPG-UGV-Forwad-Best/', file='Actor_ddpg')
+    simulation_num = 100
     x_sep = 3
     y_sep = 3
     xStep = env.x_size / x_sep
@@ -47,10 +47,6 @@ if __name__ == '__main__':
     timeoutRatio = []
     for x in range(x_sep * y_sep):          # control the start
         for y in range(x_sep * y_sep):      # control the terminal
-            cap = cv.VideoWriter(simulationPath + '/' + 'Optimal' + str(y + x * x_sep * y_sep) + '.mp4',
-                                 cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
-                                 120.0,
-                                 (env.width, env.height))
             successCounter = 0
             timeOutCounter = 0
             xxS = x // x_sep
@@ -70,6 +66,17 @@ if __name__ == '__main__':
                 env.terminal[1] = max(min(env.terminal[1], env.y_size - 0.3), 0.3)
                 env.x = env.start[0]  # X
                 env.y = env.start[1]  # Y
+                phi0 = cal_vector_rad([env.terminal[0] - env.x, env.terminal[1] - env.y], [1, 0])
+                phi0 = phi0 if env.y <= env.terminal[1] else -phi0
+                # print(rad2deg(phi0))
+                env.phi = random.uniform(phi0 - deg2rad(45), phi0 + deg2rad(45))  # 将初始化的角度放在初始对准目标的90度范围内
+                '''角度处理'''
+                if env.phi > math.pi:
+                    env.phi -= 2 * math.pi
+                if env.phi < -math.pi:
+                    env.phi += 2 * math.pi
+                '''角度处理'''
+                env.initPhi = env.phi
                 '''set start and target randomly according to x and y'''
                 while not env.is_terminal:
                     if cv.waitKey(1) == 27:
@@ -79,7 +86,6 @@ if __name__ == '__main__':
                     action = agent.action_linear_trans(action_from_actor)       # 将动作转换到实际范围上
                     env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
                     env.show_dynamic_image(isWait=False)
-                    cap.write(env.save)
                     env.saveData(is2file=False)
                 print('===========END===========')
                 if env.terminal_flag == 2:
@@ -91,5 +97,8 @@ if __name__ == '__main__':
             timeoutRatio.append(timeOutCounter / simulation_num)
             print('...successfulRatio...', successfulRatio)
             print('...timeoutRatio...', timeoutRatio)
+    for x in range(x_sep * y_sep):          # control the start
+        for y in range(x_sep * y_sep):
+            print('start region:', x, 'terminal region:', y, 'success rate：', successfulRatio[x * x_sep * y_sep + y])
     cv.waitKey(0)
     env.saveData(is2file=True, filepath=simulationPath)
