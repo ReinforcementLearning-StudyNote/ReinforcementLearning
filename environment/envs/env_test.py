@@ -59,7 +59,7 @@ def test_ugv_bidirectional_continuous():
 # UGV Forward Continuous Test
 def test_two_ugv_forward_continuous():
     from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous
-    env = UGV_Forward_Continuous(initPhi=deg2rad(-135),
+    env = UGV_Forward_Continuous(initPhi=deg2rad(45),
                                  save_cfg=True,
                                  x_size=5.0,
                                  y_size=5.0,
@@ -74,7 +74,7 @@ def test_two_ugv_forward_continuous():
             if cv.waitKey(1) == 27:
                 return
             env.show_dynamic_image(isWait=True)
-            action = [-9, 9]
+            action = [9, 9]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             print(env.reward)
             # print(env.current_state)
@@ -110,6 +110,6 @@ if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
-    # test_two_ugv_forward_continuous()
-    test_ugv_forward_obstacles_continuous()
+    test_two_ugv_forward_continuous()
+    # test_ugv_forward_obstacles_continuous()
     pass

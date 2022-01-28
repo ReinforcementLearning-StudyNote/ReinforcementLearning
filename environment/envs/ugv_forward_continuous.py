@@ -80,7 +80,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
         self.reward = 0.0
         self.is_terminal = False
-        self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功
+        self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功 4-打转
         '''rl_base'''
 
         '''visualization_opencv'''
@@ -178,7 +178,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         if self.is_out():
             # print('...out...')
             # self.terminal_flag = 1
-            return True
+            return False
         return False
 
     def get_reward(self, param=None):

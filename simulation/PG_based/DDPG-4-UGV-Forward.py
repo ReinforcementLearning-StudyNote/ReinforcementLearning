@@ -11,7 +11,7 @@ import datetime
 
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Continuous.xml'
-optPath = '../../datasave/network/'
+optPath = '../../datasave/network/DDPG-UGV-Forward-all-random/'
 show_per = 1
 
 
@@ -77,7 +77,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
         _new_done.clear()
         while not env.is_terminal:
             env.current_state = env.next_state.copy()  # 状态更新
-            # _action_from_actor = agent.choose_action(env.current_state, False, sigma=1/2)
+            # _action_from_actor = agent.choose_action(env.current_state, False, sigma=1.0)
             _action_from_actor = agent.choose_action_random()
             _action = agent.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
@@ -93,6 +93,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                 if env.reward >= -3.5:
+                # if True:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -113,18 +114,18 @@ if __name__ == '__main__':
                                  start=[2.0, 2.0],
                                  terminal=[4.0, 4.0])
     '''初始位置，初始角度，目标位置均为随机'''
-    agent = DDPG(gamma=0.0,
+    agent = DDPG(gamma=0.99,
                  actor_learning_rate=1e-4,
                  critic_learning_rate=1e-3,
                  actor_soft_update=1e-2,
                  critic_soft_update=1e-2,
-                 memory_capacity=40000,
+                 memory_capacity=60000,
                  batch_size=512,
                  modelFileXML=cfgPath + cfgFile,
                  path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -150,7 +151,7 @@ if __name__ == '__main__':
         # cv.waitKey(0)
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
-        MAX_EPISODE = 5000
+        MAX_EPISODE = math.inf
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=is_storage_only_success)
@@ -176,7 +177,7 @@ if __name__ == '__main__':
                     # print('...random...')
                     action_from_actor = agent.choose_action_random()  # 有一定探索概率完全随机探索
                 else:
-                    action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 3)  # 剩下的是神经网络加噪声
+                    action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 2)  # 剩下的是神经网络加噪声
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
                 if agent.episode % show_per == 0:
@@ -191,8 +192,10 @@ if __name__ == '__main__':
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                     if env.reward >= -3.5:
+                    # if True:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
-                agent.learn(is_reward_ascent=False)
+                agent.learn(is_reward_ascent=True)
+            agent.memory.get_reward_resort(per=10)
             # cv.destroyAllWindows()
             '''跳出循环代表回合结束'''
             if env.terminal_flag == 3:
@@ -224,12 +227,12 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        agent.load_actor_optimal(path='./DDPG-UGV-Forward测试/', file='Actor_ddpg')
+        agent.load_actor_optimal(path='./DDPG-UGV-Forwad-Best/', file='Actor_ddpg')   # './DDPG-UGV-Forward-Temp/'
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
                              (env.width, env.height))
-        simulation_num = 50
+        simulation_num = 500
         successCounter = 0
         timeOutCounter = 0
         for i in range(simulation_num):

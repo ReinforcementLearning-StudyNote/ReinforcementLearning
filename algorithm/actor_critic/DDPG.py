@@ -17,18 +17,16 @@ class CriticNetWork(nn.Module):
         super(CriticNetWork, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
-        # self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
 
-        # print('嘤嘤嘤', self.state_dim, fc1_dims)
-        self.fc1 = nn.Linear(self.state_dim, fc1_dims)
+        self.fc1 = nn.Linear(self.state_dim, fc1_dims)                  # state -> hidden1
         self.batch_norm1 = nn.LayerNorm(fc1_dims)
 
-        self.fc2 = nn.Linear(fc1_dims, fc2_dims)
+        self.fc2 = nn.Linear(fc1_dims, fc2_dims)                        # hidden1 -> hidden2
         self.batch_norm2 = nn.LayerNorm(fc2_dims)
 
-        self.action_value = nn.Linear(self.action_dim, fc2_dims)
-        self.q = nn.Linear(fc2_dims, 1)
+        self.action_value = nn.Linear(self.action_dim, fc2_dims)        # action -> hidden2
+        self.q = nn.Linear(fc2_dims, 1)                                 # hidden2 -> output action value
 
         self.initialization()
 
@@ -80,13 +78,13 @@ class ActorNetwork(nn.Module):
         # self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
 
-        self.fc1 = nn.Linear(self.state_dim, fc1_dims)
+        self.fc1 = nn.Linear(self.state_dim, fc1_dims)      # 输入 -> 第一个隐藏层
         self.batch_norm1 = nn.LayerNorm(fc1_dims)
 
-        self.fc2 = nn.Linear(fc1_dims, fc2_dims)
+        self.fc2 = nn.Linear(fc1_dims, fc2_dims)            # 第一个隐藏层 -> 第二个隐藏层
         self.batch_norm2 = nn.LayerNorm(fc2_dims)
 
-        self.mu = nn.Linear(fc2_dims, self.action_dim)
+        self.mu = nn.Linear(fc2_dims, self.action_dim)      # 第二个隐藏层 -> 输出层
 
         self.initialization()
 
@@ -111,9 +109,11 @@ class ActorNetwork(nn.Module):
         x = self.fc1(state)
         x = self.batch_norm1(x)
         x = func.relu(x)
+
         x = self.fc2(x)
         x = self.batch_norm2(x)
         x = func.relu(x)
+
         x = torch.tanh(self.mu(x))  # bound the output to [-1, 1]
 
         return x
@@ -169,11 +169,11 @@ class DDPG:
         '''DDPG'''
 
         '''network'''
-        self.actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 256, 256, self.action_dim_nn, name='Actor', chkpt_dir=path)
-        self.target_actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 256, 256, self.action_dim_nn, name='TargetActor', chkpt_dir=path)
+        self.actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='Actor', chkpt_dir=path)
+        self.target_actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetActor', chkpt_dir=path)
 
-        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 256, 256, self.action_dim_nn, name='Critic', chkpt_dir=path)
-        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 256, 256, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
+        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='Critic', chkpt_dir=path)
+        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
         '''network'''
 
         self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))

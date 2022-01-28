@@ -346,7 +346,7 @@ class ReplayBuffer:
         max_mem = min(self.mem_counter, self.mem_size)
         if is_reward_ascent:
             '''倒着数是最好的，从10倍倒着数的数据中随机取出一倍的数据量作为batch'''
-            batch = random.sample(self.sorted_index[-self.batch_size * 10:], self.batch_size)
+            batch = random.sample(self.sorted_index[-int(0.25 * max_mem):], self.batch_size)
         else:
             batch = np.random.choice(max_mem, self.batch_size)
         states = self.s_mem[batch]
