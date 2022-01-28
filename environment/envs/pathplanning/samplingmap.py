@@ -291,7 +291,121 @@ class samplingmap(obstacle):
                     break
             self.obs = self.set_obs(new_obs)
 
+    @staticmethod
+    def transfer_str_2_obs_info(string: str):
+        string = string.replace(' ', '').replace("'", '').replace('[', '').replace(']', '').split(',')
+        # obs_info = []
+        # name_dict = ['circle', 'ellipse', 'triangle', 'rectangle', 'pentagon', 'hexagon', 'heptagon', 'octagon']
+        # print(string)
+        name = string[0]
+        if name == 'circle':
+            r, x, y = float(string[1]), float(string[2]), float(string[3])
+            obs_info = [name, [r], [x, y]]
+        elif name == 'ellipse':
+            long, short, theta, x, y = float(string[1]), float(string[2]), float(string[3]), float(string[4]), float(string[5])
+            obs_info = [name, [long, short, theta], [x, y]]
+        elif name == 'triangle':
+            x, y, r = float(string[1]), float(string[2]), float(string[3])
+            pts = [[float(string[4 + i * 2]), float(string[5 + i * 2])] for i in range(3)]
+            obs_info = [name, [x, y, r], pts]
+        elif name == 'rectangle':
+            x, y, r = float(string[1]), float(string[2]), float(string[3])
+            pts = [[float(string[4 + i * 2]), float(string[5 + i * 2])] for i in range(4)]
+            obs_info = [name, [x, y, r], pts]
+        elif name == 'pentagon':
+            x, y, r = float(string[1]), float(string[2]), float(string[3])
+            pts = [[float(string[4 + i * 2]), float(string[5 + i * 2])] for i in range(5)]
+            obs_info = [name, [x, y, r], pts]
+        elif name == 'hexagon':
+            x, y, r = float(string[1]), float(string[2]), float(string[3])
+            pts = [[float(string[4 + i * 2]), float(string[5 + i * 2])] for i in range(6)]
+            obs_info = [name, [x, y, r], pts]
+        elif name == 'heptagon':
+            x, y, r = float(string[1]), float(string[2]), float(string[3])
+            pts = [[float(string[4 + i * 2]), float(string[5 + i * 2])] for i in range(7)]
+            obs_info = [name, [x, y, r], pts]
+        elif name == 'octagon':
+            x, y, r = float(string[1]), float(string[2]), float(string[3])
+            pts = [[float(string[4 + i * 2]), float(string[5 + i * 2])] for i in range(8)]
+            obs_info = [name, [x, y, r], pts]
+        else:
+            assert False
+        return obs_info
+
+    def map_create_continuous_database(self, map_num: int, filePath: str, fileName: str):
+        """
+        map_num:    number of the maps
+        filePath:
+        fileName:
+        """
+        f = open(file=filePath + fileName, mode='w')
+        '''First part is the basic message'''
+        f.writelines('x_size:' + str(self.x_size) + '\n')
+        f.writelines('y_size:' + str(self.y_size) + '\n')
+        '''First part is the basic message'''
+        f.writelines('BEGIN' + '\n')
+        for i in range(map_num):
+            if i % 100 == 0:
+                print('num:', i)
+            self.set_start([random.uniform(0.15, self.x_size - 0.15), random.uniform(0.15, self.x_size - 0.15)])
+            self.set_terminal([random.uniform(0.15, self.x_size - 0.15), random.uniform(0.15, self.x_size - 0.15)])
+            self.set_random_obstacles(20)
+            self.map_draw(show=True, isWait=False)
+            '''Second part is the start-terminal message'''
+            f.writelines('num' + str(i) + '\n')
+            f.writelines('start:' + str(list(self.start)) + '\n')
+            f.writelines('terminal:' + str(list(self.terminal)) + '\n')
+            '''Second part is the start-terminal message'''
+
+            '''Third part is the continuous obstacles' message'''
+            f.writelines('obs num:' + str(len(self.obs)) + '\n')
+            for _obs in self.obs:
+                f.writelines(str(_obs).replace('array', '').replace('(', '').replace(')', '') + '\n')
+            '''Third part is the continuous obstacles' message'''
+        f.writelines('END' + '\n')
+        f.close()
+
+    def map_load_continuous_database(self, databaseFile):
+        BIG_DATA_BASE = []
+        f = open(databaseFile, mode='r')
+        ''''检测文件头'''
+        assert self.x_size == float(f.readline().strip('\n')[7:])
+        assert self.y_size == float(f.readline().strip('\n')[7:])
+        assert f.readline().strip('\n') == 'BEGIN'
+        ''''检测文件头'''
+
+        line = f.readline().strip('\n')
+        while line != 'END':
+            DATA = []
+
+            start = f.readline().strip('\n').replace('start:[', '').replace(']', '').replace(' ', '').split(',')
+            DATA.append([float(kk) for kk in start])
+            terminal = f.readline().strip('\n').replace('terminal:[', '').replace(']', '').replace(' ', '').split(',')
+            DATA.append([float(kk) for kk in terminal])
+
+            obsNum = int(f.readline().strip('\n').replace('obs num:', ''))  # obstacles
+            DATA.append(obsNum)
+            obs_info = []
+            while obsNum > 0:
+                obs_info.append(self.transfer_str_2_obs_info(f.readline().strip('\n')))  # each obstacle
+                obsNum -= 1
+            DATA.append(obs_info)
+            BIG_DATA_BASE.append(DATA)
+            line = f.readline().strip('\n')
+            if line != 'END':
+                if int(line[3:]) % 100 == 0:
+                    print('...loading env ', int(line[3:]), '...')
+        f.close()
+        return BIG_DATA_BASE
+
     def autoSetWithDataBase(self, mapData):
         self.start = mapData[0]
         self.terminal = mapData[1]
         self.obs = mapData[3]
+
+    @staticmethod
+    def merge_database(databases):
+        merge = []
+        for database in databases:
+            merge += database
+        return merge

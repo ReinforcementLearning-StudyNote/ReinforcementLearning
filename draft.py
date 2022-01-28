@@ -15,12 +15,10 @@ def add(a):
         a[i] += 1
 
 if __name__ == '__main__':
-    x = np.linspace(-10, 10, 10000)
-    y1 = np.tanh(x)
-    k = 0.5
-    y2 = (np.exp(k * x) - 1) / (np.exp(k * x) + 1)
-    plt.plot(x,y1)
-    plt.plot(x, y2)
-    plt.grid(True)
-    plt.show()
+    a = torch.arange(0, 10)
+    print(a.dim(), a)
+    b = a.unsqueeze(0)
+    print(b.dim(), b)
+    c = b.unsqueeze(0)
+    print(c.dim(), c)
     pass

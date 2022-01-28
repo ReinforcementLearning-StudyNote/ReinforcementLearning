@@ -1,7 +1,5 @@
 x_size:5
 y_size:5
-x_grid:50
-y_grid:50
 BEGIN
 num0
 start:[1.108, 4.494]

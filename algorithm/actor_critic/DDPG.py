@@ -12,6 +12,7 @@ use_cpu_only = True
 device = torch.device("cpu") if use_cpu_only else torch.device("cuda" if use_cuda else "cpu")
 """use CPU or GPU"""
 
+
 class CriticNetWork(nn.Module):
     def __init__(self, beta, state_dim, fc1_dims, fc2_dims, action_dim, name, chkpt_dir):
         super(CriticNetWork, self).__init__()
@@ -19,14 +20,14 @@ class CriticNetWork(nn.Module):
         self.action_dim = action_dim
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
 
-        self.fc1 = nn.Linear(self.state_dim, fc1_dims)                  # state -> hidden1
+        self.fc1 = nn.Linear(self.state_dim, fc1_dims)  # state -> hidden1
         self.batch_norm1 = nn.LayerNorm(fc1_dims)
 
-        self.fc2 = nn.Linear(fc1_dims, fc2_dims)                        # hidden1 -> hidden2
+        self.fc2 = nn.Linear(fc1_dims, fc2_dims)  # hidden1 -> hidden2
         self.batch_norm2 = nn.LayerNorm(fc2_dims)
 
-        self.action_value = nn.Linear(self.action_dim, fc2_dims)        # action -> hidden2
-        self.q = nn.Linear(fc2_dims, 1)                                 # hidden2 -> output action value
+        self.action_value = nn.Linear(self.action_dim, fc2_dims)  # action -> hidden2
+        self.q = nn.Linear(fc2_dims, 1)  # hidden2 -> output action value
 
         self.initialization()
 
@@ -78,13 +79,13 @@ class ActorNetwork(nn.Module):
         # self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
 
-        self.fc1 = nn.Linear(self.state_dim, fc1_dims)      # 输入 -> 第一个隐藏层
+        self.fc1 = nn.Linear(self.state_dim, fc1_dims)  # 输入 -> 第一个隐藏层
         self.batch_norm1 = nn.LayerNorm(fc1_dims)
 
-        self.fc2 = nn.Linear(fc1_dims, fc2_dims)            # 第一个隐藏层 -> 第二个隐藏层
+        self.fc2 = nn.Linear(fc1_dims, fc2_dims)  # 第一个隐藏层 -> 第二个隐藏层
         self.batch_norm2 = nn.LayerNorm(fc2_dims)
 
-        self.mu = nn.Linear(fc2_dims, self.action_dim)      # 第二个隐藏层 -> 输出层
+        self.mu = nn.Linear(fc2_dims, self.action_dim)  # 第二个隐藏层 -> 输出层
 
         self.initialization()
 
