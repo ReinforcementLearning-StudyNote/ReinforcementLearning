@@ -106,10 +106,40 @@ def test_ugv_forward_obstacles_continuous():
         num += 1
 
 
+# UGV Forward Path Following Test
+def test_ugv_forward_path_following():
+    from environment.envs.ugv_forward_continuous_pathfollow import UGV_Forward_Continuous_Path_Follow
+    env = UGV_Forward_Continuous_Path_Follow(initPhi=deg2rad(45),
+                                             save_cfg=True,
+                                             x_size=5.0,
+                                             y_size=5.0,
+                                             start=[0.5, 0.5],
+                                             terminal=[4.5, 4.5])
+    num = 0
+    while num < 30:
+        # env.show_dynamic_imagePathFollow(isWait=True)
+        # env.reset()
+        while not env.is_terminal:
+            # print(env.time)
+            if cv.waitKey(1) == 27:
+                return
+            env.show_dynamic_imagePathFollow(isWait=False)
+            # cap.write(env.save)
+            action = [6 * math.pi, 3 * math.pi]
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            # print(env.current_state[0 : 4])
+            # if env.terminal_flag == 4:
+            #     print(env.reward)
+            # print(env.current _state)
+        num += 1
+        env.reset_random()
+
+
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
-    test_two_ugv_forward_continuous()
+    # test_two_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
+    test_ugv_forward_path_following()
     pass

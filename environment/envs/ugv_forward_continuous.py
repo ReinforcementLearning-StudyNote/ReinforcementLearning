@@ -124,7 +124,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
     def draw_terminal(self):
         if self.terminal is not None and self.terminal != []:
-            cv.circle(self.image, self.dis2pixel(self.terminal), 5, Color().random_color_by_BGR(), -1)
+            cv.circle(self.image, self.dis2pixel(self.terminal), self.length2pixel(self.rBody), Color().random_color_by_BGR(), 2)
 
     def draw_region_grid(self, xNUm: int = 3, yNum: int = 3):
         if xNUm <= 1 or yNum <= 1:

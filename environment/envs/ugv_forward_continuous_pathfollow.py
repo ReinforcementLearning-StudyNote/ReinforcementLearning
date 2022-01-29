@@ -1,7 +1,9 @@
+import numpy as np
+
 from common.common import *
 from environment.envs import *
-from environment.envs.pathplanning.samplingmap import samplingmap
 from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous as UGV
+from environment.envs.pathplanning.bezier import Bezier
 
 
 class UGV_Forward_Continuous_Path_Follow(UGV):
@@ -23,33 +25,46 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         super(UGV_Forward_Continuous_Path_Follow, self).__init__(initPhi, save_cfg, x_size, y_size, start, terminal)
         '''physical parameters'''
         # 继承自UGV
-        self.miss = self.rBody + 0.1        # 因为是跟踪路径，所以可以适当大一些
-        self.
+        self.miss = self.rBody  # 因为是跟踪路径，所以可以适当大一些
+        self.refPoints = self.points_generator()  # 贝塞尔曲线参考点
+        self.bezier = Bezier(self.refPoints)  # 贝塞尔曲线
+        self.curve = self.bezier.Curve()
+        self.samplePoints = self.get_sample_auto(threshold=1.0)
+        self.sampleNum = len(self.samplePoints)  # 采样点数量
+        self.lookForward = 1  # 一共将lookForward这么多点的状态加入state中
+        self.index = 0  # 当前点的索引
+        self.timeMax = 8.0
+
+        self.trajectory = [self.start]
+        self.traj_length = 0
+        self.trajMax = 50
+        self.traj_per = 5
+        self.traj_index = 0
         '''physical parameters'''
 
         '''rl_base'''
-        self.state_dim = 12  # [ex1/sizeX, ey1/sizeY, ex2/sizeX, ey2/sizeY, ex3/sizeX, ey3/sizeY, x/sizeX, y/sizeY, phi, dx, dy, dphi]
-        self.state_num = [math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf]
-        self.state_step = [None, None, None, None, None, None, None, None, None, None, None, None]
-        self.state_space = [None, None, None, None, None, None, None, None, None, None, None, None]
-        self.state_range = [[-self.staticGain, self.staticGain],
-                            [-self.staticGain, self.staticGain],
-                            [-self.staticGain, self.staticGain],
-                            [-self.staticGain, self.staticGain],
-                            [-self.staticGain, self.staticGain],
-                            [-self.staticGain, self.staticGain],
-                            [0, self.staticGain],
+        self.state_dim = self.lookForward * 2 + 6
+        # [ex1/sizeX, ey1/sizeY, ex2/sizeX, ey2/sizeY, ex3/sizeX, ey3/sizeY, x/sizeX, y/sizeY, phi, dx, dy, dphi]
+        self.state_num = [math.inf, math.inf, math.inf, math.inf, math.inf, math.inf]
+        self.state_step = [None, None, None, None, None, None]
+        self.state_space = [None, None, None, None, None, None]
+        self.state_range = [[0, self.staticGain],
                             [0, self.staticGain],
                             [-math.pi, math.pi],
                             [-self.r * self.wMax, self.r * self.wMax],
                             [-self.r * self.wMax, self.r * self.wMax],
                             [-self.r / self.L * 2 * self.r * self.wMax, self.r / self.L * 2 * self.r * self.wMax]]
-        self.isStateContinuous = [True, True, True, True, True, True, True, True, True, True, True, True]
-        self.initial_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
-                              (self.terminal[1] - self.y) / self.y_size * self.staticGain,
-                              self.x / self.x_size * self.staticGain,
-                              self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi]
+        self.isStateContinuous = [True, True, True, True, True, True]
+        for _ in range(self.lookForward * 2):
+            self.state_num.insert(0, math.inf)
+            self.state_step.insert(0, None)
+            self.state_space.insert(0, None)
+            self.state_range.insert(0, [-self.staticGain, self.staticGain])
+            self.isStateContinuous.insert(0, True)
+
+        self.initial_state = self.get_points_state() + [self.x / self.x_size * self.staticGain,
+                                                        self.y / self.y_size * self.staticGain,
+                                                        self.phi, self.dx, self.dy, self.dphi]
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
 
@@ -64,11 +79,11 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
 
         self.reward = 0.0
         self.is_terminal = False
-        self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功 4-碰撞障碍物
+        self.terminal_flag = 0      # 0-正常 1-出界 2-超时 3-子目标成功 4-碰撞障碍物 5-最终成功
         '''rl_base'''
 
         '''visualization_opencv'''
-        self.show_dynamic_image(isWait=False)
+        self.show_dynamic_imagePathFollow(isWait=False)
         '''visualization_opencv'''
 
         '''datasave'''
@@ -83,10 +98,19 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.saveTime = [self.time]
         '''datasave'''
         if save_cfg:
-            self.saveModel2XML()
+            self.saveModel2XML2()
 
-    def draw_car(self):
-        # self.image = self.image_temp.copy()
+    '''DRAW'''
+
+    def draw_bezier_curve(self):
+        for pt in self.refPoints[1:-1]:
+            cv.circle(self.image, self.dis2pixel(pt), 5, Color().DarkGreen, -1)
+        for i in range(len(self.curve) - 1):
+            cv.line(self.image, self.dis2pixel(self.curve[i]), self.dis2pixel(self.curve[i + 1]), Color().Blue, 2)
+        for pt in self.samplePoints[1: -1]:
+            cv.circle(self.image, self.dis2pixel(pt), 3, Color().Red, -1)
+
+    def draw_car_with_traj(self, withTraj=False):
         cv.circle(self.image, self.dis2pixel([self.x, self.y]), self.length2pixel(self.rBody), Color().Orange, -1)  # 主体
         '''两个车轮'''
         # left
@@ -105,37 +129,81 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         head = points_rotate(head, self.phi)
         head = points_move(head, [self.x, self.y])
         cv.circle(self.image, self.dis2pixel(head), self.length2pixel(0.04), Color().Black, -1)  # 主体
+        if withTraj:
+            p1 = self.trajectory[0]
+            for p2 in self.trajectory[1:]:
+                cv.line(self.image, self.dis2pixel(p1), self.dis2pixel(p2), Color().Purple, 2)
+                p1 = p2.copy()
 
-    def draw_terminal(self):
-        if self.terminal is not None and self.terminal != []:
-            cv.circle(self.image, self.dis2pixel(self.terminal), 5, Color().random_color_by_BGR(), -1)
-
-    def draw_region_grid(self, xNUm: int = 3, yNum: int = 3):
-        if xNUm <= 1 or yNum <= 1:
-            pass
-        else:
-            xStep = self.x_size / xNUm
-            yStep = self.y_size / yNum
-            for i in range(yNum - 1):
-                pt1 = self.dis2pixel([0, 0 + (i + 1) * yStep])
-                pt2 = self.dis2pixel([self.x_size, 0 + (i + 1) * yStep])
-                cv.line(self.image, pt1, pt2, Color().Black, 1)
-            for i in range(xNUm - 1):
-                pt1 = self.dis2pixel([0 + (i + 1) * xStep, 0])
-                pt2 = self.dis2pixel([0 + (i + 1) * xStep, self.y_size])
-                cv.line(self.image, pt1, pt2, Color().Black, 1)
-
-    def show_dynamic_image(self, isWait):
+    def show_dynamic_imagePathFollow(self, isWait):
         self.image = self.image_temp.copy()
         self.draw_region_grid(xNUm=3, yNum=3)
         self.map_draw_obs()
         self.map_draw_boundary()
-        self.draw_car()
+        self.draw_bezier_curve()
+        self.draw_car_with_traj(withTraj=True)
         self.draw_terminal()
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
         self.save = self.image.copy()
+
+    '''DRAW'''
+
+    '''PATH FOLLOWING'''
+
+    def get_points_state(self):
+        pts = []
+        # print(self.samplePoints)
+        for i in range(self.lookForward):
+            _index = min(self.sampleNum, self.index + i)
+            node = self.samplePoints[_index]
+            pts.append((node[0] - self.x) / self.x_size * self.staticGain)
+            pts.append((node[1] - self.y) / self.y_size * self.staticGain)
+        return pts
+
+    def points_generator(self):
+        """
+        :return:
+        """
+        k = cal_vector_rad([1, 0], [self.terminal[0] - self.start[0], self.terminal[1] - self.start[1]]) * np.sign(self.terminal[1] - self.start[1])
+        b = self.start[1] - k * self.start[0]
+        dx = np.fabs(self.terminal[0] - self.start[0])
+        dy = np.fabs(self.terminal[1] - self.start[1])
+        maxd = max(dx, dy)  #
+        nodeNum = int(maxd / self.L / 2) + 2
+        '''根据偏移大的一个采样'''
+        if dx >= dy:
+            x = np.linspace(self.start[0], self.terminal[0], nodeNum)
+            y = k * x + b
+            bias = np.random.uniform(low=-maxd / 3, high=maxd / 3, size=nodeNum)
+            xx = x
+            yy = np.clip(y + bias / np.sqrt(k ** 2 + 1) * np.sign(bias), self.L, self.y_size - self.L)
+        else:
+            y = np.linspace(self.start[1], self.terminal[1], nodeNum)
+            x = (y - b) / k
+            bias = np.random.uniform(low=-maxd / 2, high=maxd / 2, size=nodeNum)
+            yy = y
+            xx = np.clip(x - bias / k, self.L, self.x_size - self.L)
+        '''根据偏移大的一个采样'''
+        bezier_nodes = np.array([xx, yy]).T  # 已经为贝塞尔曲线准备好点
+        bezier_nodes[0] = self.start
+        bezier_nodes[-1] = self.terminal
+        return bezier_nodes
+
+    def get_sample_auto(self, threshold=0.4):
+        samples = [self.start]
+        index = 0
+        for pt in self.curve[1:-1]:
+            if dis_two_points(samples[index], pt) > threshold:  # 增加点
+                samples.append(pt)
+                index += 1
+            if dis_two_points(pt, self.terminal) <= threshold:  # 截止
+                break
+        samples.append(self.terminal)
+        return samples
+
+    '''PATH FOLLOWING'''
 
     def is_out(self):
         """
@@ -148,7 +216,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
 
     def is_Terminal(self, param=None):
         self.terminal_flag = 0
-        if self.time > 8.0:
+        if self.time > self.timeMax:
             print('...time out...')
             self.terminal_flag = 2
             return True
@@ -156,10 +224,16 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             print('...转的角度太大了...')
             self.terminal_flag = 1
             return True
-        if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
-            print('...success...')
-            self.terminal_flag = 3
-            return True
+        if dis_two_points([self.x, self.y], self.samplePoints[self.index]) <= self.miss:
+            if self.index == len(self.samplePoints) - 1:
+                print('...成功，回合结束...')
+                self.terminal_flag = 5
+                return True
+            else:
+                print('...第' + str(self.index) + '个目标成功...')
+                self.terminal_flag = 3
+                self.index += 1
+                return False
         if self.is_out():
             # print('...out...')
             # self.terminal_flag = 1
@@ -194,14 +268,17 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             r3 = 0
 
         '''4. 其他'''
-        r4 = 0
         if self.terminal_flag == 3:
+            r4 = 50
+        elif self.terminal_flag == 5:
             r4 = 500
-        if self.terminal_flag == 1:  # 出界
+        elif self.terminal_flag == 1:  # 转的角度太大
             r4 = -2
+        else:
+            r4 = 0
         '''4. 其他'''
         # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
-        self.reward = r1 + (r2 + r3 + r4)
+        self.reward = r1 + r2 + r3 + r4
 
     def f(self, _phi):
         _dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(_phi)
@@ -213,11 +290,9 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.wLeft = max(min(action[0], self.wMax), 0)
         self.wRight = max(min(action[1], self.wMax), 0)
         self.current_action = action.copy()
-        self.current_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
-                              (self.terminal[1] - self.y) / self.y_size * self.staticGain,
-                              self.x / self.x_size * self.staticGain,
-                              self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi]
+        self.current_state = self.get_points_state() + [self.x / self.x_size * self.staticGain,
+                                                        self.y / self.y_size * self.staticGain,
+                                                        self.phi, self.dx, self.dy, self.dphi]
 
         '''RK-44'''
         h = self.dt / 10
@@ -245,7 +320,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         if self.phi < -math.pi:
             self.phi += 2 * math.pi
         '''角度处理'''
-        self.is_terminal = self.is_Terminal()
+        self.is_terminal = self.is_Terminal()           # 负责判断回合是否结束，改变标志位，改变当前子目标
         '''出界处理'''
         if self.x + self.rBody > self.x_size:  # Xout
             self.x = self.x_size - self.rBody
@@ -261,11 +336,22 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             self.dy = 0
         '''出界处理'''
 
-        self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
-                           (self.terminal[1] - self.y) / self.y_size * self.staticGain,
-                           self.x / self.x_size * self.staticGain,
-                           self.y / self.y_size * self.staticGain,
-                           self.phi, self.dx, self.dy, self.dphi]
+        self.next_state = self.get_points_state() + [self.x / self.x_size * self.staticGain,
+                                                     self.y / self.y_size * self.staticGain,
+                                                     self.phi, self.dx, self.dy, self.dphi]
+
+        '''处理轨迹绘制'''
+        if self.traj_index % self.traj_per == 0:
+            if self.traj_length >= self.trajMax:
+                self.trajectory.pop(0)
+                self.trajectory.append([self.x, self.y])
+            else:
+                self.traj_length += 1
+                self.trajectory.append([self.x, self.y])
+            self.traj_index = 0
+        self.traj_index += 1
+        '''处理轨迹绘制'''
+
         self.get_reward()
         self.saveData()
 
@@ -287,6 +373,11 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.wRight = 0.
         self.time = 0.  # time
         self.delta_phi_absolute = 0.
+        self.index = 0  # 当前点的索引
+        self.trajectory = [self.start]
+        self.traj_length = 0
+        self.traj_index = 0
+        self.index = 0
         '''physical parameters'''
 
         '''RL_BASE'''
@@ -320,8 +411,16 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.initX = self.start[0]
         self.initY = self.start[1]
 
-        phi0 = cal_vector_rad([self.terminal[0] - self.x, self.terminal[1] - self.y], [1, 0])
-        phi0 = phi0 if self.y <= self.terminal[1] else -phi0
+        self.index = 0
+        self.refPoints = self.points_generator()  # 贝塞尔曲线参考点
+        self.bezier = Bezier(self.refPoints)  # 贝塞尔曲线
+        self.curve = self.bezier.Curve()
+        self.samplePoints = self.get_sample_auto(threshold=self.L + 0.1)
+        self.trajectory = [self.start]
+        self.traj_length = 0
+        self.traj_index = 0
+
+        phi0 = cal_vector_rad([self.samplePoints[1][0] - self.x, self.samplePoints[1][1] - self.y], [1, 0]) * np.sign(self.samplePoints[1][1] - self.y)
         # print(rad2deg(phi0))
         self.phi = random.uniform(phi0 - deg2rad(45), phi0 + deg2rad(45))  # 将初始化的角度放在初始对准目标的90度范围内
         '''角度处理'''
@@ -342,11 +441,9 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         '''physical parameters'''
 
         '''RL_BASE'''
-        self.initial_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
-                              (self.terminal[1] - self.y) / self.y_size * self.staticGain,
-                              self.x / self.x_size * self.staticGain,
-                              self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi]
+        self.initial_state = self.get_points_state() + [self.x / self.x_size * self.staticGain,
+                                                        self.y / self.y_size * self.staticGain,
+                                                        self.phi, self.dx, self.dy, self.dphi]
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
         self.current_action = self.initial_action.copy()
@@ -365,7 +462,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def saveModel2XML(self, filename='UGV_Forward_Continuous.xml', filepath='../config/'):
+    def saveModel2XML2(self, filename='UGV_Forward_Continuous_Path_Follow.xml', filepath='../config/'):
         rootMsg = {
             'name': 'UGV_Forward_Continuous',
             'author': 'Yefeng YANG',
@@ -413,7 +510,8 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             'time': self.time,
             'x_size': self.x_size,
             'y_size': self.y_size,
-            'miss': self.miss
+            'miss': self.miss,
+            'timeMax': self.timeMax
         }
         imageMsg = {
             'width': self.width,
@@ -437,7 +535,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
                                  nodemsg=imageMsg)
         xml_cfg().XML_Pretty_All(filepath + filename)
 
-    def saveData(self, is2file=False, filename='UGV_Forward_Continuous.csv', filepath=''):
+    def saveData(self, is2file=False, filename='UGV_Forward_Continuous_Path_Follow.csv', filepath=''):
         if is2file:
             data = pd.DataFrame({
                 'x:': self.saveX,
