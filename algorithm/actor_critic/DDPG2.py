@@ -240,14 +240,14 @@ class DDPG2:
 
         '''network'''
         self.actor = ActorNetwork(self.actor_lr,
-                                  self.state_dim_nn1, 64, 64,
-                                  self.state_dim_nn2, 64, 64,
-                                  32,
+                                  self.state_dim_nn1, 128, 128,
+                                  self.state_dim_nn2, 128, 128,
+                                  64,
                                   self.action_dim_nn, name='Actor', chkpt_dir=path)
         self.target_actor = ActorNetwork(self.actor_lr,
-                                         self.state_dim_nn1, 64, 64,
-                                         self.state_dim_nn2, 64, 64,
-                                         32,
+                                         self.state_dim_nn1, 128, 128,
+                                         self.state_dim_nn2, 128, 128,
+                                         64,
                                          self.action_dim_nn, name='Actor', chkpt_dir=path)
 
         self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='Critic', chkpt_dir=path)

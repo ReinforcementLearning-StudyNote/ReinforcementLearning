@@ -286,6 +286,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             r3 = -2
         else:
             r3 = 0
+        r3 = 0
 
         '''4. 其他'''
         r4 = 0
@@ -294,7 +295,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         elif self.terminal_flag == 1:  # 转的角度太大了
             r4 = -2
         elif self.terminal_flag == 4:  # 碰撞障碍物
-            r4 = -10
+            r4 = -100
         '''4. 其他'''
 
         self.reward = r1 + r2 + r3 + r4
