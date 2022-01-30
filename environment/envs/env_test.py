@@ -117,16 +117,16 @@ def test_ugv_forward_path_following():
                                              terminal=[4.5, 4.5])
     num = 0
     while num < 30:
-        # env.show_dynamic_imagePathFollow(isWait=True)
+        env.show_dynamic_imagePathFollow(isWait=True)
         # env.reset()
         while not env.is_terminal:
-            # print(env.time)
-            if cv.waitKey(1) == 27:
-                return
-            env.show_dynamic_imagePathFollow(isWait=False)
+            print(env.time)
+            # if cv.waitKey(1) == 27:
+            #     return
+            # env.show_dynamic_imagePathFollow(isWait=False)
             # cap.write(env.save)
-            action = [6 * math.pi, 3 * math.pi]
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            # action = [6 * math.pi, 3 * math.pi]
+            # env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             # print(env.current_state[0 : 4])
             # if env.terminal_flag == 4:
             #     print(env.reward)

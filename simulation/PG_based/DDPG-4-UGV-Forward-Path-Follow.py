@@ -110,10 +110,10 @@ if __name__ == '__main__':
 
     env = UGV_Forward_Continuous_Path_Follow(initPhi=deg2rad(45),
                                              save_cfg=False,
-                                             x_size=5.0,
-                                             y_size=5.0,
+                                             x_size=10.0,
+                                             y_size=10.0,
                                              start=[1.0, 1.0],
-                                             terminal=[4.0, 4.0])
+                                             terminal=[9.0, 9.0])
     '''初始位置，初始角度，目标位置均为随机'''
     agent = DDPG(gamma=0.99,
                  actor_learning_rate=1e-4,
@@ -229,14 +229,15 @@ if __name__ == '__main__':
     if TEST:
         print('TESTing...')
         agent.load_actor_optimal(path='./DDPG-UGV-Forwad-Best/', file='Actor_ddpg')  # './DDPG-UGV-Forward-Temp/'
-        agent.load_actor_optimal(path=optPath, file='DDPG-UGV-Forward-all-random')  # './DDPG-UGV-Forward-Temp/'
+        # agent.load_actor_optimal(path=optPath, file='DDPG-UGV-Forward-all-random')  # './DDPG-UGV-Forward-Temp/'
         # cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
         #                      cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
         #                      120.0,
         #                      (env.width, env.height))
-        simulation_num = 10
+        simulation_num = 100
         successCounter = 0
         timeOutCounter = 0
+        log = []
         for i in range(simulation_num):
             print('==========START==========')
             print('episode = ', i)
@@ -250,6 +251,8 @@ if __name__ == '__main__':
                 env.show_dynamic_imagePathFollow(isWait=False)
                 # cap.write(env.save)
                 env.saveData(is2file=False)
+            cv.imwrite(simulationPath + 'sim_' + str(simulation_num) + '.png', env.image)
+            log.append([env.index + 1, env.sampleNum])      # 成功的采样点数量，一共的采样点数量
             print('===========END===========')
             env.reset_random()
             # env.samplePoints = [env.start, env.terminal]
@@ -259,5 +262,5 @@ if __name__ == '__main__':
                 successCounter += 1
         print('Total:', simulation_num, '  successful:', successCounter, '  timeout:', timeOutCounter)
         print('success rate:', round(successCounter / simulation_num))
-        cv.waitKey(0)
+        # cv.waitKey(0)
         env.saveData(is2file=True, filepath=simulationPath)

@@ -10,6 +10,7 @@ import torch
 import pandas as pd
 import matplotlib.pyplot as plt
 from environment.envs.pathplanning.bezier import Bezier
+import emoji
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -18,18 +19,14 @@ def add(a):
         a[i] += 1
 
 if __name__ == '__main__':
-    # points = np.random.uniform(low=0.3, high=10, size=20).reshape((-1, 2))
-    # # print(points)
-    # bezier = Bezier(points)
-    # a = bezier.Curve()
-    # # bezier.Draw()
-    # print(a)
-    # a = np.linspace(0, 4,5)
-    # b = np.linspace(5, 9, 5)
-    # c = np.array([a, b])
-    # print(a, b)
-    # print(c.T)
-    a = np.linspace(0, 10,11)
-    print(a[0:])
-    # print(np.clip(a, -10, 2))
+    # print(emoji.emojize('Python is :thumbs_up:'))
+    # # Python is 👍
+    # print(emoji.emojize('Python is :thumbsup:', use_aliases=True))
+    # # Python is 👍
+    # print(emoji.demojize('Python is 👍'))
+    # # Python is :thumbs_up:
+    # print(emoji.emojize("Python is fun :red_heart:"))
+    # # Python is fun ❤
+    # print(emoji.emojize("Python is fun :red_heart:", variant="emoji_type"))
+    print(emoji.emojize('Lanxin~ Happy New Year~ :green_heart:', variant="emoji_type"))
     pass

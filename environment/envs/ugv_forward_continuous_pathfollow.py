@@ -25,15 +25,16 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         super(UGV_Forward_Continuous_Path_Follow, self).__init__(initPhi, save_cfg, x_size, y_size, start, terminal)
         '''physical parameters'''
         # 继承自UGV
-        self.miss = self.rBody  # 因为是跟踪路径，所以可以适当大一些
+        self.miss = self.rBody * 2     # 因为是跟踪路径，所以可以适当大一些
         self.refPoints = self.points_generator()  # 贝塞尔曲线参考点
         self.bezier = Bezier(self.refPoints)  # 贝塞尔曲线
         self.curve = self.bezier.Curve()
-        self.samplePoints = self.get_sample_auto(threshold=1.0)
+        self.samplePoints = self.get_sample_auto(threshold=1.5)
         self.sampleNum = len(self.samplePoints)  # 采样点数量
+        self.successfulFlag = [False for _ in range(self.sampleNum)]
         self.lookForward = 1  # 一共将lookForward这么多点的状态加入state中
         self.index = 0  # 当前点的索引
-        self.timeMax = 8.0
+        self.timeMax = 15.0
 
         self.trajectory = [self.start]
         self.traj_length = 0
@@ -103,13 +104,15 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
     '''DRAW'''
 
     def draw_bezier_curve(self):
-        for pt in self.refPoints[1:-1]:
-            cv.circle(self.image, self.dis2pixel(pt), 5, Color().DarkGreen, -1)
+        # for pt in self.refPoints[1:-1]:
+        #     cv.circle(self.image, self.dis2pixel(pt), 5, Color().DarkGreen, -1)
         for i in range(len(self.curve) - 1):
             cv.line(self.image, self.dis2pixel(self.curve[i]), self.dis2pixel(self.curve[i + 1]), Color().Blue, 2)
-        for pt in self.samplePoints[1: -1]:
-            cv.circle(self.image, self.dis2pixel(pt), 3, Color().Red, -1)
-
+        for i in range(self.sampleNum):
+            if self.successfulFlag[i]:
+                cv.circle(self.image, self.dis2pixel(self.samplePoints[i]), 5, Color().Red, -1)
+            else:
+                cv.circle(self.image, self.dis2pixel(self.samplePoints[i]), 5, Color().DarkGreen, -1)
     def draw_car_with_traj(self, withTraj=False):
         cv.circle(self.image, self.dis2pixel([self.x, self.y]), self.length2pixel(self.rBody), Color().Orange, -1)  # 主体
         '''两个车轮'''
@@ -191,10 +194,14 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         bezier_nodes[-1] = self.terminal
         return bezier_nodes
 
-    def get_sample_auto(self, threshold=0.4):
+    def get_sample_auto(self, threshold):
+        if dis_two_points(self.start, self.terminal) <= 2 * threshold:
+            return [self.start,
+                    [(self.start[0] + self.terminal[0]) / 2, (self.start[1] + self.terminal[1]) / 2],
+                    self.terminal]
         samples = [self.start]
         index = 0
-        for pt in self.curve[1:-1]:
+        for pt in self.curve[1 : -1]:
             if dis_two_points(samples[index], pt) > threshold:  # 增加点
                 samples.append(pt)
                 index += 1
@@ -228,11 +235,17 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             if self.index == len(self.samplePoints) - 1:
                 print('...成功，回合结束...')
                 self.terminal_flag = 5
+                self.successfulFlag[self.index] = True
                 return True
             else:
                 print('...第' + str(self.index) + '个目标成功...')
+                self.successfulFlag[self.index] = True
                 self.terminal_flag = 3
                 self.index += 1
+                self.dx = 0.        # 每到达一个节点，就按照第一阶段学习的结果初始化
+                self.dy = 0.
+                self.dphi = 0.
+                print('...重置速度，角速度...')
                 return False
         if self.is_out():
             # print('...out...')
@@ -378,6 +391,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.traj_length = 0
         self.traj_index = 0
         self.index = 0
+        self.successfulFlag = [False for _ in range(self.sampleNum)]
         '''physical parameters'''
 
         '''RL_BASE'''
@@ -415,10 +429,11 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.refPoints = self.points_generator()  # 贝塞尔曲线参考点
         self.bezier = Bezier(self.refPoints)  # 贝塞尔曲线
         self.curve = self.bezier.Curve()
-        self.samplePoints = self.get_sample_auto(threshold=self.L + 0.1)
+        self.samplePoints = self.get_sample_auto(threshold=1.5)
         self.trajectory = [self.start]
         self.traj_length = 0
         self.traj_index = 0
+        self.successfulFlag = [False for _ in range(self.sampleNum)]
 
         phi0 = cal_vector_rad([self.samplePoints[1][0] - self.x, self.samplePoints[1][1] - self.y], [1, 0]) * np.sign(self.samplePoints[1][1] - self.y)
         # print(rad2deg(phi0))
