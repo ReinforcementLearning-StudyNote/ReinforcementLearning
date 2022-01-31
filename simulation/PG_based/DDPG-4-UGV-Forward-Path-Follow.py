@@ -199,7 +199,7 @@ if __name__ == '__main__':
             agent.memory.get_reward_resort(per=10)
             # cv.destroyAllWindows()
             '''跳出循环代表回合结束'''
-            if env.terminal_flag == 3:
+            if env.terminal_flag == 5:
                 successCounter += 1
             if env.terminal_flag == 2:
                 timeOutCounter += 1
@@ -234,7 +234,7 @@ if __name__ == '__main__':
         #                      cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
         #                      120.0,
         #                      (env.width, env.height))
-        simulation_num = 100
+        simulation_num = 500
         successCounter = 0
         timeOutCounter = 0
         log = []
@@ -251,15 +251,15 @@ if __name__ == '__main__':
                 env.show_dynamic_imagePathFollow(isWait=False)
                 # cap.write(env.save)
                 env.saveData(is2file=False)
-            cv.imwrite(simulationPath + 'sim_' + str(simulation_num) + '.png', env.image)
+            cv.imwrite(simulationPath + 'sim_' + str(i) + '.png', env.image)
             log.append([env.index + 1, env.sampleNum])      # 成功的采样点数量，一共的采样点数量
             print('===========END===========')
             env.reset_random()
             # env.samplePoints = [env.start, env.terminal]
+            if env.terminal_flag == 5:
+                successCounter += 1
             if env.terminal_flag == 2:
                 timeOutCounter += 1
-            if env.terminal_flag == 3:
-                successCounter += 1
         print('Total:', simulation_num, '  successful:', successCounter, '  timeout:', timeOutCounter)
         print('success rate:', round(successCounter / simulation_num))
         # cv.waitKey(0)

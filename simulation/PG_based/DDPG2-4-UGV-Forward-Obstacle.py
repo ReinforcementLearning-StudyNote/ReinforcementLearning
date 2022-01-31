@@ -95,9 +95,9 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                # if (env.reward >= -3) or (env.reward == -10):
+                if (env.reward >= -3) or (env.reward <= -10):
                 # if env.reward >= -3.5:
-                if True:
+                # if True:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -124,8 +124,8 @@ if __name__ == '__main__':
                   critic_learning_rate=1e-3,
                   actor_soft_update=1e-2,
                   critic_soft_update=1e-2,
-                  memory_capacity=60000,
-                  batch_size=512,
+                  memory_capacity=100000,
+                  batch_size=1024,
                   modelFileXML=cfgPath + cfgFile,
                   path=simulationPath)
 
@@ -158,7 +158,7 @@ if __name__ == '__main__':
         cv.waitKey(0)
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
-        MAX_EPISODE = 8000
+        MAX_EPISODE = 15000
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=is_storage_only_success)
@@ -202,9 +202,9 @@ if __name__ == '__main__':
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                    # if (env.reward >= -3) or (env.reward == -10):
+                    if (env.reward >= -3) or (env.reward <= -10):
                     # if env.reward >= -3.5:
-                    if True:
+                    # if True:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.saveData_Step_Reward(globalStep, env.reward, False, 'StepReward.csv', simulationPath)
                 agent.learn(is_reward_ascent=False)

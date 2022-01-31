@@ -24,6 +24,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         """
         super(UGV_Forward_Obstacle_Continuous, self).__init__(initPhi, save_cfg, x_size, y_size, start, terminal)
         '''physical parameters'''
+        self.dt = 0.1       # 10Hz
         # 基本参数都继承了UGV
         self.laserDis = 2.0  # 雷达探测半径
         self.laserBlind = 0.0  # 雷达盲区
@@ -286,7 +287,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             r3 = -2
         else:
             r3 = 0
-        r3 = 0
+        # r3 = 0
 
         '''4. 其他'''
         r4 = 0
@@ -295,7 +296,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         elif self.terminal_flag == 1:  # 转的角度太大了
             r4 = -2
         elif self.terminal_flag == 4:  # 碰撞障碍物
-            r4 = -100
+            r4 = -20
         '''4. 其他'''
 
         self.reward = r1 + r2 + r3 + r4

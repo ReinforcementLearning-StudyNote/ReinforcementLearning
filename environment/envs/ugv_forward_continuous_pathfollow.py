@@ -108,7 +108,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         #     cv.circle(self.image, self.dis2pixel(pt), 5, Color().DarkGreen, -1)
         for i in range(len(self.curve) - 1):
             cv.line(self.image, self.dis2pixel(self.curve[i]), self.dis2pixel(self.curve[i + 1]), Color().Blue, 2)
-        for i in range(self.sampleNum):
+        for i in range(self.sampleNum - 1):
             if self.successfulFlag[i]:
                 cv.circle(self.image, self.dis2pixel(self.samplePoints[i]), 5, Color().Red, -1)
             else:
@@ -195,7 +195,9 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         return bezier_nodes
 
     def get_sample_auto(self, threshold):
-        if dis_two_points(self.start, self.terminal) <= 2 * threshold:
+        if dis_two_points(self.start, self.terminal) <= 1.5 * threshold:
+            return [self.start, self.terminal]
+        if 1.5 * threshold < dis_two_points(self.start, self.terminal) <= 2 * threshold:
             return [self.start,
                     [(self.start[0] + self.terminal[0]) / 2, (self.start[1] + self.terminal[1]) / 2],
                     self.terminal]
@@ -430,6 +432,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.bezier = Bezier(self.refPoints)  # 贝塞尔曲线
         self.curve = self.bezier.Curve()
         self.samplePoints = self.get_sample_auto(threshold=1.5)
+        self.sampleNum = len(self.samplePoints)  # 采样点数量
         self.trajectory = [self.start]
         self.traj_length = 0
         self.traj_index = 0
