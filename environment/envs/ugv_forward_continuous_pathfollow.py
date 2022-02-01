@@ -248,10 +248,10 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
                 self.successfulFlag[self.index] = True
                 self.terminal_flag = 3              # sub-terminal successful
                 self.index += 1
-                self.dx = 0.  # 每到达一个节点，就按照第一阶段学习的结果初始化
-                self.dy = 0.
-                self.dphi = 0.
-                print('...重置速度，角速度...')
+                # self.dx = 0.  # 每到达一个节点，就按照第一阶段学习的结果初始化
+                # self.dy = 0.
+                # self.dphi = 0.
+                # print('...重置速度，角速度...')
                 return False
         if self.is_out():
             # print('...out...')
