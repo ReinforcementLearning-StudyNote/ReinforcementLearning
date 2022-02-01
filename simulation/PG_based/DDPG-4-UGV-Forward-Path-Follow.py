@@ -126,7 +126,7 @@ if __name__ == '__main__':
                  path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = False  # 直接训练
+    TRAIN = True  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -138,10 +138,10 @@ if __name__ == '__main__':
                                           is_only_success=is_storage_only_success)
         # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
         '''生成初始数据之后要再次初始化网络'''
-        agent.actor.initialization()
-        agent.target_actor.initialization()
-        agent.critic.initialization()
-        agent.target_critic.initialization()
+        # agent.actor.initialization()
+        # agent.target_actor.initialization()
+        # agent.critic.initialization()
+        # agent.target_critic.initialization()
         '''生成初始数据之后要再次初始化网络'''
 
     if TRAIN:

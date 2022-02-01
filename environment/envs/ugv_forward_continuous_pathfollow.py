@@ -32,8 +32,8 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.samplePoints = self.get_sample_auto(threshold=1.5)
         self.sampleNum = len(self.samplePoints)  # 采样点数量
         self.successfulFlag = [False for _ in range(self.sampleNum)]
-        self.lookForward = 1  # 一共将lookForward这么多点的状态加入state中
-        self.index = 0  # 当前点的索引
+        self.lookForward = 2  # 一共将lookForward这么多点的状态加入state中
+        self.index = 1          # 当前点的索引，0是start
         self.timeMax = 15.0
 
         self.trajectory = [self.start]
@@ -147,6 +147,8 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.draw_car_with_traj(withTraj=True)
         self.draw_terminal()
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
+        cv.putText(self.image,
+                   'dis: ' + str(round(dis_two_points([self.x, self.y], self.terminal), 3)), (120, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
         self.save = self.image.copy()
@@ -159,7 +161,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         pts = []
         # print(self.samplePoints)
         for i in range(self.lookForward):
-            _index = min(self.sampleNum, self.index + i)
+            _index = min(self.sampleNum - 1, self.index + i)
             node = self.samplePoints[_index]
             pts.append((node[0] - self.x) / self.x_size * self.staticGain)
             pts.append((node[1] - self.y) / self.y_size * self.staticGain)
@@ -256,33 +258,57 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         return False
 
     def get_reward(self, param=None):
-        cex = self.current_state[0] * self.x_size / self.staticGain
-        cey = self.current_state[1] * self.y_size / self.staticGain
-        nex = self.next_state[0] * self.x_size / self.staticGain
-        ney = self.next_state[1] * self.y_size / self.staticGain
-        currentError = math.sqrt(cex ** 2 + cey ** 2)
-        nextError = math.sqrt(nex ** 2 + ney ** 2)
+        # cex = self.current_state[0] * self.x_size / self.staticGain
+        # cey = self.current_state[1] * self.y_size / self.staticGain
+        # nex = self.next_state[0] * self.x_size / self.staticGain
+        # ney = self.next_state[1] * self.y_size / self.staticGain
+        # currentError = math.sqrt(cex ** 2 + cey ** 2)
+        # nextError = math.sqrt(nex ** 2 + ney ** 2)
+        cex, cey, nex, ney, currentError, nextError = [], [], [], [], [], []
+        for i in range(self.lookForward):
+            cex.append(self.current_state[2 * i] * self.x_size / self.staticGain)
+            cey.append(self.current_state[2 * i + 1] * self.y_size / self.staticGain)
+            nex.append(self.next_state[2 * i] * self.x_size / self.staticGain)
+            ney.append(self.next_state[2 * i + 1] * self.y_size / self.staticGain)
+            currentError.append(math.sqrt(cex[i] ** 2 + cey[i] ** 2))                   # 当前时刻距离每一个点的误差
+            nextError.append(math.sqrt(nex[i] ** 2 + ney[i] ** 2))                      # next时刻距离每一个点的误差
 
+        '''r1 是每运行一步的常值惩罚'''
         r1 = -1  # 常值误差，每运行一步，就 -1
+        '''r1 是每运行一步的常值惩罚'''
 
-        if currentError > nextError + 1e-2:
+        '''r2 是位置误差变化的奖励'''
+        if currentError[0] > nextError[0] + 1e-3:
             r2 = 5
-        elif 1e-2 + currentError < nextError:
+        elif 1e-3 + currentError[0] < nextError[0]:
             r2 = -5
         else:
             r2 = 0
+        # print('currentError:', currentError)
+        # print('nextError:', nextError)
+        '''r2 是位置误差变化的奖励'''
 
-        currentTheta = cal_vector_rad([cex, cey], [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
-        nextTheta = cal_vector_rad([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
+        '''r3 是角度误差变化的奖励'''
+        currentPhi = self.current_state[2 * self.lookForward + 2]
+        nextPhi = self.next_state[2 * self.lookForward + 2]
+        if self.index == len(self.samplePoints) - 1:
+            currentThetaError = cal_vector_rad([cex[0], cey[0]], [math.cos(currentPhi), math.sin(currentPhi)])
+            nextThetaError = cal_vector_rad([nex[0], nex[0]], [math.cos(nextPhi), math.sin(nextPhi)])
+        else:
+            currentThetaError = cal_vector_rad([cex[1] - cex[0], cey[1] - cey[0]], [cex[0], cey[0]])
+            nextThetaError = cal_vector_rad([nex[1] - nex[0], ney[1] - ney[0]], [nex[0], ney[0]])
+        # print('currentThetaError: ', rad2deg(currentThetaError))
+        # print('nextThetaError: ', rad2deg(nextThetaError))
         # print(currentTheta, nextTheta)
-        if currentTheta > nextTheta + 1e-2:
+        if currentThetaError > nextThetaError + 1e-2:
             r3 = 2
-        elif 1e-3 + currentTheta < nextTheta:
+        elif 1e-3 + currentThetaError < nextThetaError:
             r3 = -2
         else:
             r3 = 0
+        '''r3 是角度误差变化的奖励'''
 
-        '''4. 其他'''
+        '''4. 其他'''     # 0-正常 1-转角太大 2-超时 3-子目标成功 4-碰撞障碍物 5-最终成功
         if self.terminal_flag == 3:
             r4 = 50
         elif self.terminal_flag == 5:
@@ -292,7 +318,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         else:
             r4 = 0
         '''4. 其他'''
-        # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
+        print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
         self.reward = r1 + r2 + r3 + r4
 
     def f(self, _phi):
@@ -328,7 +354,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.dphi = self.r / self.rBody * (self.wRight - self.wLeft)
         self.time += self.dt
         '''动力学系统状态更新'''
-        self.delta_phi_absolute += math.fabs(self.phi - self.current_state[4])
+        self.delta_phi_absolute += math.fabs(self.phi - self.current_state[2 * self.lookForward + 2])
         '''角度处理'''
         if self.phi > math.pi:
             self.phi -= 2 * math.pi
@@ -392,7 +418,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.trajectory = [self.start]
         self.traj_length = 0
         self.traj_index = 0
-        self.index = 0
+        self.index = 1
         self.successfulFlag = [False for _ in range(self.sampleNum)]
         '''physical parameters'''
 
@@ -427,7 +453,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.initX = self.start[0]
         self.initY = self.start[1]
 
-        self.index = 0
+        self.index = 1
         self.refPoints = self.points_generator()  # 贝塞尔曲线参考点
         self.bezier = Bezier(self.refPoints)  # 贝塞尔曲线
         self.curve = self.bezier.Curve()

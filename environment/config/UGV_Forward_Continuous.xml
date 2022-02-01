@@ -1,4 +1,4 @@
-<Plant name="UGV_Forward_Continuous" author="Yefeng YANG" date="2022.01.17" E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn">
+<Plant E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn" author="Yefeng YANG" date="2022.01.17" name="UGV_Forward_Continuous">
 	<RL_Base>
 		<state_dim>8</state_dim>
 		<state_num>[inf, inf, inf, inf, inf, inf, inf, inf]</state_num>
@@ -6,9 +6,9 @@
 		<state_space>[None, None, None, None, None, None, None, None]</state_space>
 		<state_range>[[-4, 4], [-4, 4], [0, 4], [0, 4], [-3.141592653589793, 3.141592653589793], [-1.0, 1.0], [-1.0, 1.0], [-0.6666666666666667, 0.6666666666666667]]</state_range>
 		<isStateContinuous>[True, True, True, True, True, True, True, True]</isStateContinuous>
-		<initial_state>[3.2, 3.2, 0.4, 0.4, 0.7853981633974483, 0, 0, 0]</initial_state>
-		<current_state>[3.2, 3.2, 0.4, 0.4, 0.7853981633974483, 0, 0, 0]</current_state>
-		<next_state>[3.2, 3.2, 0.4, 0.4, 0.7853981633974483, 0, 0, 0]</next_state>
+		<initial_state>[2.4, 2.4, 1.4, 1.4, 1.5707963267948966, 0, 0, 0]</initial_state>
+		<current_state>[2.4, 2.4, 1.4, 1.4, 1.5707963267948966, 0, 0, 0]</current_state>
+		<next_state>[2.4, 2.4, 1.4, 1.4, 1.5707963267948966, 0, 0, 0]</next_state>
 		<action_dim>2</action_dim>
 		<action_step>[None, None]</action_step>
 		<action_range>[[0, 10], [0, 10]]</action_range>
@@ -20,12 +20,12 @@
 		<is_terminal>False</is_terminal>
 	</RL_Base>
 	<Physical>
-		<initX>0.5</initX>
-		<initY>0.5</initY>
-		<initPhi>0.7853981633974483</initPhi>
-		<x>0.5</x>
-		<y>0.5</y>
-		<phi>0.7853981633974483</phi>
+		<initX>3.5</initX>
+		<initY>3.5</initY>
+		<initPhi>1.5707963267948966</initPhi>
+		<x>3.5</x>
+		<y>3.5</y>
+		<phi>1.5707963267948966</phi>
 		<dx>0</dx>
 		<dy>0</dy>
 		<dphi>0</dphi>
@@ -38,9 +38,9 @@
 		<L>0.3</L>
 		<dt>0.02</dt>
 		<time>0.0</time>
-		<x_size>5.0</x_size>
-		<y_size>5.0</y_size>
-		<miss>0.2</miss>
+		<x_size>10.0</x_size>
+		<y_size>10.0</y_size>
+		<miss>0.3</miss>
 	</Physical>
 	<Image>
 		<width>500</width>
@@ -48,6 +48,6 @@
 		<name4image>TwoWheelUGV</name4image>
 		<x_offset>25.0</x_offset>
 		<y_offset>25.0</y_offset>
-		<pixel_per_meter>90.0</pixel_per_meter>
+		<pixel_per_meter>45.0</pixel_per_meter>
 	</Image>
 </Plant>

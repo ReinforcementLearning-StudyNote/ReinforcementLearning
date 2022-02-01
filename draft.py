@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from environment.envs.pathplanning.bezier import Bezier
 import emoji
+
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -19,14 +20,7 @@ def add(a):
         a[i] += 1
 
 if __name__ == '__main__':
-    # print(emoji.emojize('Python is :thumbs_up:'))
-    # # Python is 👍
-    # print(emoji.emojize('Python is :thumbsup:', use_aliases=True))
-    # # Python is 👍
-    # print(emoji.demojize('Python is 👍'))
-    # # Python is :thumbs_up:
-    # print(emoji.emojize("Python is fun :red_heart:"))
-    # # Python is fun ❤
-    # print(emoji.emojize("Python is fun :red_heart:", variant="emoji_type"))
-    print(emoji.emojize('Lanxin~ Happy New Year~ :green_heart:', variant="emoji_type"))
+    a = [0, 1, 2, 3, 4, 5, 6]
+    for i in range(7):
+        print(a[i], a[6-i])
     pass
