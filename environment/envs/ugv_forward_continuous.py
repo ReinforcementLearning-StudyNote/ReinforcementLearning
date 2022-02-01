@@ -42,9 +42,10 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.L = 2 * self.rBody  # 车主体直径
         self.dt = 0.02  # 50Hz
         self.time = 0.  # time
-        self.miss = self.rBody + 0.05
+        self.miss = 2 * self.rBody
         self.staticGain = 4
         self.delta_phi_absolute = 0.
+        self.timeMax = 10.0
         '''physical parameters'''
 
         '''rl_base'''
@@ -124,7 +125,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
     def draw_terminal(self):
         if self.terminal is not None and self.terminal != []:
-            cv.circle(self.image, self.dis2pixel(self.terminal), self.length2pixel(self.rBody), Color().random_color_by_BGR(), 2)
+            cv.circle(self.image, self.dis2pixel(self.terminal), self.length2pixel(self.miss), Color().random_color_by_BGR(), 2)
 
     def draw_region_grid(self, xNUm: int = 3, yNum: int = 3):
         if xNUm <= 1 or yNum <= 1:
@@ -148,7 +149,9 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.map_draw_boundary()
         self.draw_car()
         self.draw_terminal()
-        cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
+        cv.putText(self.image, 'time: ' + str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
+        cv.putText(self.image,
+                   'dis: ' + str(round(dis_two_points([self.x, self.y], self.terminal), 3)), (120, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
         self.save = self.image.copy()
@@ -164,7 +167,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
     def is_Terminal(self, param=None):
         self.terminal_flag = 0
-        if self.time > 8.0:
+        if self.time > self.timeMax:
             print('...time out...')
             self.terminal_flag = 2
             return True
@@ -331,6 +334,8 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         '''physical parameters'''
         self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
         self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
+        # self.set_start([random.uniform(self.x_size / 3, self.x_size - self.rBody), random.uniform(2 * self.y_size / 3, self.y_size - self.rBody)])
+        # self.set_terminal([random.uniform(self.x_size / 3, self.x_size - self.rBody), random.uniform(2 * self.y_size / 3, self.y_size - self.rBody)])
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]

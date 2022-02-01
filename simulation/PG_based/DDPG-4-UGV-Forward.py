@@ -109,8 +109,8 @@ if __name__ == '__main__':
 
     env = UGV_Forward_Continuous(initPhi=deg2rad(0),
                                  save_cfg=False,
-                                 x_size=5.0,
-                                 y_size=5.0,
+                                 x_size=10.0,
+                                 y_size=10.0,
                                  start=[2.0, 2.0],
                                  terminal=[4.0, 4.0])
     '''初始位置，初始角度，目标位置均为随机'''
@@ -125,8 +125,8 @@ if __name__ == '__main__':
                  path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
-    RETRAIN = True  # 基于之前的训练结果重新训练
+    TRAIN = False  # 直接训练
+    RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
 
