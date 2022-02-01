@@ -2,8 +2,8 @@ import numpy as np
 
 from common.common import *
 from environment.envs import *
-from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous as UGV
 from environment.envs.pathplanning.bezier import Bezier
+from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous as UGV
 
 
 class UGV_Forward_Continuous_Path_Follow(UGV):
@@ -25,7 +25,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         super(UGV_Forward_Continuous_Path_Follow, self).__init__(initPhi, save_cfg, x_size, y_size, start, terminal)
         '''physical parameters'''
         # 继承自UGV
-        self.miss = self.rBody * 2     # 因为是跟踪路径，所以可以适当大一些
+        self.miss = self.rBody * 2  # 因为是跟踪路径，所以可以适当大一些
         self.refPoints = self.points_generator()  # 贝塞尔曲线参考点
         self.bezier = Bezier(self.refPoints)  # 贝塞尔曲线
         self.curve = self.bezier.Curve()
@@ -33,7 +33,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.sampleNum = len(self.samplePoints)  # 采样点数量
         self.successfulFlag = [False for _ in range(self.sampleNum)]
         self.lookForward = 2  # 一共将lookForward这么多点的状态加入state中
-        self.index = 1          # 当前点的索引，0是start
+        self.index = 1  # 当前点的索引，0是start
         self.timeMax = 15.0
 
         self.trajectory = [self.start]
@@ -41,6 +41,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.trajMax = 50
         self.traj_per = 5
         self.traj_index = 0
+        self.randomInitFLag = 0
         '''physical parameters'''
 
         '''rl_base'''
@@ -80,7 +81,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
 
         self.reward = 0.0
         self.is_terminal = False
-        self.terminal_flag = 0      # 0-正常 1-出界 2-超时 3-子目标成功 4-碰撞障碍物 5-最终成功
+        self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-子目标成功 4-碰撞障碍物 5-最终成功
         '''rl_base'''
 
         '''visualization_opencv'''
@@ -113,6 +114,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
                 cv.circle(self.image, self.dis2pixel(self.samplePoints[i]), 5, Color().Red, -1)
             else:
                 cv.circle(self.image, self.dis2pixel(self.samplePoints[i]), 5, Color().DarkGreen, -1)
+
     def draw_car_with_traj(self, withTraj=False):
         cv.circle(self.image, self.dis2pixel([self.x, self.y]), self.length2pixel(self.rBody), Color().Orange, -1)  # 主体
         '''两个车轮'''
@@ -205,7 +207,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
                     self.terminal]
         samples = [self.start]
         index = 0
-        for pt in self.curve[1 : -1]:
+        for pt in self.curve[1: -1]:
             if dis_two_points(samples[index], pt) > threshold:  # 增加点
                 samples.append(pt)
                 index += 1
@@ -244,9 +246,9 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             else:
                 print('...第' + str(self.index) + '个目标成功...')
                 self.successfulFlag[self.index] = True
-                self.terminal_flag = 3
+                self.terminal_flag = 3              # sub-terminal successful
                 self.index += 1
-                self.dx = 0.        # 每到达一个节点，就按照第一阶段学习的结果初始化
+                self.dx = 0.  # 每到达一个节点，就按照第一阶段学习的结果初始化
                 self.dy = 0.
                 self.dphi = 0.
                 print('...重置速度，角速度...')
@@ -270,8 +272,8 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             cey.append(self.current_state[2 * i + 1] * self.y_size / self.staticGain)
             nex.append(self.next_state[2 * i] * self.x_size / self.staticGain)
             ney.append(self.next_state[2 * i + 1] * self.y_size / self.staticGain)
-            currentError.append(math.sqrt(cex[i] ** 2 + cey[i] ** 2))                   # 当前时刻距离每一个点的误差
-            nextError.append(math.sqrt(nex[i] ** 2 + ney[i] ** 2))                      # next时刻距离每一个点的误差
+            currentError.append(math.sqrt(cex[i] ** 2 + cey[i] ** 2))  # 当前时刻距离每一个点的误差
+            nextError.append(math.sqrt(nex[i] ** 2 + ney[i] ** 2))  # next时刻距离每一个点的误差
 
         '''r1 是每运行一步的常值惩罚'''
         r1 = -1  # 常值误差，每运行一步，就 -1
@@ -282,10 +284,12 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             r2 = 5
         elif 1e-3 + currentError[0] < nextError[0]:
             r2 = -5
+            # if self.index == self.sampleNum - 1:
+            # print(currentError[0], nextError[0])
+            if self.terminal_flag != 3:
+                self.is_terminal = True       # TODO 直接终止
         else:
             r2 = 0
-        # print('currentError:', currentError)
-        # print('nextError:', nextError)
         '''r2 是位置误差变化的奖励'''
 
         '''r3 是角度误差变化的奖励'''
@@ -297,9 +301,6 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         else:
             currentThetaError = cal_vector_rad([cex[1] - cex[0], cey[1] - cey[0]], [cex[0], cey[0]])
             nextThetaError = cal_vector_rad([nex[1] - nex[0], ney[1] - ney[0]], [nex[0], ney[0]])
-        # print('currentThetaError: ', rad2deg(currentThetaError))
-        # print('nextThetaError: ', rad2deg(nextThetaError))
-        # print(currentTheta, nextTheta)
         if currentThetaError > nextThetaError + 1e-2:
             r3 = 2
         elif 1e-3 + currentThetaError < nextThetaError:
@@ -308,7 +309,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             r3 = 0
         '''r3 是角度误差变化的奖励'''
 
-        '''4. 其他'''     # 0-正常 1-转角太大 2-超时 3-子目标成功 4-碰撞障碍物 5-最终成功
+        '''4. 其他'''  # 0-正常 1-转角太大 2-超时 3-子目标成功 4-碰撞障碍物 5-最终成功
         if self.terminal_flag == 3:
             r4 = 50
         elif self.terminal_flag == 5:
@@ -318,7 +319,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         else:
             r4 = 0
         '''4. 其他'''
-        print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
+        # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
         self.reward = r1 + r2 + r3 + r4
 
     def f(self, _phi):
@@ -361,7 +362,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         if self.phi < -math.pi:
             self.phi += 2 * math.pi
         '''角度处理'''
-        self.is_terminal = self.is_Terminal()           # 负责判断回合是否结束，改变标志位，改变当前子目标
+        self.is_terminal = self.is_Terminal()  # 负责判断回合是否结束，改变标志位，改变当前子目标
         '''出界处理'''
         if self.x + self.rBody > self.x_size:  # Xout
             self.x = self.x_size - self.rBody
@@ -441,13 +442,29 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def reset_random(self):
+    def reset_random(self, uniform=False):
         """
         :return:
         """
         '''physical parameters'''
-        self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
+        if not uniform:
+            self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
+            self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
+        else:
+            self.randomInitFLag = self.randomInitFLag % 81
+            start = self.randomInitFLag % 9         # start的区域编号
+            terminal = self.randomInitFLag // 9      # terminal的区域编号
+            stepX = self.x_size / 3
+            stepY = self.y_size / 3
+            s_X = [stepX * start % 3, stepX * (start % 3 + 1)]
+            s_Y = [stepY * start // 3, stepY * (start // 3 + 1)]
+            t_X = [stepX * terminal % 3, stepX * (terminal % 3 + 1)]
+            t_Y = [stepY * terminal % 3, stepY * (terminal % 3 + 1)]
+            self.randomInitFLag += 1
+            self.set_start([random.uniform(s_X[0], s_X[1]), random.uniform(s_Y[0], s_Y[1])])
+            self.set_terminal([random.uniform(t_X[0], t_X[1]), random.uniform(t_Y[0], t_Y[1])])
+            self.start_clip(self.rBody, self.x_size - self.rBody)
+            self.terminal_clip(self.rBody, self.y_size - self.rBody)
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]

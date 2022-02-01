@@ -26,7 +26,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random(uniform=False) if randomEnv else env.reset()
+        env.reset_random(uniform=True) if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -70,7 +70,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random(uniform=False) if randomEnv else env.reset()
+        env.reset_random(uniform=True) if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -120,8 +120,8 @@ if __name__ == '__main__':
                  critic_learning_rate=1e-3,
                  actor_soft_update=1e-2,
                  critic_soft_update=1e-2,
-                 memory_capacity=60000,       # 60000
-                 batch_size=512,        # 512
+                 memory_capacity=60000,
+                 batch_size=512,
                  modelFileXML=cfgPath + cfgFile,
                  path=simulationPath)
 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
             # env.reset()
             print('=========START=========')
             print('Episode:', agent.episode)
-            env.reset_random(uniform=False)
+            env.reset_random(uniform=True)
             sumr = 0
             new_state.clear()
             new_action.clear()

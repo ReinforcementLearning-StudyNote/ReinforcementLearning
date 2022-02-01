@@ -109,7 +109,7 @@ def test_ugv_forward_obstacles_continuous():
 # UGV Forward Path Following Test
 def test_ugv_forward_path_following():
     from environment.envs.ugv_forward_continuous_pathfollow import UGV_Forward_Continuous_Path_Follow
-    env = UGV_Forward_Continuous_Path_Follow(initPhi=deg2rad(90),
+    env = UGV_Forward_Continuous_Path_Follow(initPhi=deg2rad(45),
                                              save_cfg=True,
                                              x_size=10.0,
                                              y_size=10.0,
@@ -129,10 +129,10 @@ def test_ugv_forward_path_following():
                 return
             env.show_dynamic_imagePathFollow(isWait=True)
             # cap.write(env.save)
-            action = [10, 8]
+            action = [10, 5]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             # print(env.current_state)
-            print('总奖励', env.reward)
+            # print('总奖励', env.reward)
         num += 1
         # env.reset_random()
 

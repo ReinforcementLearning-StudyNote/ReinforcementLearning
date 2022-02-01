@@ -45,7 +45,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.miss = 2 * self.rBody
         self.staticGain = 4
         self.delta_phi_absolute = 0.
-        self.timeMax = 10.0
+        self.timeMax = 15.0
         '''physical parameters'''
 
         '''rl_base'''
@@ -334,8 +334,6 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         '''physical parameters'''
         self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
         self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        # self.set_start([random.uniform(self.x_size / 3, self.x_size - self.rBody), random.uniform(2 * self.y_size / 3, self.y_size - self.rBody)])
-        # self.set_terminal([random.uniform(self.x_size / 3, self.x_size - self.rBody), random.uniform(2 * self.y_size / 3, self.y_size - self.rBody)])
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]

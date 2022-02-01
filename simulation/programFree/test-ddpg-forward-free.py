@@ -47,6 +47,8 @@ if __name__ == '__main__':
     failRatio = []
     for x in range(x_sep * y_sep):          # control the start
         for y in range(x_sep * y_sep):      # control the terminal
+            x = 6
+            y = 2
             successCounter = 0
             failCounter = 0
             xxS = x // x_sep
@@ -87,8 +89,8 @@ if __name__ == '__main__':
                     currentError = dis_two_points([env.x, env.y], env.terminal)
                     env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
                     nextError = dis_two_points([env.x, env.y], env.terminal)
-                    env.show_dynamic_image(isWait=False)
-                    env.saveData(is2file=False)
+                    # env.show_dynamic_image(isWait=False)
+                    # env.saveData(is2file=False)
                     if 1e-2 + currentError < nextError:
                         print('TMD，调头了...失败')
                         env.terminal_flag = 2

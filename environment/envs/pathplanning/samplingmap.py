@@ -57,6 +57,14 @@ class samplingmap(obstacle):
     def set_terminal(self, terminal):
         self.terminal = list(np.around(terminal, 3))
 
+    def start_clip(self, _min, _max):
+        self.start[0] = min(max(self.start[0], _min), _max)
+        self.start[1] = min(max(self.start[1], _min), _max)
+
+    def terminal_clip(self, _min, _max):
+        self.terminal[0] = min(max(self.terminal[0], _min), _max)
+        self.terminal[1] = min(max(self.terminal[1], _min), _max)
+
     def point_is_out(self, point: list) -> bool:
         """
         :brief:         if the robot is out
