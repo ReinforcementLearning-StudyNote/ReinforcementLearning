@@ -95,8 +95,8 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                if (env.reward >= -3) or (env.reward <= -10):
-                # if env.reward >= -3.5:
+                # if (env.reward >= -3) or (env.reward <= -10):
+                if env.reward >= -4.5:
                 # if True:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
@@ -124,8 +124,8 @@ if __name__ == '__main__':
                   critic_learning_rate=1e-3,
                   actor_soft_update=1e-2,
                   critic_soft_update=1e-2,
-                  memory_capacity=100000,
-                  batch_size=1024,
+                  memory_capacity=60000,         # 100000
+                  batch_size=512,      # 1024
                   modelFileXML=cfgPath + cfgFile,
                   path=simulationPath)
 
@@ -142,10 +142,10 @@ if __name__ == '__main__':
                                           is_only_success=is_storage_only_success)
         # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
         '''生成初始数据之后要再次初始化网络'''
-        agent.actor.initialization_default()
-        agent.target_actor.initialization_default()
-        agent.critic.initialization_default()
-        agent.target_critic.initialization_default()
+        # agent.actor.initialization_default()
+        # agent.target_actor.initialization_default()
+        # agent.critic.initialization_default()
+        # agent.target_critic.initialization_default()
         '''生成初始数据之后要再次初始化网络'''
 
     if TRAIN:
@@ -202,13 +202,13 @@ if __name__ == '__main__':
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                    if (env.reward >= -3) or (env.reward <= -10):
-                    # if env.reward >= -3.5:
+                    # if (env.reward >= -3) or (env.reward <= -10):
+                    if env.reward >= -4.5:
                     # if True:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.saveData_Step_Reward(globalStep, env.reward, False, 'StepReward.csv', simulationPath)
                 agent.learn(is_reward_ascent=False)
-            agent.memory.get_reward_resort(per=10)
+            # agent.memory.get_reward_resort(per=10)
             # cv.destroyAllWindows()
             '''跳出循环代表回合结束'''
             if env.terminal_flag == 4:

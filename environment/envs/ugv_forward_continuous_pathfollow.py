@@ -1,3 +1,4 @@
+import cv2 as cv
 import numpy as np
 
 from common.common import *
@@ -32,9 +33,9 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.samplePoints = self.get_sample_auto(threshold=1.5)
         self.sampleNum = len(self.samplePoints)  # 采样点数量
         self.successfulFlag = [False for _ in range(self.sampleNum)]
-        self.lookForward = 2  # 一共将lookForward这么多点的状态加入state中
+        self.lookForward = 1  # 一共将lookForward这么多点的状态加入state中
         self.index = 1  # 当前点的索引，0是start
-        self.timeMax = 15.0
+        self.timeMax = 20.0
 
         self.trajectory = [self.start]
         self.traj_length = 0
@@ -42,6 +43,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.traj_per = 5
         self.traj_index = 0
         self.randomInitFLag = 0
+        self.wMax = 10
         '''physical parameters'''
 
         '''rl_base'''
@@ -140,12 +142,17 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
                 cv.line(self.image, self.dis2pixel(p1), self.dis2pixel(p2), Color().Purple, 2)
                 p1 = p2.copy()
 
+    def draw_unit__direction_vector(self):
+        if self.index < self.sampleNum - 1:
+            cv.line(self.image, self.dis2pixel(self.samplePoints[self.index]), self.dis2pixel(self.samplePoints[self.index+1]), Color().Thistle, 2)
+
     def show_dynamic_imagePathFollow(self, isWait):
         self.image = self.image_temp.copy()
         self.draw_region_grid(xNUm=3, yNum=3)
         self.map_draw_obs()
         self.map_draw_boundary()
         self.draw_bezier_curve()
+        self.draw_unit__direction_vector()
         self.draw_car_with_traj(withTraj=True)
         self.draw_terminal()
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
@@ -185,13 +192,13 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             y = k * x + b
             bias = np.random.uniform(low=-maxd / 3, high=maxd / 3, size=nodeNum)
             xx = x
-            yy = np.clip(y + bias / np.sqrt(k ** 2 + 1) * np.sign(bias), self.L, self.y_size - self.L)
+            yy = np.clip(y + bias / np.sqrt(k ** 2 + 1) * np.sign(bias), 1.0, self.y_size - 1.0)
         else:
             y = np.linspace(self.start[1], self.terminal[1], nodeNum)
             x = (y - b) / k
             bias = np.random.uniform(low=-maxd / 2, high=maxd / 2, size=nodeNum)
             yy = y
-            xx = np.clip(x - bias / k, self.L, self.x_size - self.L)
+            xx = np.clip(x - bias / k, 1.0, self.x_size - 1.0)
         '''根据偏移大的一个采样'''
         bezier_nodes = np.array([xx, yy]).T  # 已经为贝塞尔曲线准备好点
         bezier_nodes[0] = self.start
@@ -244,13 +251,13 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
                 self.successfulFlag[self.index] = True
                 return True
             else:
-                print('...第' + str(self.index) + '个目标成功...')
+                # print('...第' + str(self.index) + '个目标成功...')
                 self.successfulFlag[self.index] = True
                 self.terminal_flag = 3              # sub-terminal successful
                 self.index += 1
                 # self.dx = 0.  # 每到达一个节点，就按照第一阶段学习的结果初始化
                 # self.dy = 0.
-                # self.dphi = 0.
+                self.dphi = 0.
                 # print('...重置速度，角速度...')
                 return False
         if self.is_out():
@@ -286,8 +293,8 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             r2 = -5
             # if self.index == self.sampleNum - 1:
             # print(currentError[0], nextError[0])
-            if self.terminal_flag != 3:
-                self.is_terminal = True       # TODO 直接终止
+            # if self.terminal_flag != 3:
+            #     self.is_terminal = True       # TODO 直接终止
         else:
             r2 = 0
         '''r2 是位置误差变化的奖励'''
@@ -299,11 +306,15 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
             currentThetaError = cal_vector_rad([cex[0], cey[0]], [math.cos(currentPhi), math.sin(currentPhi)])
             nextThetaError = cal_vector_rad([nex[0], nex[0]], [math.cos(nextPhi), math.sin(nextPhi)])
         else:
-            currentThetaError = cal_vector_rad([cex[1] - cex[0], cey[1] - cey[0]], [cex[0], cey[0]])
-            nextThetaError = cal_vector_rad([nex[1] - nex[0], ney[1] - ney[0]], [nex[0], ney[0]])
+            if self.lookForward > 1:
+                currentThetaError = cal_vector_rad([cex[1] - cex[0], cey[1] - cey[0]], [cex[0], cey[0]])
+                nextThetaError = cal_vector_rad([nex[1] - nex[0], ney[1] - ney[0]], [nex[0], ney[0]])
+            else:
+                currentThetaError = cal_vector_rad([cex[0], cey[0]], [math.cos(currentPhi), math.sin(currentPhi)])
+                nextThetaError = cal_vector_rad([nex[0], nex[0]], [math.cos(nextPhi), math.sin(nextPhi)])
         if currentThetaError > nextThetaError + 1e-2:
             r3 = 2
-        elif 1e-3 + currentThetaError < nextThetaError:
+        elif 1e-2 + currentThetaError < nextThetaError:
             r3 = -2
         else:
             r3 = 0
@@ -448,8 +459,10 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         """
         '''physical parameters'''
         if not uniform:
-            self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-            self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
+            self.set_start([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
+            self.set_terminal([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
+            self.start_clip([3 * self.rBody, 3 * self.rBody], [self.x_size - 3 * self.rBody, self.y_size - 3 * self.rBody])
+            self.terminal_clip([3 * self.rBody, 3 * self.rBody], [self.x_size - 3 * self.rBody, self.y_size - 3 * self.rBody])
         else:
             self.randomInitFLag = self.randomInitFLag % 81
             start = self.randomInitFLag % 9         # start的区域编号

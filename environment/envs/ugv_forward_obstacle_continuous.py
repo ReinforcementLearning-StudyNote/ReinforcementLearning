@@ -25,7 +25,10 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         super(UGV_Forward_Obstacle_Continuous, self).__init__(initPhi, save_cfg, x_size, y_size, start, terminal)
         '''physical parameters'''
         self.dt = 0.1       # 10Hz
-        # 基本参数都继承了UGV
+        self.timeMax = 15.0
+        self.staticGain = 2
+        # 基本参数都继承了UGV，以上几个是重写的
+
         self.laserDis = 2.0  # 雷达探测半径
         self.laserBlind = 0.0  # 雷达盲区
         self.laserRange = deg2rad(90)  # 左右各90度，一共180度
@@ -133,14 +136,14 @@ class UGV_Forward_Obstacle_Continuous(UGV):
 
     def is_Terminal(self, param=None):
         self.terminal_flag = 0
-        if self.time > 8.0:
+        if self.time > self.timeMax:
             print('...time out...')
             self.terminal_flag = 2
             return True
         if self.collision_check():
-            print('...collision...')
+            # print('...collision...')
             self.terminal_flag = 4
-            return True
+            return False
         if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
             print('...转的角度太大了...')
             self.terminal_flag = 1
@@ -271,9 +274,9 @@ class UGV_Forward_Obstacle_Continuous(UGV):
 
         r1 = -1  # 常值误差，每运行一步，就 -1
 
-        if currentError > nextError + 1e-2:
+        if currentError > nextError + 1e-3:
             r2 = 5
-        elif 1e-2 + currentError < nextError:
+        elif 1e-3 + currentError < nextError:
             r2 = -5
         else:
             r2 = 0
@@ -283,7 +286,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         # print(currentTheta, nextTheta)
         if currentTheta > nextTheta + 1e-2:
             r3 = 2
-        elif 1e-3 + currentTheta < nextTheta:
+        elif 1e-2 + currentTheta < nextTheta:
             r3 = -2
         else:
             r3 = 0
@@ -296,7 +299,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         elif self.terminal_flag == 1:  # 转的角度太大了
             r4 = -2
         elif self.terminal_flag == 4:  # 碰撞障碍物
-            r4 = -20
+            r4 = -1
         '''4. 其他'''
 
         self.reward = r1 + r2 + r3 + r4
@@ -330,7 +333,19 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.dphi = self.r / self.rBody * (self.wRight - self.wLeft)
         self.time += self.dt
         '''动力学系统状态更新'''
-
+        self.delta_phi_absolute += math.fabs(self.phi - self.current_state[4])
+        '''角度处理'''
+        if self.phi > math.pi:
+            self.phi -= 2 * math.pi
+        if self.phi < -math.pi:
+            self.phi += 2 * math.pi
+        '''角度处理'''
+        self.is_terminal = self.is_Terminal()
+        self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
+                           (self.terminal[1] - self.y) / self.y_size * self.staticGain,
+                           self.x / self.x_size * self.staticGain,
+                           self.y / self.y_size * self.staticGain,
+                           self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
         '''出界处理'''
         if self.x + self.rBody > self.x_size:  # Xout
             self.x = self.x_size - self.rBody
@@ -345,20 +360,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             self.y = self.rBody
             self.dy = 0
         '''出界处理'''
-        self.delta_phi_absolute += math.fabs(self.phi - self.current_state[4])
-        '''角度处理'''
-        if self.phi > math.pi:
-            self.phi -= 2 * math.pi
-        if self.phi < -math.pi:
-            self.phi += 2 * math.pi
-        '''角度处理'''
 
-        self.is_terminal = self.is_Terminal()
-        self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
-                           (self.terminal[1] - self.y) / self.y_size * self.staticGain,
-                           self.x / self.x_size * self.staticGain,
-                           self.y / self.y_size * self.staticGain,
-                           self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
         # self.state_normalization(self.next_state, gain=self.staticGain, index0=0, index1=3)
         self.get_reward()
         self.saveData()

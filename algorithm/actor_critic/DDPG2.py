@@ -83,8 +83,8 @@ class CriticNetWork(nn.Module):
 class ActorNetwork(nn.Module):
     def __init__(self,
                  alpha,
-                 state_dim1, fc1_dims1, fc2_dims1,
-                 state_dim2, fc1_dims2, fc2_dims2,
+                 state_dim1, fc1_dims1, fc2_dims1, fc3_dims1,
+                 state_dim2, fc1_dims2, fc2_dims2, fc3_dims2,
                  fc_combine_dims,
                  action_dim, name, chkpt_dir):
         super(ActorNetwork, self).__init__()
@@ -98,14 +98,20 @@ class ActorNetwork(nn.Module):
         self.batch_norm11 = nn.LayerNorm(fc1_dims1)
         self.linear12 = nn.Linear(fc1_dims1, fc2_dims1)  # 第一部分网络第二层
         self.batch_norm12 = nn.LayerNorm(fc2_dims1)
+        self.linear13 = nn.Linear(fc2_dims1, fc3_dims1)
+        self.batch_norm13 = nn.LayerNorm(fc3_dims1)         # 第一部分网络第三层
 
         self.linear21 = nn.Linear(self.state_dim2, fc1_dims2)  # 第二部分网络第一层
         self.batch_norm21 = nn.LayerNorm(fc1_dims2)
-        self.linear22 = nn.Linear(fc1_dims1, fc2_dims2)  # 第二部分网络第二层
+        self.linear22 = nn.Linear(fc1_dims2, fc2_dims2)  # 第二部分网络第二层
         self.batch_norm22 = nn.LayerNorm(fc2_dims2)
+        self.linear23 = nn.Linear(fc2_dims2, fc3_dims2)
+        self.batch_norm23 = nn.LayerNorm(fc3_dims2)     # 第二部分网络第三层
 
-        self.combine = nn.Linear(fc2_dims1 + fc2_dims2, fc_combine_dims)  # 第三层，合并
-        self.mu = nn.Linear(fc_combine_dims, self.action_dim)  # 第四层，直接输出
+        # self.combine = nn.Linear(fc2_dims1 + fc2_dims2, fc_combine_dims)  # 第三层，合并
+        # self.mu = nn.Linear(fc_combine_dims, self.action_dim)  # 第四层，直接输出
+
+        self.mu = nn.Linear(fc3_dims1 + fc3_dims2, self.action_dim)
 
         # self.initialization()
 
@@ -164,7 +170,11 @@ class ActorNetwork(nn.Module):
 
         x1 = self.linear12(x1)
         x1 = self.batch_norm12(x1)
-        x1 = func.relu(x1)  # 该合并了
+        x1 = func.relu(x1)
+
+        x1 = self.linear13(x1)
+        x1 = self.batch_norm13(x1)
+        x1 = func.relu(x1)              # 该合并了
 
         x2 = self.linear21(state2)
         x2 = self.batch_norm21(x2)
@@ -172,12 +182,16 @@ class ActorNetwork(nn.Module):
 
         x2 = self.linear22(x2)
         x2 = self.batch_norm22(x2)
-        x2 = func.relu(x2)  # 该合并了
+        x2 = func.relu(x2)
+
+        x2 = self.linear23(x2)
+        x2 = self.batch_norm23(x2)
+        x2 = func.relu(x2)              # 该合并了
 
         x = torch.cat((x1, x2)) if x1.dim() == 1 else torch.cat((x1, x2), dim=1)
         # print(x1.size(), x2.size(), x.size())
-        x = self.combine(x)
-        x = func.relu(x)
+        # x = self.combine(x)
+        # x = func.relu(x)
 
         x = torch.tanh(self.mu(x))
         return x
@@ -240,13 +254,13 @@ class DDPG2:
 
         '''network'''
         self.actor = ActorNetwork(self.actor_lr,
-                                  self.state_dim_nn1, 256, 128,
-                                  self.state_dim_nn2, 128, 128,
+                                  self.state_dim_nn1, 256, 128, 64,
+                                  self.state_dim_nn2, 128, 128, 64,
                                   128,
                                   self.action_dim_nn, name='Actor', chkpt_dir=path)
         self.target_actor = ActorNetwork(self.actor_lr,
-                                         self.state_dim_nn1, 256, 128,
-                                         self.state_dim_nn2, 128, 128,
+                                         self.state_dim_nn1, 256, 128, 64,
+                                         self.state_dim_nn2, 128, 128, 64,
                                          128,
                                          self.action_dim_nn, name='TargetActor', chkpt_dir=path)
 

@@ -26,7 +26,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random(uniform=True) if randomEnv else env.reset()
+        env.reset_random(uniform=False) if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -70,7 +70,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random(uniform=True) if randomEnv else env.reset()
+        env.reset_random(uniform=False) if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -120,13 +120,13 @@ if __name__ == '__main__':
                  critic_learning_rate=1e-3,
                  actor_soft_update=1e-2,
                  critic_soft_update=1e-2,
-                 memory_capacity=60000,
-                 batch_size=512,
+                 memory_capacity=60000,       # 60000
+                 batch_size=512,        # 512
                  modelFileXML=cfgPath + cfgFile,
                  path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -163,7 +163,7 @@ if __name__ == '__main__':
             # env.reset()
             print('=========START=========')
             print('Episode:', agent.episode)
-            env.reset_random(uniform=True)
+            env.reset_random(uniform=False)
             sumr = 0
             new_state.clear()
             new_action.clear()
@@ -247,10 +247,16 @@ if __name__ == '__main__':
                 env.current_state = env.next_state.copy()
                 action_from_actor = agent.choose_action(env.current_state, True)
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
+                currentError = dis_two_points([env.x, env.y], env.terminal)
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
+                nextError = dis_two_points([env.x, env.y], env.terminal)
                 env.show_dynamic_imagePathFollow(isWait=False)
                 # cap.write(env.save)
                 env.saveData(is2file=False)
+                # if 1e-2 + currentError < nextError:
+                #     print('TMD，调头了...失败')
+                #     env.terminal_flag = 2
+                #     env.is_terminal = True
             cv.imwrite(simulationPath + 'sim_' + str(i) + '.png', env.image)
             log.append([env.index + 1, env.sampleNum])      # 成功的采样点数量，一共的采样点数量
             print('===========END===========')

@@ -126,7 +126,7 @@ if __name__ == '__main__':
                  path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -234,7 +234,7 @@ if __name__ == '__main__':
         #                      cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
         #                      120.0,
         #                      (env.width, env.height))
-        simulation_num = 500
+        simulation_num = 50
         successCounter = 0
         timeOutCounter = 0
         log = []
@@ -247,10 +247,16 @@ if __name__ == '__main__':
                 env.current_state = env.next_state.copy()
                 action_from_actor = agent.choose_action(env.current_state, True)
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
+                currentError = dis_two_points([env.x, env.y], env.terminal)
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
+                nextError = dis_two_points([env.x, env.y], env.terminal)
                 env.show_dynamic_imagePathFollow(isWait=False)
                 # cap.write(env.save)
                 env.saveData(is2file=False)
+                # if 1e-2 + currentError < nextError:
+                #     print('TMD，调头了...失败')
+                #     env.terminal_flag = 2
+                #     env.is_terminal = True
             cv.imwrite(simulationPath + 'sim_' + str(i) + '.png', env.image)
             log.append([env.index + 1, env.sampleNum])      # 成功的采样点数量，一共的采样点数量
             print('===========END===========')

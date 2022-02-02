@@ -109,10 +109,10 @@ if __name__ == '__main__':
 
     env = UGV_Forward_Continuous(initPhi=deg2rad(0),
                                  save_cfg=False,
-                                 x_size=10.0,
-                                 y_size=10.0,
-                                 start=[2.0, 2.0],
-                                 terminal=[4.0, 4.0])
+                                 x_size=2.0,
+                                 y_size=2.0,
+                                 start=[0.3, 0.3],
+                                 terminal=[0.8, 0.8])
     '''初始位置，初始角度，目标位置均为随机'''
     agent = DDPG(gamma=0.99,
                  actor_learning_rate=1e-4,

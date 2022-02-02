@@ -57,13 +57,13 @@ class samplingmap(obstacle):
     def set_terminal(self, terminal):
         self.terminal = list(np.around(terminal, 3))
 
-    def start_clip(self, _min, _max):
-        self.start[0] = min(max(self.start[0], _min), _max)
-        self.start[1] = min(max(self.start[1], _min), _max)
+    def start_clip(self, _min: list, _max: list):
+        self.start[0] = min(max(self.start[0], _min[0]), _max[0])
+        self.start[1] = min(max(self.start[1], _min[1]), _max[1])
 
-    def terminal_clip(self, _min, _max):
-        self.terminal[0] = min(max(self.terminal[0], _min), _max)
-        self.terminal[1] = min(max(self.terminal[1], _min), _max)
+    def terminal_clip(self, _min: list, _max: list):
+        self.terminal[0] = min(max(self.terminal[0], _min[0]), _max[0])
+        self.terminal[1] = min(max(self.terminal[1], _min[1]), _max[1])
 
     def point_is_out(self, point: list) -> bool:
         """
