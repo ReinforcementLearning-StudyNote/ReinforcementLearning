@@ -1,3 +1,5 @@
+import random
+
 from common.common import *
 from environment.envs import *
 from environment.envs.pathplanning.samplingmap import samplingmap
@@ -45,7 +47,8 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.miss = 2 * self.rBody
         self.staticGain = 4
         self.delta_phi_absolute = 0.
-        self.timeMax = 15.0
+        self.timeMax = 8.0
+        self.randomInitFLag = 0
         '''physical parameters'''
 
         '''rl_base'''
@@ -171,7 +174,8 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             print('...time out...')
             self.terminal_flag = 2
             return True
-        if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
+        # if self.delta_phi_absolute > 2 * math.pi + deg2rad(45) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
+        if self.delta_phi_absolute > 3 * math.pi + deg2rad(45):
             print('...转的角度太大了...')
             self.terminal_flag = 1
             return True
@@ -209,6 +213,9 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             r3 = 2
         elif 1e-3 + currentTheta < nextTheta:
             r3 = -2
+            # if 1e-1 + currentTheta < nextTheta:
+            #     self.terminal_flag = 1
+            #     self.is_terminal = True
         else:
             r3 = 0
 
@@ -265,6 +272,12 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             self.phi += 2 * math.pi
         '''角度处理'''
         self.is_terminal = self.is_Terminal()
+        self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
+                           (self.terminal[1] - self.y) / self.y_size * self.staticGain,
+                           self.x / self.x_size * self.staticGain,
+                           self.y / self.y_size * self.staticGain,
+                           self.phi, self.dx, self.dy, self.dphi]
+        self.get_reward()
         '''出界处理'''
         if self.x + self.rBody > self.x_size:  # Xout
             self.x = self.x_size - self.rBody
@@ -280,12 +293,6 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             self.dy = 0
         '''出界处理'''
 
-        self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
-                           (self.terminal[1] - self.y) / self.y_size * self.staticGain,
-                           self.x / self.x_size * self.staticGain,
-                           self.y / self.y_size * self.staticGain,
-                           self.phi, self.dx, self.dy, self.dphi]
-        self.get_reward()
         self.saveData()
 
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
@@ -327,13 +334,37 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def reset_random(self):
+    def reset_random(self, uniform=False):
         """
         :return:
         """
         '''physical parameters'''
-        self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
+        if not uniform:
+            if random.uniform(0, 1) < 0.5:  # 有一半的概率实在上边三个格子
+                self.set_start([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
+                self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+                self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+                self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+            else:
+                self.set_start([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+                self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+                self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+                self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        else:
+            self.randomInitFLag = self.randomInitFLag % 81
+            start = self.randomInitFLag % 9  # start的区域编号
+            terminal = self.randomInitFLag // 9  # terminal的区域编号
+            stepX = self.x_size / 3
+            stepY = self.y_size / 3
+            s_X = [stepX * start % 3, stepX * (start % 3 + 1)]
+            s_Y = [stepY * start // 3, stepY * (start // 3 + 1)]
+            t_X = [stepX * terminal % 3, stepX * (terminal % 3 + 1)]
+            t_Y = [stepY * terminal % 3, stepY * (terminal % 3 + 1)]
+            self.randomInitFLag += 1
+            self.set_start([random.uniform(s_X[0], s_X[1]), random.uniform(s_Y[0], s_Y[1])])
+            self.set_terminal([random.uniform(t_X[0], t_X[1]), random.uniform(t_Y[0], t_Y[1])])
+            self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+            self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]

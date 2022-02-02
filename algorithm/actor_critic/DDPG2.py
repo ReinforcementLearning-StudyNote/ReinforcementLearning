@@ -108,10 +108,10 @@ class ActorNetwork(nn.Module):
         self.linear23 = nn.Linear(fc2_dims2, fc3_dims2)
         self.batch_norm23 = nn.LayerNorm(fc3_dims2)     # 第二部分网络第三层
 
-        # self.combine = nn.Linear(fc2_dims1 + fc2_dims2, fc_combine_dims)  # 第三层，合并
-        # self.mu = nn.Linear(fc_combine_dims, self.action_dim)  # 第四层，直接输出
-
         self.mu = nn.Linear(fc3_dims1 + fc3_dims2, self.action_dim)
+
+        # self.combine = nn.Linear(fc3_dims1 + fc3_dims2, fc_combine_dims)  # 第三层，合并
+        # self.mu = nn.Linear(fc_combine_dims, self.action_dim)  # 第四层，直接输出
 
         # self.initialization()
 
@@ -256,12 +256,12 @@ class DDPG2:
         self.actor = ActorNetwork(self.actor_lr,
                                   self.state_dim_nn1, 256, 128, 64,
                                   self.state_dim_nn2, 128, 128, 64,
-                                  128,
+                                  64,
                                   self.action_dim_nn, name='Actor', chkpt_dir=path)
         self.target_actor = ActorNetwork(self.actor_lr,
                                          self.state_dim_nn1, 256, 128, 64,
                                          self.state_dim_nn2, 128, 128, 64,
-                                         128,
+                                         64,
                                          self.action_dim_nn, name='TargetActor', chkpt_dir=path)
 
         self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='Critic', chkpt_dir=path)

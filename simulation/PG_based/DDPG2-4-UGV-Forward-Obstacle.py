@@ -22,7 +22,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                                       is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
-    agent.load_models(path='./DDPG-UGV-Forward测试/')
+    agent.load_models(path='./obstacle-temp1/')
     fullFillCount = int(fullFillRatio * agent.memory.mem_size)
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
@@ -35,10 +35,10 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
         _new_done.clear()
         while not env.is_terminal:
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = agent.choose_action(env.current_state, is_optimal=False, sigma=1 / 2)
+            _action_from_actor = agent.choose_action(env.current_state, is_optimal=False, sigma=1 / 1)
             _action = agent.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
-            env.show_dynamic_image(isWait=False)
+            env.show_dynamic_imagewithobs(isWait=False)
             if is_only_success:
                 _new_state.append(env.current_state)
                 _new_action.append(env.current_action)
@@ -158,7 +158,7 @@ if __name__ == '__main__':
         cv.waitKey(0)
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
-        MAX_EPISODE = 15000
+        MAX_EPISODE = math.inf
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=is_storage_only_success)

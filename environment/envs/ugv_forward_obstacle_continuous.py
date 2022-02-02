@@ -113,11 +113,11 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         index = 0
         for item in self.visualLaser:
             if self.visualFlag[index] == 0:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Purple, -1)
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Purple, -1)        # 啥也没有
             elif self.visualFlag[index] == 1:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().LightPink, -1)
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().LightPink, -1)     # 有东西
             else:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Red, -1)
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Red, -1)           # 盲区
             index += 1
 
     def show_dynamic_imagewithobs(self, isWait=False):
@@ -143,11 +143,11 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         if self.collision_check():
             # print('...collision...')
             self.terminal_flag = 4
-            return False
-        if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
-            print('...转的角度太大了...')
-            self.terminal_flag = 1
             return True
+        # if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
+        #     print('...转的角度太大了...')
+        #     self.terminal_flag = 1
+        #     return True
         if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
             print('...success...')
             self.terminal_flag = 3
@@ -162,6 +162,16 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         laser = []
         detectPhi = np.linspace(self.phi - self.laserRange, self.phi + self.laserRange, self.laserState)  # 所有的角度
         count = 0
+
+        '''如果车本身在障碍物里面'''
+        if self.collision_check():
+            for i in range(self.laserState):
+                laser.append(self.laserBlind)
+                self.visualLaser[i] = [self.x, self.y]
+                self.visualFlag[i] = 1
+            return laser
+        '''如果车本身在障碍物里面'''
+
         start = [self.x, self.y]
         '''1. 提前求出起点与障碍物中心距离，然后将距离排序'''
         ref_dis = []
@@ -242,18 +252,21 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             '''4. 开始找探测点'''
             if not find:  # 点一定是终点，但是属性不一定
                 dis = dis_two_points(start, terminal)
-                if dis > self.laserDis:
-                    laser.append(self.laserDis)
-                    self.visualLaser[count] = terminal.copy()
-                    self.visualFlag[count] = 0
-                elif self.laserBlind < dis <= self.laserDis:
-                    laser.append(dis)
-                    self.visualLaser[count] = terminal.copy()
-                    self.visualFlag[count] = 0
-                else:
-                    laser.append(self.laserBlind)
-                    self.visualLaser[count] = terminal.copy()
-                    self.visualFlag[count] = 2
+                laser.append(self.laserDis)
+                self.visualLaser[count] = terminal.copy()
+                self.visualFlag[count] = 0                  # 只要没有，就给2.0
+                # if dis > self.laserDis:
+                #     laser.append(self.laserDis)
+                #     self.visualLaser[count] = terminal.copy()
+                #     self.visualFlag[count] = 0
+                # elif self.laserBlind < dis <= self.laserDis:
+                #     laser.append(dis)
+                #     self.visualLaser[count] = terminal.copy()
+                #     self.visualFlag[count] = 0
+                # else:
+                #     laser.append(self.laserBlind)
+                #     self.visualLaser[count] = terminal.copy()
+                #     self.visualFlag[count] = 2
             count += 1
         return laser
 
@@ -295,11 +308,11 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         '''4. 其他'''
         r4 = 0
         if self.terminal_flag == 3:  # 成功了
-            r4 = 500
+            r4 = 100
         elif self.terminal_flag == 1:  # 转的角度太大了
             r4 = -2
         elif self.terminal_flag == 4:  # 碰撞障碍物
-            r4 = -1
+            r4 = -10
         '''4. 其他'''
 
         self.reward = r1 + r2 + r3 + r4
@@ -404,7 +417,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def reset_random(self):
+    def reset_random(self, uniform=False):
         """
         :return:
         """

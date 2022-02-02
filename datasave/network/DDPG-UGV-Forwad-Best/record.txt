@@ -1,3 +1,14 @@
+agent = DDPG(gamma=0.99,
+             actor_learning_rate=1e-4,
+             critic_learning_rate=1e-3,
+             actor_soft_update=1e-2,
+             critic_soft_update=1e-2,
+             memory_capacity=60000,
+             batch_size=512,
+             modelFileXML=cfgPath + cfgFile,
+             path=simulationPath)
+
+
 if env.reward >= -3.5:
 
 	agent.learn(is_reward_ascent=True)

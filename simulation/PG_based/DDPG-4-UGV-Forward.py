@@ -8,6 +8,7 @@ from algorithm.actor_critic.DDPG import DDPG
 import cv2 as cv
 from common.common import *
 import datetime
+import pandas as pd
 
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Continuous.xml'
@@ -25,7 +26,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random() if randomEnv else env.reset()
+        env.reset_random(uniform=True) if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -33,7 +34,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
         _new_done.clear()
         while not env.is_terminal:
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = agent.choose_action(env.current_state, is_optimal=False, sigma=1 / 6)
+            _action_from_actor = agent.choose_action(env.current_state, is_optimal=False, sigma=1 / 2)
             _action = agent.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
             env.show_dynamic_image(isWait=False)
@@ -69,7 +70,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random() if randomEnv else env.reset()
+        env.reset_random(uniform=True) if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -109,23 +110,23 @@ if __name__ == '__main__':
 
     env = UGV_Forward_Continuous(initPhi=deg2rad(0),
                                  save_cfg=False,
-                                 x_size=2.0,
-                                 y_size=2.0,
+                                 x_size=5.0,
+                                 y_size=5.0,
                                  start=[0.3, 0.3],
                                  terminal=[0.8, 0.8])
     '''初始位置，初始角度，目标位置均为随机'''
-    agent = DDPG(gamma=0.99,
-                 actor_learning_rate=1e-4,
-                 critic_learning_rate=1e-3,
-                 actor_soft_update=1e-2,
-                 critic_soft_update=1e-2,
-                 memory_capacity=60000,
-                 batch_size=512,
+    agent = DDPG(gamma=0.99,                        # 0.99
+                 actor_learning_rate=1e-4,          # 1e-4
+                 critic_learning_rate=1e-3,         # 1e-3
+                 actor_soft_update=1e-2,            # 1e-2
+                 critic_soft_update=1e-2,           # 1e-2
+                 memory_capacity=60000,              # 60000
+                 batch_size=512,                    # 512
                  modelFileXML=cfgPath + cfgFile,
                  path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = False  # 直接训练
+    TRAIN = True  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -162,7 +163,7 @@ if __name__ == '__main__':
             # env.reset()
             print('=========START=========')
             print('Episode:', agent.episode)
-            env.reset_random()
+            env.reset_random(uniform=True)
             sumr = 0
             new_state.clear()
             new_action.clear()
@@ -173,11 +174,11 @@ if __name__ == '__main__':
                 c = cv.waitKey(1)
                 env.current_state = env.next_state.copy()
                 epsilon = random.uniform(0, 1)
-                if epsilon < 0.2:
+                if epsilon < 0.3:
                     # print('...random...')
                     action_from_actor = agent.choose_action_random()  # 有一定探索概率完全随机探索
                 else:
-                    action_from_actor = agent.choose_action(env.current_state, False, sigma=1/3)  # 剩下的是神经网络加噪声
+                    action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 3)  # 剩下的是神经网络加噪声
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
                 if agent.episode % show_per == 0:
@@ -231,13 +232,15 @@ if __name__ == '__main__':
     if TEST:
         print('TESTing...')
         agent.load_actor_optimal(path='./DDPG-UGV-Forwad-Best/', file='Actor_ddpg')   # './DDPG-UGV-Forward-Temp/'
-        cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
-                             cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
-                             120.0,
-                             (env.width, env.height))
+        # cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
+        #                      cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
+        #                      120.0,
+        #                      (env.width, env.height))
         simulation_num = 500
         successCounter = 0
         timeOutCounter = 0
+        failStartx, failStarty = [], []
+        failTerminalx, failTerminaly = [], []
         for i in range(simulation_num):
             print('==========START==========')
             print('episode = ', i)
@@ -248,10 +251,20 @@ if __name__ == '__main__':
                 env.current_state = env.next_state.copy()
                 action_from_actor = agent.choose_action(env.current_state, True)
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
+                currentError = dis_two_points([env.x, env.y], env.terminal)
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
+                nextError = dis_two_points([env.x, env.y], env.terminal)
                 env.show_dynamic_image(isWait=False)
-                cap.write(env.save)
+                # cap.write(env.save)
                 env.saveData(is2file=False)
+                if 1e-2 + currentError < nextError:
+                    print('TMD，调头了...失败')
+                    failStartx.append(env.start[0])
+                    failStarty.append(env.start[1])
+                    failTerminalx.append(env.terminal[0])
+                    failTerminaly.append(env.terminal[1])
+                    env.terminal_flag = 2
+                    env.is_terminal = True
             print('===========END===========')
             if env.terminal_flag == 2:
                 timeOutCounter += 1
@@ -259,5 +272,10 @@ if __name__ == '__main__':
                 successCounter += 1
         print('Total:', simulation_num, '  successful:', successCounter, '  timeout:', timeOutCounter)
         print('success rate:', round(successCounter / simulation_num))
+        saveData = pd.DataFrame({'sx': failStartx,
+                                 'sy': failStarty,
+                                 'tx': failTerminalx,
+                                 'ty': failTerminaly})
+        saveData.to_csv(simulationPath + 'faildata.csv')
         cv.waitKey(0)
         env.saveData(is2file=True, filepath=simulationPath)
