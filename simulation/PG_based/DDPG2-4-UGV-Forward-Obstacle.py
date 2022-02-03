@@ -2,6 +2,8 @@ import math
 import os
 import sys
 import datetime
+import time
+
 import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
@@ -22,7 +24,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                                       is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
-    agent.load_models(path='./obstacle-temp1/')
+    agent.load_models(path='./DDPG-UGV-Obstacle-100-33%/')
     fullFillCount = int(fullFillRatio * agent.memory.mem_size)
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
@@ -35,7 +37,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
         _new_done.clear()
         while not env.is_terminal:
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = agent.choose_action(env.current_state, is_optimal=False, sigma=1 / 1)
+            _action_from_actor = agent.choose_action(env.current_state, is_optimal=False, sigma=1 / 3)
             _action = agent.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
             env.show_dynamic_imagewithobs(isWait=False)
@@ -49,7 +51,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                 if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                if env.reward >= -3:
+                if env.reward >= -4.5:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -124,21 +126,21 @@ if __name__ == '__main__':
                   critic_learning_rate=1e-3,
                   actor_soft_update=1e-2,
                   critic_soft_update=1e-2,
-                  memory_capacity=60000,         # 100000
-                  batch_size=512,      # 1024
+                  memory_capacity=100000,         # 100000
+                  batch_size=1024,      # 1024
                   modelFileXML=cfgPath + cfgFile,
                   path=simulationPath)
 
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
-    RETRAIN = False  # 基于之前的训练结果重新训练
+    RETRAIN = True  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
 
     if RETRAIN:
         print('Retraining')
         fullFillReplayMemory_with_Optimal(randomEnv=True,
-                                          fullFillRatio=0.5,
+                                          fullFillRatio=1.0,
                                           is_only_success=is_storage_only_success)
         # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
         '''生成初始数据之后要再次初始化网络'''
@@ -155,10 +157,10 @@ if __name__ == '__main__':
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
-        cv.waitKey(0)
+        # cv.waitKey(0)
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
-        MAX_EPISODE = math.inf
+        MAX_EPISODE = 20000
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=is_storage_only_success)
@@ -233,9 +235,15 @@ if __name__ == '__main__':
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
-            if agent.episode % 500 == 0:
+            if agent.episode % 100 == 0:
                 print('check point save')
-                agent.actor.save_checkpoint(name='actor_', path=simulationPath, num=agent.episode)
+                temp = simulationPath + str(agent.episode) + '_' + str(successCounter / agent.episode) + '_save/'
+                os.mkdir(temp)
+                time.sleep(0.01)
+                agent.actor.save_checkpoint(name='actor_', path=temp, num=None)
+                agent.target_actor.save_checkpoint(name='target_actor_', path=temp, num=None)
+                agent.critic.save_checkpoint(name='critic_', path=temp, num=None)
+                agent.target_critic.save_checkpoint(name='target_critic_', path=temp, num=None)
             if c == 27:
                 print('Over......')
                 break
@@ -246,14 +254,15 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        agent.load_actor_optimal(path='./DDPG-UGV-Forward测试/', file='Actor_ddpg')
+        agent.load_actor_optimal(path='./DDPG-UGV-Forward-Obstacle第一次训练存的所有/', file='actor_2000')
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
                              (env.width, env.height))
-        simulation_num = 50
+        simulation_num = 500
         successCounter = 0
         timeOutCounter = 0
+        collisionCounter = 0
         for i in range(simulation_num):
             print('==========START==========')
             print('episode = ', i)
@@ -265,14 +274,19 @@ if __name__ == '__main__':
                 action_from_actor = agent.choose_action(env.current_state, True)
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
-                env.show_dynamic_image(isWait=False)
+                env.show_dynamic_imagewithobs(isWait=False)
                 cap.write(env.save)
                 env.saveData(is2file=False)
             print('===========END===========')
             if env.terminal_flag == 2:
                 timeOutCounter += 1
+                print('timeout')
             if env.terminal_flag == 3:
                 successCounter += 1
-        print('Total:', simulation_num, '  successful:', successCounter, '  timeout:', timeOutCounter)
+                print('success')
+            if env.terminal_flag == 4:
+                collisionCounter += 1
+                print('collision')
+        print('Total:', simulation_num, '  successful:', successCounter, '  timeout:', timeOutCounter, '  collision:', collisionCounter)
         cv.waitKey(0)
         env.saveData(is2file=True, filepath=simulationPath)
