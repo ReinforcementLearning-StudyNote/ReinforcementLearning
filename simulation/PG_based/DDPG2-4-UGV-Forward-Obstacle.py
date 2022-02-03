@@ -140,7 +140,7 @@ if __name__ == '__main__':
     if RETRAIN:
         print('Retraining')
         fullFillReplayMemory_with_Optimal(randomEnv=True,
-                                          fullFillRatio=1.0,
+                                          fullFillRatio=0.5,
                                           is_only_success=is_storage_only_success)
         # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
         '''生成初始数据之后要再次初始化网络'''
