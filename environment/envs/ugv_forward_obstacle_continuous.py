@@ -154,8 +154,8 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             return True
         if self.is_out():
             # print('...out...')
-            # self.terminal_flag = 1
-            return False
+            self.terminal_flag = 4
+            return True
         return False
 
     def get_fake_laser(self):
@@ -252,21 +252,21 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             '''4. 开始找探测点'''
             if not find:  # 点一定是终点，但是属性不一定
                 dis = dis_two_points(start, terminal)
-                laser.append(self.laserDis)
-                self.visualLaser[count] = terminal.copy()
-                self.visualFlag[count] = 0                  # 只要没有，就给2.0
-                # if dis > self.laserDis:
-                #     laser.append(self.laserDis)
-                #     self.visualLaser[count] = terminal.copy()
-                #     self.visualFlag[count] = 0
-                # elif self.laserBlind < dis <= self.laserDis:
-                #     laser.append(dis)
-                #     self.visualLaser[count] = terminal.copy()
-                #     self.visualFlag[count] = 0
-                # else:
-                #     laser.append(self.laserBlind)
-                #     self.visualLaser[count] = terminal.copy()
-                #     self.visualFlag[count] = 2
+                # laser.append(self.laserDis)
+                # self.visualLaser[count] = terminal.copy()
+                # self.visualFlag[count] = 0                  # 只要没有，就给2.0
+                if dis > self.laserDis:         # 如果起始点与终点的距离大于探测半径，那么就直接给探测半径，相当于空场地
+                    laser.append(self.laserDis)
+                    self.visualLaser[count] = terminal.copy()
+                    self.visualFlag[count] = 0
+                elif self.laserBlind < dis <= self.laserDis:        # 如果起始点与终点的距离小于探测半径，那么直接给距离，说明探测到场地边界
+                    laser.append(dis)
+                    self.visualLaser[count] = terminal.copy()
+                    self.visualFlag[count] = 0
+                else:       # 进入雷达盲区，0m
+                    laser.append(self.laserBlind)
+                    self.visualLaser[count] = terminal.copy()
+                    self.visualFlag[count] = 2
             count += 1
         return laser
 
@@ -303,16 +303,17 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             r3 = -2
         else:
             r3 = 0
-        # r3 = 0
+        # r3 = 0          # 不给角度惩罚
 
         '''4. 其他'''
-        r4 = 0
         if self.terminal_flag == 3:  # 成功了
             r4 = 100
         elif self.terminal_flag == 1:  # 转的角度太大了
             r4 = -2
         elif self.terminal_flag == 4:  # 碰撞障碍物
             r4 = -10
+        else:
+            r4 = 0
         '''4. 其他'''
 
         self.reward = r1 + r2 + r3 + r4

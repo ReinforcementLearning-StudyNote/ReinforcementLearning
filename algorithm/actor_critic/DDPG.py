@@ -62,9 +62,12 @@ class CriticNetWork(nn.Module):
         nn.init.uniform_(self.q.weight.data, -f3, f3)
         nn.init.uniform_(self.q.bias.data, -f3, f3)
 
-    def save_checkpoint(self):
+    def save_checkpoint(self, name=None, path='', num=0):
         print('...saving checkpoint...')
-        torch.save(self.state_dict(), self.checkpoint_file)
+        if name is None:
+            torch.save(self.state_dict(), self.checkpoint_file)
+        else:
+            torch.save(self.state_dict(), path + name + str(num))
 
     def load_checkpoint(self):
         print('...loading checkpoint...')

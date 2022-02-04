@@ -71,9 +71,12 @@ class CriticNetWork(nn.Module):
         nn.init.uniform_(self.q.weight.data, -f3, f3)
         nn.init.uniform_(self.q.bias.data, -f3, f3)
 
-    def save_checkpoint(self):
+    def save_checkpoint(self, name=None, path='', num=0):
         print('...saving checkpoint...')
-        torch.save(self.state_dict(), self.checkpoint_file)
+        if name is None:
+            torch.save(self.state_dict(), self.checkpoint_file)
+        else:
+            torch.save(self.state_dict(), path + name + str(num))
 
     def load_checkpoint(self):
         print('...loading checkpoint...')
@@ -99,14 +102,14 @@ class ActorNetwork(nn.Module):
         self.linear12 = nn.Linear(fc1_dims1, fc2_dims1)  # 第一部分网络第二层
         self.batch_norm12 = nn.LayerNorm(fc2_dims1)
         self.linear13 = nn.Linear(fc2_dims1, fc3_dims1)
-        self.batch_norm13 = nn.LayerNorm(fc3_dims1)         # 第一部分网络第三层
+        self.batch_norm13 = nn.LayerNorm(fc3_dims1)  # 第一部分网络第三层
 
         self.linear21 = nn.Linear(self.state_dim2, fc1_dims2)  # 第二部分网络第一层
         self.batch_norm21 = nn.LayerNorm(fc1_dims2)
         self.linear22 = nn.Linear(fc1_dims2, fc2_dims2)  # 第二部分网络第二层
         self.batch_norm22 = nn.LayerNorm(fc2_dims2)
         self.linear23 = nn.Linear(fc2_dims2, fc3_dims2)
-        self.batch_norm23 = nn.LayerNorm(fc3_dims2)     # 第二部分网络第三层
+        self.batch_norm23 = nn.LayerNorm(fc3_dims2)  # 第二部分网络第三层
 
         self.mu = nn.Linear(fc3_dims1 + fc3_dims2, self.action_dim)
 
@@ -124,39 +127,43 @@ class ActorNetwork(nn.Module):
         self.batch_norm11.reset_parameters()
         self.linear12.reset_parameters()
         self.batch_norm12.reset_parameters()
+        self.linear13.reset_parameters()
+        self.batch_norm13.reset_parameters()
 
         self.linear21.reset_parameters()
         self.batch_norm21.reset_parameters()
         self.linear22.reset_parameters()
         self.batch_norm22.reset_parameters()
+        self.linear23.reset_parameters()
+        self.batch_norm23.reset_parameters()
 
-        self.combine.reset_parameters()
+        # self.combine.reset_parameters()
         self.mu.reset_parameters()
 
-    def initialization(self):
-        f11 = 1 / np.sqrt(self.linear11.weight.data.size()[0])
-        nn.init.uniform_(self.linear11.weight.data, -f11, f11)
-        nn.init.uniform_(self.linear11.bias.data, -f11, f11)
-
-        f12 = 1 / np.sqrt(self.linear12.weight.data.size()[0])
-        nn.init.uniform_(self.linear12.weight.data, -f12, f12)
-        nn.init.uniform_(self.linear12.bias.data, -f12, f12)
-
-        f21 = 1 / np.sqrt(self.linear21.weight.data.size()[0])
-        nn.init.uniform_(self.linear21.weight.data, -f21, f21)
-        nn.init.uniform_(self.linear21.bias.data, -f21, f21)
-
-        f22 = 1 / np.sqrt(self.linear22.weight.data.size()[0])
-        nn.init.uniform_(self.linear22.weight.data, -f22, f22)
-        nn.init.uniform_(self.linear22.bias.data, -f22, f22)
-
-        f3 = 1 / np.sqrt(self.combine.weight.data.size()[0])
-        nn.init.uniform_(self.combine.weight.data, -f3, f3)
-        nn.init.uniform_(self.combine.bias.data, -f3, f3)
-
-        f3 = 0.003
-        nn.init.uniform_(self.mu.weight.data, -f3, f3)
-        nn.init.uniform_(self.mu.bias.data, -f3, f3)
+    # def initialization(self):
+    #     f11 = 1 / np.sqrt(self.linear11.weight.data.size()[0])
+    #     nn.init.uniform_(self.linear11.weight.data, -f11, f11)
+    #     nn.init.uniform_(self.linear11.bias.data, -f11, f11)
+    #
+    #     f12 = 1 / np.sqrt(self.linear12.weight.data.size()[0])
+    #     nn.init.uniform_(self.linear12.weight.data, -f12, f12)
+    #     nn.init.uniform_(self.linear12.bias.data, -f12, f12)
+    #
+    #     f21 = 1 / np.sqrt(self.linear21.weight.data.size()[0])
+    #     nn.init.uniform_(self.linear21.weight.data, -f21, f21)
+    #     nn.init.uniform_(self.linear21.bias.data, -f21, f21)
+    #
+    #     f22 = 1 / np.sqrt(self.linear22.weight.data.size()[0])
+    #     nn.init.uniform_(self.linear22.weight.data, -f22, f22)
+    #     nn.init.uniform_(self.linear22.bias.data, -f22, f22)
+    #
+    #     f3 = 1 / np.sqrt(self.combine.weight.data.size()[0])
+    #     nn.init.uniform_(self.combine.weight.data, -f3, f3)
+    #     nn.init.uniform_(self.combine.bias.data, -f3, f3)
+    #
+    #     f3 = 0.003
+    #     nn.init.uniform_(self.mu.weight.data, -f3, f3)
+    #     nn.init.uniform_(self.mu.bias.data, -f3, f3)
 
     def forward(self, state1, state2):
         """
@@ -174,7 +181,7 @@ class ActorNetwork(nn.Module):
 
         x1 = self.linear13(x1)
         x1 = self.batch_norm13(x1)
-        x1 = func.relu(x1)              # 该合并了
+        x1 = func.relu(x1)  # 该合并了
 
         x2 = self.linear21(state2)
         x2 = self.batch_norm21(x2)
@@ -186,7 +193,7 @@ class ActorNetwork(nn.Module):
 
         x2 = self.linear23(x2)
         x2 = self.batch_norm23(x2)
-        x2 = func.relu(x2)              # 该合并了
+        x2 = func.relu(x2)  # 该合并了
 
         x = torch.cat((x1, x2)) if x1.dim() == 1 else torch.cat((x1, x2), dim=1)
         # print(x1.size(), x2.size(), x.size())
@@ -196,12 +203,15 @@ class ActorNetwork(nn.Module):
         x = torch.tanh(self.mu(x))
         return x
 
-    def save_checkpoint(self, name=None, path='', num=0):
+    def save_checkpoint(self, name=None, path='', num=None):
         print('...saving checkpoint...')
         if name is None:
             torch.save(self.state_dict(), self.checkpoint_file)
         else:
-            torch.save(self.state_dict(), path + name + str(num))
+            if num is None:
+                torch.save(self.state_dict(), path)
+            else:
+                torch.save(self.state_dict(), path + name + str(num))
 
     def load_checkpoint(self):
         print('...loading checkpoint...')
@@ -290,7 +300,7 @@ class DDPG2:
     def choose_action(self, state, is_optimal=False, sigma=1 / 3):
         self.actor.eval()  # 切换到测试模式
         t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)  # get the tensor of the state
-        [t_state1, t_state2] = torch.split(t_state, [self.state_dim_nn1,self.state_dim_nn2])
+        [t_state1, t_state2] = torch.split(t_state, [self.state_dim_nn1, self.state_dim_nn2])
         mu = self.actor(t_state1, t_state2).to(self.actor.device)  # choose action
         if is_optimal:
             mu_prime = mu
@@ -338,9 +348,9 @@ class DDPG2:
 
         self.critic.eval()
         self.actor.optimizer.zero_grad()
-        mu = self.actor.forward(state1, state2)         # 是个动作
+        mu = self.actor.forward(state1, state2)  # 是个动作
         self.actor.train()
-        actor_loss = -self.critic.forward(state, mu)    # 是个评价
+        actor_loss = -self.critic.forward(state, mu)  # 是个评价
         actor_loss = torch.mean(actor_loss)
         actor_loss.backward()
         self.actor.optimizer.step()
