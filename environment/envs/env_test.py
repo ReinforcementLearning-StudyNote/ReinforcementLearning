@@ -1,15 +1,15 @@
-import math
 import os
 import sys
-from common.common import *
 import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "./")
+from common.common import *
 
 
 # Flight Attitude Simulator Test
 def test_flight_attitude_simulator():
-    from environment.envs.flight_attitude_simulator import Flight_Attitude_Simulator
+    from FlightAttitudeSimulator.flight_attitude_simulator import Flight_Attitude_Simulator
     env = Flight_Attitude_Simulator(initTheta=-60.0, setTheta=0., save_cfg=True)
     test_num = 1
     for _ in range(test_num):
@@ -24,7 +24,7 @@ def test_flight_attitude_simulator():
 
 # Flight Attitude Simulator Continuous Test
 def test_flight_attitude_simulator_continuous():
-    from environment.envs.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous
+    from FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous
     env = Flight_Attitude_Simulator_Continuous(initTheta=-60.0, setTheta=0., save_cfg=True)
     test_num = 1
     for _ in range(test_num):
@@ -39,7 +39,7 @@ def test_flight_attitude_simulator_continuous():
 
 # UGV Bidirectional Continuous Test
 def test_ugv_bidirectional_continuous():
-    from environment.envs.ugv_bidirectional_continuous import UGV_Bidirectional_Continuous
+    from UGV.ugv_bidirectional_continuous import UGV_Bidirectional_Continuous
     env = UGV_Bidirectional_Continuous(initPhi=deg2rad(-135),
                                        save_cfg=True,
                                        x_size=4.0,
@@ -58,7 +58,7 @@ def test_ugv_bidirectional_continuous():
 
 # UGV Forward Continuous Test
 def test_two_ugv_forward_continuous():
-    from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous
+    from UGV.ugv_forward_continuous import UGV_Forward_Continuous
     env = UGV_Forward_Continuous(initPhi=deg2rad(45),
                                  save_cfg=True,
                                  x_size=5.0,
@@ -82,7 +82,7 @@ def test_two_ugv_forward_continuous():
 
 # UGV Forward Obstacles Continuous Test
 def test_ugv_forward_obstacles_continuous():
-    from environment.envs.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
+    from UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
     env = UGV_Forward_Obstacle_Continuous(initPhi=deg2rad(0), save_cfg=True, x_size=10, y_size=10, start=[2.5, 2.5], terminal=[4.0, 2.5])
     num = 0
     while num < 30:
@@ -108,7 +108,7 @@ def test_ugv_forward_obstacles_continuous():
 
 # UGV Forward Path Following Test
 def test_ugv_forward_path_following():
-    from environment.envs.ugv_forward_continuous_pathfollow import UGV_Forward_Continuous_Path_Follow
+    from UGV.ugv_forward_pathfollow_continuous import UGV_Forward_Continuous_Path_Follow
     env = UGV_Forward_Continuous_Path_Follow(initPhi=deg2rad(45),
                                              save_cfg=True,
                                              x_size=10.0,
@@ -118,16 +118,53 @@ def test_ugv_forward_path_following():
     num = 0
     while num < 30:
         # env.show_dynamic_imagePathFollow(isWait=False)
-        env.samplePoints = [# [0.5, 0.5], [1.5, 1.5], [2.5, 2.5],
-                            [3.5, 3.5], [4.5, 4.5], [5.5, 5.5],
-                            [6.5, 6.5], [7.5, 7.5], [8.5, 8.5], [9.5, 9.5]]
+        env.samplePoints = [  # [0.5, 0.5], [1.5, 1.5], [2.5, 2.5],
+            [3.5, 3.5], [4.5, 4.5], [5.5, 5.5],
+            [6.5, 6.5], [7.5, 7.5], [8.5, 8.5], [9.5, 9.5]]
         env.sampleNum = 7
         env.reset()
         while not env.is_terminal:
             # print(env.time)
             if cv.waitKey(1) == 27:
                 return
-            env.show_dynamic_imagePathFollow(isWait=True)
+            env.show_dynamic_imagePathFollow(isWait=False)
+            # cap.write(env.save)
+            action = [10, 5]
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            # print(env.current_state)
+            # print('总奖励', env.reward)
+        num += 1
+        # env.reset_random()
+
+
+# UGV Forward Obstacle2 Test
+def test_ugv_forward_obstacle2():
+    from UGV.ugv_forward_obstacle_continuous2 import UGV_Forward_Obstacle_Continuous2
+    from algorithm.actor_critic.DDPG import ActorNetwork
+
+    controller = ActorNetwork(1e-4, 8, 128, 128, 2, name='Actor', chkpt_dir='')
+    env = UGV_Forward_Obstacle_Continuous2(initPhi=deg2rad(45),
+                                           save_cfg=True,
+                                           x_size=10.0,
+                                           y_size=10.0,
+                                           start=[3.5, 3.5],
+                                           terminal=[9.5, 9.5],
+                                           dataBasePath='./pathplanning/5X5-50X50-DataBase-AllCircle/',
+                                           controller=controller
+                                           )
+    num = 0
+    while num < 30:
+        # env.show_dynamic_imagePathFollow(isWait=False)
+        env.samplePoints = [  # [0.5, 0.5], [1.5, 1.5], [2.5, 2.5],
+            [3.5, 3.5], [4.5, 4.5], [5.5, 5.5],
+            [6.5, 6.5], [7.5, 7.5], [8.5, 8.5], [9.5, 9.5]]
+        env.sampleNum = 7
+        env.reset()
+        while not env.is_terminal:
+            # print(env.time)
+            if cv.waitKey(1) == 27:
+                return
+            env.show_dynamic_imagewithobs(isWait=True)
             # cap.write(env.save)
             action = [10, 5]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
@@ -143,5 +180,6 @@ if __name__ == '__main__':
     # test_ugv_bidirectional_continuous()
     # test_two_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
-    test_ugv_forward_path_following()
+    # test_ugv_forward_path_following()
+    test_ugv_forward_obstacle2()
     pass

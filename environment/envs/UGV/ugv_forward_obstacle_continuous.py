@@ -1,7 +1,7 @@
 import cv2 as cv
 from common.common import *
 from environment.envs import *
-from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous as UGV
+from environment.envs.UGV.ugv_forward_continuous import UGV_Forward_Continuous as UGV
 
 
 class UGV_Forward_Obstacle_Continuous(UGV):
@@ -73,7 +73,6 @@ class UGV_Forward_Obstacle_Continuous(UGV):
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
                               self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
-        # self.state_normalization(self.initial_state, gain=self.staticGain, index0=0, index1=3)
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
 

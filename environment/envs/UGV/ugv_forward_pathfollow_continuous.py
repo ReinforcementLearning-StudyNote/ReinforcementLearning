@@ -4,7 +4,7 @@ import numpy as np
 from common.common import *
 from environment.envs import *
 from environment.envs.pathplanning.bezier import Bezier
-from environment.envs.ugv_forward_continuous import UGV_Forward_Continuous as UGV
+from environment.envs.UGV.ugv_forward_continuous import UGV_Forward_Continuous as UGV
 
 
 class UGV_Forward_Continuous_Path_Follow(UGV):

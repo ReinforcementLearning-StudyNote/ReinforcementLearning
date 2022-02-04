@@ -1,73 +1,49 @@
 import cv2 as cv
 from common.common import *
 from environment.envs import *
-from environment.envs.pathplanning.rasterizedmap import rasterizedmap
+from environment.envs.UGV.ugv_forward_continuous import UGV_Forward_Continuous as UGV
+from algorithm.actor_critic.DDPG import *
 
 
-class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
+class UGV_Forward_Obstacle_Continuous2(UGV):
+    '''
+    这个环境是用来做UGV避障的
+    设计的方案是：先训练一个没有障碍物的控制器作为参数输入
+    当有障碍物时，车的输出是在没有障碍物的基础之上产生一个偏移，这个偏移就是该环境需要被训练的部分
+    '''
     def __init__(self,
-                 width: int = 500,
-                 height: int = 500,
-                 x_size: float = 5.0,
-                 y_size: float = 5.0,
-                 image_name: str = 'ugv_forward_obstacle',
-                 start: list = None,
-                 terminal: list = None,
-                 obs: list = None,
-                 draw: bool = False,
-                 initPhi: float = 0.,
-                 save_cfg: bool = True,
-                 x_grid: int = 50,
-                 y_grid: int = 50,
-                 dataBasePath: str = './pathplanning/5X5-50X50-DataBase-AllCircle/'):
+                 initPhi: float,
+                 save_cfg: bool,
+                 x_size: float,
+                 y_size: float,
+                 start: list,
+                 terminal: list,
+                 dataBasePath: str,
+                 controller: ActorNetwork):
         """
-        :param width:               width of the figure
-        :param height:              width of the figure
-        :param x_size:              map size X
-        :param y_size:              map size Y
-        :param image_name:          naem of the figure
-        :param start:               start position
-        :param terminal:            terminal position
-        :param obs:                 obstacles
-        :param draw:                draw the map or not
-        :param initPhi:             initial heading angle
-        :param save_cfg:            save to model file or not
-        :param x_grid:              number of the grids in X
-        :param y_grid:              number of the grids in Y
-        :param dataBasePath:        path of the database
+        :param initPhi:
+        :param save_cfg:
+        :param x_size:
+        :param y_size:
+        :param start:
+        :param terminal:
+        :param dataBasePath:
+        :param controller:
         """
-        super(UGV_Forward_Obstacle_Continuous, self).__init__(width, height, x_size, y_size, image_name, start, terminal, obs, draw, x_grid, y_grid)
+        super(UGV_Forward_Obstacle_Continuous2, self).__init__(initPhi, save_cfg, x_size, y_size, start, terminal)
         '''physical parameters'''
-        self.initX = self.start[0]
-        self.initY = self.start[1]
-        self.initPhi = initPhi
-        self.x = self.initX  # X
-        self.y = self.initY  # Y
-        self.phi = self.initPhi  # 车的转角
-        self.dx = 0
-        self.dy = 0
-        self.dphi = 0
-        self.wLeft = 0.
-        self.wRight = 0.
-
-        self.wMax = 6 * math.pi  # 车轮最大角速度rad/s
-        self.r = 0.1  # 车轮半径
-        self.l_wheel = 0.06  # 车轮厚度
-        self.rBody = 0.15  # 车主体半径
-        self.L = 2 * self.rBody  # 车主体直径
-        self.dt = 0.02  # 50Hz
-        self.time = 0.  # time
-        self.miss = self.rBody + 0.05
-        self.staticGain = 2.0
-        self.delta_phi_absolute = 0.
-
+        # 这部分暂时先继承自UGV不变
         self.laserDis = 2.0  # 雷达探测半径
-        self.laserBlind = 0.5  # 雷达盲区
-        self.laserRange = deg2rad(90)  # 左右各90度，一共180度
-        self.laserStep = deg2rad(5)
-        self.laserState = int(2 * self.laserRange / self.laserStep) + 1
-        self.visualLaser = [[0, 0] for _ in range(self.laserState)]
-        self.visualFlag = [0 for _ in range(self.laserState)]
+        self.laserBlind = 0.0  # 雷达盲区
+        self.laserRange = deg2rad(60)  # 左右各60度，一共120度
+        self.laserStep = deg2rad(3)
+        self.laserState = int(2 * self.laserRange / self.laserStep) + 1  # 雷达的线数
+        self.visualLaser = [[0, 0] for _ in range(self.laserState)]  # 探测点坐标
+        self.visualFlag = [0 for _ in range(self.laserState)]  # 探测点类型
+        # self.controller = ActorNetwork(None, 8, 128, 128, 2, None, None).load_state_dict(torch.load(controller))
+        self.controller = controller
+        self.controller.eval()      # 直接设定为eval模式
+        # self.controller.load_state_dict(torch.load(controller))
         '''physical parameters'''
 
         '''map database'''
@@ -83,10 +59,6 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         self.state_space = [None, None, None, None, None, None, None, None]
         self.isStateContinuous = [True, True, True, True, True, True, True, True]
         self.state_range = [
-            # [-self.x_size, self.x_size],
-            #                 [-self.y_size, self.y_size],
-            #                 [0, self.x_size],
-            #                 [0, self.y_size],
             [-self.staticGain, self.staticGain],
             [-self.staticGain, self.staticGain],
             [0, self.staticGain],
@@ -109,7 +81,6 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
                               self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
-        # self.state_normalization(self.initial_state, gain=self.staticGain, index0=0, index1=3)
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
 
@@ -128,7 +99,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         '''rl_base'''
 
         '''visualization_opencv'''
-        self.show_dynamic_image(isWait=True)
+        self.show_dynamic_imagewithobs(isWait=False)
         '''visualization_opencv'''
 
         '''datasave'''
@@ -145,112 +116,69 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         if save_cfg:
             self.saveModel2XML()
 
-    def draw_car(self):
-        # self.image = self.image_temp.copy()
-        cv.circle(self.image, self.dis2pixel([self.x, self.y]), self.length2pixel(self.rBody), Color().Orange, -1)  # 主体
-        cv.circle(self.image, self.dis2pixel([self.x, self.y]), self.length2pixel(0.05), Color().White, -1)  # 主体
-        '''两个车轮'''
-        # left
-        pts_left = [[self.r, self.rBody], [self.r, self.rBody - self.l_wheel], [-self.r, self.rBody - self.l_wheel], [-self.r, self.rBody]]
-        pts_left = points_rotate(pts_left, self.phi)
-        pts_left = points_move(pts_left, [self.x, self.y])
-        cv.fillConvexPoly(self.image, points=np.array([list(self.dis2pixel(pt)) for pt in pts_left]), color=Color().Red)
-        # right
-        pts_right = [[self.r, -self.rBody], [self.r, -self.rBody + self.l_wheel], [-self.r, -self.rBody + self.l_wheel], [-self.r, -self.rBody]]
-        pts_right = points_rotate(pts_right, self.phi)
-        pts_right = points_move(pts_right, [self.x, self.y])
-        cv.fillConvexPoly(self.image, points=np.array([list(self.dis2pixel(pt)) for pt in pts_right]), color=Color().Red)
-        '''两个车轮'''
-        # 额外画一个圆形，标志头
-        head = [self.r + 0.05, 0]
-        head = points_rotate(head, self.phi)
-        head = points_move(head, [self.x, self.y])
-        cv.circle(self.image, self.dis2pixel(head), self.length2pixel(0.04), Color().Black, -1)  # 主体
-
-    def draw_terminal(self):
-        if self.terminal is not None and self.terminal != []:
-            cv.circle(self.image, self.dis2pixel(self.terminal), 5, Color().random_color_by_BGR(), -1)
-
-    def draw_region_grid(self, xNUm: int = 3, yNum: int = 3):
-        if xNUm <= 1 or yNum <= 1:
-            pass
-        else:
-            xStep = self.x_size / xNUm
-            yStep = self.y_size / yNum
-            for i in range(yNum - 1):
-                pt1 = self.dis2pixel([0, 0 + (i + 1) * yStep])
-                pt2 = self.dis2pixel([self.x_size, 0 + (i + 1) * yStep])
-                cv.line(self.image, pt1, pt2, Color().Red, 1)
-            for i in range(xNUm - 1):
-                pt1 = self.dis2pixel([0 + (i + 1) * xStep, 0])
-                pt2 = self.dis2pixel([0 + (i + 1) * xStep, self.y_size])
-                cv.line(self.image, pt1, pt2, Color().Red, 1)
-
     def draw_fake_laser(self):
         index = 0
         for item in self.visualLaser:
             if self.visualFlag[index] == 0:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Purple, -1)
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Purple, -1)        # 啥也没有
             elif self.visualFlag[index] == 1:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().LightPink, -1)
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().LightPink, -1)     # 有东西
             else:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Red, -1)
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Red, -1)           # 盲区
             index += 1
 
-    def show_dynamic_image(self, isWait):
+    def show_dynamic_imagewithobs(self, isWait=False):
         self.image = self.image_temp.copy()
-        # self.map_draw_x_grid()  # 画栅格
-        # self.map_draw_y_grid()  # 画栅格
-        # self.draw_region_grid(xNUm=3, yNum=3)  # 画区域
-        self.map_draw_obs()  # 画障碍物
-        self.draw_fake_laser()  # 画雷达
-        self.draw_car()  # 画车
-        self.draw_terminal()  # 画终点
-        self.map_draw_photo_frame()  # 画最外边的白框
-        self.map_draw_boundary()  # 画边界
+        self.draw_region_grid(xNUm=3, yNum=3)
+        self.map_draw_obs()
+        self.map_draw_photo_frame()
+        self.map_draw_boundary()
+        self.draw_car()
+        self.draw_fake_laser()
+        self.draw_terminal()
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
         self.save = self.image.copy()
 
-    def is_out(self):
-        """
-        :return:
-        """
-        '''简化处理，只判断中心的大圆有没有出界就好'''
-        if (self.x + self.rBody > self.x_size) or (self.x - self.rBody < 0) or (self.y + self.rBody > self.y_size) or (self.y - self.rBody < 0):
-            return True
-        return False
-
     def is_Terminal(self, param=None):
-        # if self.is_out():
-        #     print('...out...')
-        #     self.terminal_flag = 1
-        #     return True
-        if self.delta_phi_absolute > 5 * math.pi + deg2rad(0):
-            print('...转的角度太大了...')
-            self.terminal_flag = 1
-            return True
-        if self.time > 8.0:
+        self.terminal_flag = 0
+        if self.time > self.timeMax:
             print('...time out...')
             self.terminal_flag = 2
-            return True
-        if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
-            print('...success...')
-            self.terminal_flag = 3
             return True
         if self.collision_check():
             # print('...collision...')
             self.terminal_flag = 4
-            # return False
+            return False
+        # if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
+        #     print('...转的角度太大了...')
+        #     self.terminal_flag = 1
+        #     return True
+        if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
+            print('...success...')
+            self.terminal_flag = 3
             return True
-        self.terminal_flag = 0
+        if self.is_out():
+            print('...out...')
+            self.terminal_flag = 4
+            return True
         return False
 
     def get_fake_laser(self):
         laser = []
         detectPhi = np.linspace(self.phi - self.laserRange, self.phi + self.laserRange, self.laserState)  # 所有的角度
         count = 0
+
+        '''如果车本身在障碍物里面'''
+        if self.collision_check():
+            for i in range(self.laserState):
+                laser.append(self.laserBlind)
+                self.visualLaser[i] = [self.x, self.y]
+                self.visualFlag[i] = 1
+            return laser
+        '''如果车本身在障碍物里面'''
+
         start = [self.x, self.y]
         '''1. 提前求出起点与障碍物中心距离，然后将距离排序'''
         ref_dis = []
@@ -331,15 +259,18 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
             '''4. 开始找探测点'''
             if not find:  # 点一定是终点，但是属性不一定
                 dis = dis_two_points(start, terminal)
-                if dis > self.laserDis:
+                # laser.append(self.laserDis)
+                # self.visualLaser[count] = terminal.copy()
+                # self.visualFlag[count] = 0                  # 只要没有，就给2.0
+                if dis > self.laserDis:         # 如果起始点与终点的距离大于探测半径，那么就直接给探测半径，相当于空场地
                     laser.append(self.laserDis)
                     self.visualLaser[count] = terminal.copy()
                     self.visualFlag[count] = 0
-                elif self.laserBlind < dis <= self.laserDis:
+                elif self.laserBlind < dis <= self.laserDis:        # 如果起始点与终点的距离小于探测半径，那么直接给距离，说明探测到场地边界
                     laser.append(dis)
                     self.visualLaser[count] = terminal.copy()
                     self.visualFlag[count] = 0
-                else:
+                else:       # 进入雷达盲区，0m
                     laser.append(self.laserBlind)
                     self.visualLaser[count] = terminal.copy()
                     self.visualFlag[count] = 2
@@ -353,68 +284,69 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                 return True
         return False
 
+    def origin_controller_output(self):
+        t_state = torch.tensor(self.current_state[0: 8], dtype=torch.float).to(self.controller.device)  # get the tensor of the state
+        mu = self.controller(t_state).to(self.controller.device)  # choose action
+        mu_prime = mu
+        mu_prime_np = mu_prime.cpu().detach().numpy()
+        NNout = np.clip(mu_prime_np, -1, 1)  # 将数据截断在[-1, 1]之间
+        k = self.wMax / 2
+        b = self.wMax / 2
+        return NNout * k + b
+
     def get_reward(self, param=None):
-        cex = self.current_state[0]
-        cey = self.current_state[1]
-        nex = self.next_state[0]
-        ney = self.next_state[1]
+        cex = self.current_state[0] * self.x_size / self.staticGain
+        cey = self.current_state[1] * self.y_size / self.staticGain
+        nex = self.next_state[0] * self.x_size / self.staticGain
+        ney = self.next_state[1] * self.y_size / self.staticGain
         currentError = math.sqrt(cex ** 2 + cey ** 2)
         nextError = math.sqrt(nex ** 2 + ney ** 2)
 
         r1 = -1  # 常值误差，每运行一步，就 -1
 
-        if currentError > nextError:
+        if currentError > nextError + 1e-3:
             r2 = 5
-        elif currentError < nextError:
+        elif 1e-3 + currentError < nextError:
             r2 = -5
         else:
             r2 = 0
-        # print(r2)
-        ctheta = self.current_state[4]
-        ntheta = self.next_state[4]
-        currentTheta = cal_vector_rad([cex, cey], [math.cos(ctheta), math.sin(ctheta)])
-        nextTheta = cal_vector_rad([nex, ney], [math.cos(ntheta), math.sin(ntheta)])
+
+        currentTheta = cal_vector_rad([cex, cey], [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
+        nextTheta = cal_vector_rad([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
+        # print(currentTheta, nextTheta)
         if currentTheta > nextTheta + 1e-2:
             r3 = 2
         elif 1e-2 + currentTheta < nextTheta:
             r3 = -2
         else:
             r3 = 0
-        # print(r3)
-        # r3 = 0
+        r3 = 0          # 不给角度惩罚
 
         '''4. 其他'''
-        if self.terminal_flag == 3:  # 成功
-            r4 = 500
-        # elif self.terminal_flag == 1:     # 转的角度太大
-        #     r4 = -5
-        elif self.terminal_flag == 4:  # 碰撞
-            r4 = -10
+        if self.terminal_flag == 3:  # 成功了
+            r4 = 100
+        elif self.terminal_flag == 1:  # 转的角度太大了
+            r4 = -2
+        elif self.terminal_flag == 4:  # 碰撞障碍物
+            r4 = -5
         else:
             r4 = 0
         '''4. 其他'''
-        # if self.terminal_flag == 4:
-        #     self.reward = -10
-        # else:
-        #     self.reward = r1 + r2 + r3 + r4
+
         self.reward = r1 + r2 + r3 + r4
 
-    def f(self, _phi):
-        _dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(_phi)
-        _dy = self.r / 2 * (self.wLeft + self.wRight) * math.sin(_phi)
-        _dphi = self.r / self.L * (self.wRight - self.wLeft)
-        return np.array([_dx, _dy, _dphi])
-
     def step_update(self, action: list):
-        self.wLeft = max(min(action[0], self.wMax), 0)
-        self.wRight = max(min(action[1], self.wMax), 0)
-        self.current_action = action.copy()
+        # 原本的输出是两个轮子的转速
+        # 这个action的含义是原来的基础之上的修正，也是车轮转速
         self.current_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
                               self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
-        # self.state_normalization(self.current_state, gain=self.staticGain, index0=0, index1=3)
+        origin_action = self.origin_controller_output()     # 得到原来的输出
+        self.wLeft = max(min(action[0] + origin_action[0], self.wMax), 0)
+        self.wRight = max(min(action[1] + origin_action[1], self.wMax), 0)
+        self.current_action = action.copy()
         '''RK-44'''
         h = self.dt / 10
         t_sim = 0
@@ -434,7 +366,19 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         self.dphi = self.r / self.rBody * (self.wRight - self.wLeft)
         self.time += self.dt
         '''动力学系统状态更新'''
-
+        self.delta_phi_absolute += math.fabs(self.phi - self.current_state[4])
+        '''角度处理'''
+        if self.phi > math.pi:
+            self.phi -= 2 * math.pi
+        if self.phi < -math.pi:
+            self.phi += 2 * math.pi
+        '''角度处理'''
+        self.is_terminal = self.is_Terminal()
+        self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
+                           (self.terminal[1] - self.y) / self.y_size * self.staticGain,
+                           self.x / self.x_size * self.staticGain,
+                           self.y / self.y_size * self.staticGain,
+                           self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
         '''出界处理'''
         if self.x + self.rBody > self.x_size:  # Xout
             self.x = self.x_size - self.rBody
@@ -449,20 +393,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
             self.y = self.rBody
             self.dy = 0
         '''出界处理'''
-        self.delta_phi_absolute += math.fabs(self.phi - self.current_state[4])
-        '''角度处理'''
-        if self.phi > math.pi:
-            self.phi -= 2 * math.pi
-        if self.phi < -math.pi:
-            self.phi += 2 * math.pi
-        '''角度处理'''
 
-        self.is_terminal = self.is_Terminal()
-        self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
-                           (self.terminal[1] - self.y) / self.y_size * self.staticGain,
-                           self.x / self.x_size * self.staticGain,
-                           self.y / self.y_size * self.staticGain,
-                           self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
         # self.state_normalization(self.next_state, gain=self.staticGain, index0=0, index1=3)
         self.get_reward()
         self.saveData()
@@ -506,15 +437,14 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def reset_random(self):
+    def reset_random(self, uniform=False):
         """
         :return:
         """
         '''physical parameters'''
         self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
         self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        # self.set_random_obstacles(20)
-        self.map_rasterization()
+        self.set_random_obstacles(20)
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]
@@ -573,7 +503,6 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         self.start = data[0]
         self.terminal = data[1]
         self.obs = data[3]
-        self.map_flag = data[4]
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]
@@ -671,7 +600,15 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
             'time': self.time,
             'x_size': self.x_size,
             'y_size': self.y_size,
-            'miss': self.miss
+            'miss': self.miss,
+            'laserDis': self.laserDis,
+            'laserBlind': self.laserBlind,
+            'laserRange': self.laserRange,
+            'laserStep': self.laserStep,
+            'laserState': self.laserState,
+            'visualLaser': self.visualLaser,
+            'visualFlag': self.visualFlag,
+            'numData': self.numData
         }
         imageMsg = {
             'width': self.width,
@@ -685,6 +622,9 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                              rootname='Plant',
                              rootmsg=rootMsg)
         xml_cfg().XML_InsertNode(filename=filepath + filename,
+                                 nodename='Tips',
+                                 nodemsg={'comment': 'Some attributes are directly inherited from UGV_Forward_Continuous'})
+        xml_cfg().XML_InsertNode(filename=filepath + filename,
                                  nodename='RL_Base',
                                  nodemsg=rl_baseMsg)
         xml_cfg().XML_InsertNode(filename=filepath + filename,
@@ -695,7 +635,7 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
                                  nodemsg=imageMsg)
         xml_cfg().XML_Pretty_All(filepath + filename)
 
-    def saveData(self, is2file=False, filename='UGV_Forward_Continuous.csv', filepath=''):
+    def saveData(self, is2file=False, filename='UGV_Forward_Continuous_Obstacles.csv', filepath=''):
         if is2file:
             data = pd.DataFrame({
                 'x:': self.saveX,
@@ -725,6 +665,6 @@ class UGV_Forward_Obstacle_Continuous(rasterizedmap, rl_base):
         names = os.listdir(path)
         for name in names:
             print('Start Loading' + name)
-            DataBase.append(self.map_load_database(path + name))
+            DataBase.append(self.map_load_continuous_database(path + name))
             print('Finish Loading' + name)
         return self.merge_database(DataBase)
