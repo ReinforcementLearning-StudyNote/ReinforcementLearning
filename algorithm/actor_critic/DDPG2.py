@@ -259,18 +259,18 @@ class DDPG2:
         self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_nn)
         '''DDPG'''
 
-        self.state_dim_nn1 = 8
+        self.state_dim_nn1 = 10
         self.state_dim_nn2 = self.state_dim_nn - self.state_dim_nn1
 
         '''network'''
         self.actor = ActorNetwork(self.actor_lr,
-                                  self.state_dim_nn1, 256, 128, 64,
-                                  self.state_dim_nn2, 128, 128, 64,
+                                  self.state_dim_nn1, 64, 32, 32,     # 非激光雷达
+                                  self.state_dim_nn2, 256, 128, 64,     # 激光雷达
                                   64,
                                   self.action_dim_nn, name='Actor', chkpt_dir=path)
         self.target_actor = ActorNetwork(self.actor_lr,
-                                         self.state_dim_nn1, 256, 128, 64,
-                                         self.state_dim_nn2, 128, 128, 64,
+                                         self.state_dim_nn1, 64, 32, 32,
+                                         self.state_dim_nn2, 256, 128, 64,
                                          64,
                                          self.action_dim_nn, name='TargetActor', chkpt_dir=path)
 

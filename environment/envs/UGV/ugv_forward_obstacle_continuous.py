@@ -106,7 +106,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.saveTime = [self.time]
         '''datasave'''
         if save_cfg:
-            self.saveModel2XML()
+            self.saveModel2XML2()
 
     def draw_fake_laser(self):
         index = 0
@@ -532,7 +532,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def saveModel2XML(self, filename='UGV_Forward_Obstacle_Continuous.xml', filepath='../config/'):
+    def saveModel2XML2(self, filename='UGV_Forward_Obstacle_Continuous.xml', filepath='../config/'):
         rootMsg = {
             'name': 'UGV_Forward_Obstacle_Continuous',
             'author': 'Yefeng YANG',

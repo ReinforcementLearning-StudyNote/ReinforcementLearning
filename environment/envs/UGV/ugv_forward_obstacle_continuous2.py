@@ -11,6 +11,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
     设计的方案是：先训练一个没有障碍物的控制器作为参数输入
     当有障碍物时，车的输出是在没有障碍物的基础之上产生一个偏移，这个偏移就是该环境需要被训练的部分
     '''
+
     def __init__(self,
                  initPhi: float,
                  save_cfg: bool,
@@ -40,10 +41,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
         self.laserState = int(2 * self.laserRange / self.laserStep) + 1  # 雷达的线数
         self.visualLaser = [[0, 0] for _ in range(self.laserState)]  # 探测点坐标
         self.visualFlag = [0 for _ in range(self.laserState)]  # 探测点类型
-        # self.controller = ActorNetwork(None, 8, 128, 128, 2, None, None).load_state_dict(torch.load(controller))
         self.controller = controller
-        self.controller.eval()      # 直接设定为eval模式
-        # self.controller.load_state_dict(torch.load(controller))
         '''physical parameters'''
 
         '''map database'''
@@ -52,12 +50,12 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
         '''map database'''
 
         '''rl_base'''
-        self.state_dim = 8 + self.laserState
-        '''[ex, ey, x, y, phi, dx, dy, dphi, laser]'''
-        self.state_num = [math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf]
-        self.state_step = [None, None, None, None, None, None, None, None]
-        self.state_space = [None, None, None, None, None, None, None, None]
-        self.isStateContinuous = [True, True, True, True, True, True, True, True]
+        self.state_dim = 10 + self.laserState
+        # '''[ex, ey, x, y, phi, dx, dy, dphi, original-controller, laser]'''
+        self.state_num = [math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.inf]
+        self.state_step = [None, None, None, None, None, None, None, None, None, None]
+        self.state_space = [None, None, None, None, None, None, None, None, None, None]
+        self.isStateContinuous = [True, True, True, True, True, True, True, True, True, True]
         self.state_range = [
             [-self.staticGain, self.staticGain],
             [-self.staticGain, self.staticGain],
@@ -66,7 +64,9 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
             [-math.pi, math.pi],
             [-self.r * self.wMax, self.r * self.wMax],
             [-self.r * self.wMax, self.r * self.wMax],
-            [-self.r / self.L * self.wMax, self.r / self.L * self.wMax]
+            [-self.r / self.L * self.wMax, self.r / self.L * self.wMax],
+            [0, self.wMax],
+            [0, self.wMax]
         ]
         for _ in range(self.laserState):
             self.state_num.append(2)
@@ -80,13 +80,13 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
+                              self.phi, self.dx, self.dy, self.dphi] + self.origin_controller_output() + self.get_fake_laser()
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
 
         self.action_dim = 2
         self.action_step = [None, None]
-        self.action_range = [[0, self.wMax], [0, self.wMax]]  # only forward
+        self.action_range = [[-self.wMax / 2, self.wMax / 2], [-self.wMax / 2, self.wMax / 2]]  # only forward
         self.action_num = [math.inf, math.inf]
         self.action_space = [None, None]
         self.isActionContinuous = [True, True]
@@ -114,17 +114,17 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
         self.saveTime = [self.time]
         '''datasave'''
         if save_cfg:
-            self.saveModel2XML()
+            self.saveModel2XML2()
 
     def draw_fake_laser(self):
         index = 0
         for item in self.visualLaser:
             if self.visualFlag[index] == 0:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Purple, -1)        # 啥也没有
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Purple, -1)  # 啥也没有
             elif self.visualFlag[index] == 1:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().LightPink, -1)     # 有东西
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().LightPink, -1)  # 有东西
             else:
-                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Red, -1)           # 盲区
+                cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Red, -1)  # 盲区
             index += 1
 
     def show_dynamic_imagewithobs(self, isWait=False):
@@ -162,7 +162,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
         if self.is_out():
             print('...out...')
             self.terminal_flag = 4
-            return True
+            return False
         return False
 
     def get_fake_laser(self):
@@ -262,15 +262,15 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
                 # laser.append(self.laserDis)
                 # self.visualLaser[count] = terminal.copy()
                 # self.visualFlag[count] = 0                  # 只要没有，就给2.0
-                if dis > self.laserDis:         # 如果起始点与终点的距离大于探测半径，那么就直接给探测半径，相当于空场地
+                if dis > self.laserDis:  # 如果起始点与终点的距离大于探测半径，那么就直接给探测半径，相当于空场地
                     laser.append(self.laserDis)
                     self.visualLaser[count] = terminal.copy()
                     self.visualFlag[count] = 0
-                elif self.laserBlind < dis <= self.laserDis:        # 如果起始点与终点的距离小于探测半径，那么直接给距离，说明探测到场地边界
+                elif self.laserBlind < dis <= self.laserDis:  # 如果起始点与终点的距离小于探测半径，那么直接给距离，说明探测到场地边界
                     laser.append(dis)
                     self.visualLaser[count] = terminal.copy()
                     self.visualFlag[count] = 0
-                else:       # 进入雷达盲区，0m
+                else:  # 进入雷达盲区，0m
                     laser.append(self.laserBlind)
                     self.visualLaser[count] = terminal.copy()
                     self.visualFlag[count] = 2
@@ -285,14 +285,20 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
         return False
 
     def origin_controller_output(self):
-        t_state = torch.tensor(self.current_state[0: 8], dtype=torch.float).to(self.controller.device)  # get the tensor of the state
+        origin_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
+                        (self.terminal[1] - self.y) / self.y_size * self.staticGain,
+                        self.x / self.x_size * self.staticGain,
+                        self.y / self.y_size * self.staticGain,
+                        self.phi, self.dx, self.dy, self.dphi]
+        t_state = torch.tensor(origin_state, dtype=torch.float).to(self.controller.device)  # get the tensor of the state
         mu = self.controller(t_state).to(self.controller.device)  # choose action
         mu_prime = mu
         mu_prime_np = mu_prime.cpu().detach().numpy()
         NNout = np.clip(mu_prime_np, -1, 1)  # 将数据截断在[-1, 1]之间
         k = self.wMax / 2
         b = self.wMax / 2
-        return NNout * k + b
+        res = NNout * k + b
+        return [res[0], res[1]]
 
     def get_reward(self, param=None):
         cex = self.current_state[0] * self.x_size / self.staticGain
@@ -320,7 +326,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
             r3 = -2
         else:
             r3 = 0
-        r3 = 0          # 不给角度惩罚
+        r3 = 0  # 不给角度惩罚
 
         '''4. 其他'''
         if self.terminal_flag == 3:  # 成功了
@@ -328,24 +334,35 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
         elif self.terminal_flag == 1:  # 转的角度太大了
             r4 = -2
         elif self.terminal_flag == 4:  # 碰撞障碍物
-            r4 = -5
+            r4 = -10
         else:
             r4 = 0
         '''4. 其他'''
-
+        # print(r1, r2, r3, r4)
         self.reward = r1 + r2 + r3 + r4
 
     def step_update(self, action: list):
         # 原本的输出是两个轮子的转速
         # 这个action的含义是原来的基础之上的修正，也是车轮转速
+        origin_action = self.origin_controller_output()  # 得到原来的输出
         self.current_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
-        origin_action = self.origin_controller_output()     # 得到原来的输出
-        self.wLeft = max(min(action[0] + origin_action[0], self.wMax), 0)
-        self.wRight = max(min(action[1] + origin_action[1], self.wMax), 0)
+                              self.phi, self.dx, self.dy, self.dphi] + origin_action + self.get_fake_laser()
+
+        # self.wLeft = max(min(action[0] + origin_action[0], self.wMax), 0)
+        # self.wRight = max(min(action[1] + origin_action[1], self.wMax), 0)
+
+        # self.wLeft = max(min(origin_action[0], self.wMax), 0)
+        # self.wRight = max(min(origin_action[1], self.wMax), 0)
+
+        # self.wLeft = max(action[0] + origin_action[0], 0)
+        # self.wRight = max(action[1] + origin_action[1], 0)
+
+        self.wLeft = action[0] + origin_action[0]
+        self.wRight = action[1] + origin_action[1]
+
         self.current_action = action.copy()
         '''RK-44'''
         h = self.dt / 10
@@ -378,7 +395,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
                            (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                            self.x / self.x_size * self.staticGain,
                            self.y / self.y_size * self.staticGain,
-                           self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
+                           self.phi, self.dx, self.dy, self.dphi] + self.origin_controller_output() + self.get_fake_laser()
         '''出界处理'''
         if self.x + self.rBody > self.x_size:  # Xout
             self.x = self.x_size - self.rBody
@@ -476,7 +493,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
+                              self.phi, self.dx, self.dy, self.dphi] + self.origin_controller_output() + self.get_fake_laser()
         # self.state_normalization(self.initial_state, gain=self.staticGain, index0=0, index1=3)
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
@@ -532,7 +549,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
                               (self.terminal[1] - self.y) / self.y_size * self.staticGain,
                               self.x / self.x_size * self.staticGain,
                               self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
+                              self.phi, self.dx, self.dy, self.dphi] + self.origin_controller_output() + self.get_fake_laser()
         # self.state_normalization(self.initial_state, gain=self.staticGain, index0=0, index1=3)
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
@@ -552,11 +569,11 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def saveModel2XML(self, filename='UGV_Forward_Obstacle_Continuous.xml', filepath='../config/'):
+    def saveModel2XML2(self, filename='UGV_Forward_Obstacle_Continuous2.xml', filepath='../config/'):
         rootMsg = {
-            'name': 'UGV_Forward_Obstacle_Continuous',
+            'name': 'UGV_Forward_Obstacle_Continuous2',
             'author': 'Yefeng YANG',
-            'date': '2022.01.20',
+            'date': '2022.02.04',
             'E-mail': 'yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn'
         }
         rl_baseMsg = {

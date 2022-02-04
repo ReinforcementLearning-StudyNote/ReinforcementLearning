@@ -3,17 +3,18 @@ import os
 import sys
 import datetime
 import time
-
 import cv2 as cv
+import torch
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
-from environment.envs.UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
+from environment.envs.UGV.ugv_forward_obstacle_continuous2 import UGV_Forward_Obstacle_Continuous2
 from algorithm.actor_critic.DDPG2 import DDPG2
+from algorithm.actor_critic.DDPG import ActorNetwork
 from common.common import *
 
 cfgPath = '../../environment/config/'
-cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'
+cfgFile = 'UGV_Forward_Obstacle_Continuous2.xml'
 optPath = '../../datasave/network/'
 dataBasePath = '../../environment/envs/pathplanning/5X5-50X50-DataBase-AllCircle2/'
 show_per = 1
@@ -98,8 +99,8 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                 # if (env.reward >= -3) or (env.reward <= -10):
-                if env.reward >= -4.5:
-                # if True:
+                # if env.reward >= -4.5:
+                if True:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -113,27 +114,30 @@ if __name__ == '__main__':
     simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward-Obstacle/'
     os.mkdir(simulationPath)
 
-    env = UGV_Forward_Obstacle_Continuous(initPhi=0.,
-                                          save_cfg=False,
-                                          x_size=5.0,
-                                          y_size=5.0,
-                                          start=[2.5, 2.5],
-                                          terminal=[4.5, 4.5],
-                                          dataBasePath=dataBasePath)
+    controller = ActorNetwork(1e-4, 8, 128, 128, 2, name='Actor', chkpt_dir='')
+    controller.load_state_dict(torch.load('./DDPG-UGV-Forward-Best/Actor_ddpg'))
+    env = UGV_Forward_Obstacle_Continuous2(initPhi=0.,
+                                           save_cfg=False,
+                                           x_size=5.0,
+                                           y_size=5.0,
+                                           start=[2.5, 2.5],
+                                           terminal=[4.5, 4.5],
+                                           dataBasePath=dataBasePath,
+                                           controller=controller)
     '''初始位置，初始角度，目标位置均为随机'''
     agent = DDPG2(gamma=0.99,
                   actor_learning_rate=1e-4,
                   critic_learning_rate=1e-3,
                   actor_soft_update=1e-2,
                   critic_soft_update=1e-2,
-                  memory_capacity=100000,         # 100000
-                  batch_size=1024,      # 1024
+                  memory_capacity=100000,  # 100000
+                  batch_size=1024,  # 1024
                   modelFileXML=cfgPath + cfgFile,
                   path=simulationPath)
 
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
-    RETRAIN = True  # 基于之前的训练结果重新训练
+    RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
 
@@ -152,12 +156,10 @@ if __name__ == '__main__':
 
     if TRAIN:
         globalStep = 0
-        # random.seed(23)
         agent.DDPG_info()
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
-        # cv.waitKey(0)
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
         MAX_EPISODE = 20000
@@ -165,9 +167,9 @@ if __name__ == '__main__':
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=is_storage_only_success)
             '''fullFillReplayMemory_Random'''
-        print('Start to train...')
+            print('Start to train...')
+            cv.waitKey(0)
         new_state, new_action, new_reward, new_state_, new_done = [], [], [], [], []
-
         stepPlot = [0, 1]
         stepReward = [0, 0]
         while agent.episode <= MAX_EPISODE:
@@ -205,16 +207,16 @@ if __name__ == '__main__':
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                     # if (env.reward >= -3) or (env.reward <= -10):
-                    if env.reward >= -4.5:
-                    # if True:
+                    # if env.reward >= -4.5:
+                    if True:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.saveData_Step_Reward(globalStep, env.reward, False, 'StepReward.csv', simulationPath)
                 agent.learn(is_reward_ascent=False)
             # agent.memory.get_reward_resort(per=10)
             # cv.destroyAllWindows()
             '''跳出循环代表回合结束'''
-            if env.terminal_flag == 4:
-                collisionCounter += 1
+            # if env.terminal_flag == 4:
+            #     collisionCounter += 1
             if env.terminal_flag == 3:
                 successCounter += 1
             if env.terminal_flag == 2:
@@ -226,7 +228,7 @@ if __name__ == '__main__':
                     # agent.memory.get_reward_resort(per=5)
             '''跳出循环代表回合结束'''
             print('Cumulative reward:', round(sumr, 3))
-            print('共：', agent.episode, ' 回合，成功', successCounter, ' 回合，超时', timeOutCounter, ' 回合，超时', collisionCounter, '回合')
+            print('共：', agent.episode, ' 回合，成功', successCounter, ' 回合')
             if agent.episode > 0:
                 print('成功率：', round(successCounter / agent.episode * 100, 3), '%')
             print('==========END=========')
@@ -235,15 +237,15 @@ if __name__ == '__main__':
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
-            if agent.episode % 100 == 0:
-                print('check point save')
-                temp = simulationPath + str(agent.episode) + '_' + str(successCounter / agent.episode) + '_save/'
-                os.mkdir(temp)
-                time.sleep(0.01)
-                agent.actor.save_checkpoint(name='actor_', path=temp, num=None)
-                agent.target_actor.save_checkpoint(name='target_actor_', path=temp, num=None)
-                agent.critic.save_checkpoint(name='critic_', path=temp, num=None)
-                agent.target_critic.save_checkpoint(name='target_critic_', path=temp, num=None)
+            # if agent.episode % 100 == 0:
+            #     print('check point save')
+            #     temp = simulationPath + str(agent.episode) + '_' + str(successCounter / agent.episode) + '_save/'
+            #     os.mkdir(temp)
+            #     time.sleep(0.01)
+            #     agent.actor.save_checkpoint(name='Actor_ddpg', path=temp, num=None)
+            #     agent.target_actor.save_checkpoint(name='TargetActor_ddpg', path=temp, num=None)
+            #     agent.critic.save_checkpoint(name='Critic_ddpg', path=temp, num=None)
+            #     agent.target_critic.save_checkpoint(name='TargetCritic_ddpg', path=temp, num=None)
             if c == 27:
                 print('Over......')
                 break
