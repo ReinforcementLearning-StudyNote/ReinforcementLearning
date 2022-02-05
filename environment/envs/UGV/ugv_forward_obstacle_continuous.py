@@ -143,7 +143,8 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             # print('...collision...')
             self.terminal_flag = 4
             return True
-        # if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
+        # if self.delta_phi_absolute > 6 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
+        # if self.delta_phi_absolute > 6 * math.pi + deg2rad(0):
         #     print('...转的角度太大了...')
         #     self.terminal_flag = 1
         #     return True
@@ -153,7 +154,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             return True
         if self.is_out():
             # print('...out...')
-            self.terminal_flag = 4
+            self.terminal_flag = 5
             return True
         return False
 
@@ -308,7 +309,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         if self.terminal_flag == 3:  # 成功了
             r4 = 100
         elif self.terminal_flag == 1:  # 转的角度太大了
-            r4 = -2
+            r4 = 0
         elif self.terminal_flag == 4:  # 碰撞障碍物
             r4 = -10
         else:
@@ -424,7 +425,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         '''physical parameters'''
         self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
         self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_random_obstacles(20)
+        self.set_random_obstacles(3)
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]

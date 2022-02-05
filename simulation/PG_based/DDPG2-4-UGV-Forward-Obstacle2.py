@@ -16,7 +16,8 @@ from common.common import *
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Obstacle_Continuous2.xml'
 optPath = '../../datasave/network/'
-dataBasePath = '../../environment/envs/pathplanning/5X5-50X50-DataBase-AllCircle2/'
+dataBasePath = '../../environment/envs/pathplanning/5X5-DataBase-AllCircle2/'
+dataBasePath2 = '../../environment/envs/pathplanning/5X5-DataBase-AllCircle3/'
 show_per = 1
 
 
@@ -30,7 +31,10 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random_with_database() if randomEnv else env.reset()
+        if random.uniform(0, 1) < 0.5:
+            env.reset_random(uniform=False)
+        else:
+            env.reset_random_with_database() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -74,7 +78,10 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random_with_database() if randomEnv else env.reset()
+        if random.uniform(0, 1) < 0.5:
+            env.reset_random(uniform=False)
+        else:
+            env.reset_random_with_database() if randomEnv else env.reset()
         # env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
@@ -99,7 +106,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                     print('replay_count = ', agent.memory.mem_counter)
                 '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                 # if (env.reward >= -3) or (env.reward <= -10):
-                # if env.reward >= -4.5:
+                # if env.reward >= -3.5:
                 if True:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
@@ -111,7 +118,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward-Obstacle/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG2-UGV-Forward-Obstacle2/'
     os.mkdir(simulationPath)
 
     controller = ActorNetwork(1e-4, 8, 128, 128, 2, name='Actor', chkpt_dir='')
@@ -131,12 +138,12 @@ if __name__ == '__main__':
                   actor_soft_update=1e-2,
                   critic_soft_update=1e-2,
                   memory_capacity=100000,  # 100000
-                  batch_size=1024,  # 1024
+                  batch_size=512,  # 1024
                   modelFileXML=cfgPath + cfgFile,
                   path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -162,13 +169,13 @@ if __name__ == '__main__':
         collisionCounter = 0
         agent.save_episode.append(agent.episode)
         agent.save_reward.append(0.0)
-        MAX_EPISODE = 20000
+        MAX_EPISODE = 10000
         if not RETRAIN:
             '''fullFillReplayMemory_Random'''
             fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=is_storage_only_success)
             '''fullFillReplayMemory_Random'''
             print('Start to train...')
-            cv.waitKey(0)
+            # cv.waitKey(0)
         new_state, new_action, new_reward, new_state_, new_done = [], [], [], [], []
         stepPlot = [0, 1]
         stepReward = [0, 0]
@@ -176,7 +183,10 @@ if __name__ == '__main__':
             # env.reset()
             print('=========START=========')
             print('Episode:', agent.episode)
-            env.reset_random_with_database()
+            if random.uniform(0, 1) < 0.5:
+                env.reset_random()
+            else:
+                env.reset_random_with_database()
             # env.reset_random()
             sumr = 0
             new_state.clear()
@@ -207,7 +217,7 @@ if __name__ == '__main__':
                 else:
                     '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
                     # if (env.reward >= -3) or (env.reward <= -10):
-                    # if env.reward >= -4.5:
+                    # if env.reward >= -3.5:
                     if True:
                         agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.saveData_Step_Reward(globalStep, env.reward, False, 'StepReward.csv', simulationPath)
@@ -256,19 +266,22 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        agent.load_actor_optimal(path='./DDPG-UGV-Forward-Obstacle第一次训练存的所有/', file='actor_2000')
+        agent.load_actor_optimal(path='./20DDPG-UGV-Forward-Obstacle2-10000-65.86/', file='Actor_ddpg')
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
                              (env.width, env.height))
-        simulation_num = 500
+        # simulation_num = 500
+        simulation_num = env.numData
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
+        failNum = []
         for i in range(simulation_num):
             print('==========START==========')
             print('episode = ', i)
-            env.reset_random_with_database()
+            # env.reset_random_with_database()
+            env.reset_index_with_database(i)
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
                     break
@@ -280,15 +293,27 @@ if __name__ == '__main__':
                 cap.write(env.save)
                 env.saveData(is2file=False)
             print('===========END===========')
+            if env.terminal_flag == 1:
+                print('咋也不咋地')
+                pass
             if env.terminal_flag == 2:
+                failNum.append(i)
                 timeOutCounter += 1
                 print('timeout')
-            if env.terminal_flag == 3:
+            elif env.terminal_flag == 3:
                 successCounter += 1
                 print('success')
-            if env.terminal_flag == 4:
+            elif env.terminal_flag == 4:
+                failNum.append(i)
                 collisionCounter += 1
                 print('collision')
+            elif env.terminal_flag == 5:
+                failNum.append(i)
+                print('out')
+            else:
+                print('没别的情况了')
         print('Total:', simulation_num, '  successful:', successCounter, '  timeout:', timeOutCounter, '  collision:', collisionCounter)
+        print('Success rate:', round(successCounter / simulation_num, 3))
+        print('Failure Num:', failNum)
         cv.waitKey(0)
         env.saveData(is2file=True, filepath=simulationPath)

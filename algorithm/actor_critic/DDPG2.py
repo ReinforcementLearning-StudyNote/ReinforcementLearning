@@ -140,31 +140,6 @@ class ActorNetwork(nn.Module):
         # self.combine.reset_parameters()
         self.mu.reset_parameters()
 
-    # def initialization(self):
-    #     f11 = 1 / np.sqrt(self.linear11.weight.data.size()[0])
-    #     nn.init.uniform_(self.linear11.weight.data, -f11, f11)
-    #     nn.init.uniform_(self.linear11.bias.data, -f11, f11)
-    #
-    #     f12 = 1 / np.sqrt(self.linear12.weight.data.size()[0])
-    #     nn.init.uniform_(self.linear12.weight.data, -f12, f12)
-    #     nn.init.uniform_(self.linear12.bias.data, -f12, f12)
-    #
-    #     f21 = 1 / np.sqrt(self.linear21.weight.data.size()[0])
-    #     nn.init.uniform_(self.linear21.weight.data, -f21, f21)
-    #     nn.init.uniform_(self.linear21.bias.data, -f21, f21)
-    #
-    #     f22 = 1 / np.sqrt(self.linear22.weight.data.size()[0])
-    #     nn.init.uniform_(self.linear22.weight.data, -f22, f22)
-    #     nn.init.uniform_(self.linear22.bias.data, -f22, f22)
-    #
-    #     f3 = 1 / np.sqrt(self.combine.weight.data.size()[0])
-    #     nn.init.uniform_(self.combine.weight.data, -f3, f3)
-    #     nn.init.uniform_(self.combine.bias.data, -f3, f3)
-    #
-    #     f3 = 0.003
-    #     nn.init.uniform_(self.mu.weight.data, -f3, f3)
-    #     nn.init.uniform_(self.mu.bias.data, -f3, f3)
-
     def forward(self, state1, state2):
         """
         :param state1:      first part of the data
@@ -209,7 +184,7 @@ class ActorNetwork(nn.Module):
             torch.save(self.state_dict(), self.checkpoint_file)
         else:
             if num is None:
-                torch.save(self.state_dict(), path)
+                torch.save(self.state_dict(), path + name)
             else:
                 torch.save(self.state_dict(), path + name + str(num))
 
@@ -259,24 +234,47 @@ class DDPG2:
         self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_nn)
         '''DDPG'''
 
-        self.state_dim_nn1 = 10
+        '''obstacle2'''
+        # self.state_dim_nn1 = 10
+        # self.state_dim_nn2 = self.state_dim_nn - self.state_dim_nn1
+        #
+        # '''network'''
+        # self.actor = ActorNetwork(self.actor_lr,
+        #                           self.state_dim_nn1, 64, 32, 32,     # 非激光雷达
+        #                           self.state_dim_nn2, 256, 128, 64,     # 激光雷达
+        #                           64,
+        #                           self.action_dim_nn, name='Actor', chkpt_dir=path)
+        # self.target_actor = ActorNetwork(self.actor_lr,
+        #                                  self.state_dim_nn1, 64, 32, 32,
+        #                                  self.state_dim_nn2, 256, 128, 64,
+        #                                  64,
+        #                                  self.action_dim_nn, name='TargetActor', chkpt_dir=path)
+        #
+        # self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='Critic', chkpt_dir=path)
+        # self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
+        # '''network'''
+        '''obstacle2'''
+
+        '''obstacle'''
+        self.state_dim_nn1 = 8
         self.state_dim_nn2 = self.state_dim_nn - self.state_dim_nn1
 
         '''network'''
         self.actor = ActorNetwork(self.actor_lr,
-                                  self.state_dim_nn1, 64, 32, 32,     # 非激光雷达
-                                  self.state_dim_nn2, 256, 128, 64,     # 激光雷达
+                                  self.state_dim_nn1, 128, 64, 32,     # 非激光雷达
+                                  self.state_dim_nn2, 128, 64, 32,     # 激光雷达
                                   64,
                                   self.action_dim_nn, name='Actor', chkpt_dir=path)
         self.target_actor = ActorNetwork(self.actor_lr,
-                                         self.state_dim_nn1, 64, 32, 32,
-                                         self.state_dim_nn2, 256, 128, 64,
+                                         self.state_dim_nn1, 128, 64, 32,
+                                         self.state_dim_nn2, 128, 64, 32,
                                          64,
                                          self.action_dim_nn, name='TargetActor', chkpt_dir=path)
 
         self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='Critic', chkpt_dir=path)
         self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
         '''network'''
+        '''obstacle'''
 
         self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))
         self.noise_gaussian = GaussianNoise(mu=np.zeros(self.action_dim_nn))

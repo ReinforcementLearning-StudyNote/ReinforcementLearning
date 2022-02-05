@@ -152,7 +152,7 @@ def test_ugv_forward_obstacle2():
                                            y_size=5.0,
                                            start=[0.5, 0.5],
                                            terminal=[4.5, 4.5],
-                                           dataBasePath='./pathplanning/5X5-50X50-DataBase-AllCircle2/',
+                                           dataBasePath='./pathplanning/5X5-DataBase-AllCircle2/',
                                            controller=controller
                                            )
     num = 0
@@ -164,7 +164,7 @@ def test_ugv_forward_obstacle2():
             # print(env.time)
             if cv.waitKey(1) == 27:
                 return
-            env.show_dynamic_imagewithobs(isWait=True)
+            env.show_dynamic_imagewithobs(isWait=False)
             # cap.write(env.save)
             # action = [10, 5]
             action = [random.uniform(-env.wMax/2, env.wMax/2), random.uniform(-env.wMax/2, env.wMax/2)]
@@ -174,7 +174,7 @@ def test_ugv_forward_obstacle2():
             #     action = [0, 0]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             # print(env.current_state)
-            print('总奖励', env.reward)
+            # print('总奖励', env.reward)
         num += 1
         # env.reset_random()
 

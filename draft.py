@@ -20,7 +20,17 @@ def add(a):
         a[i] += 1
 
 if __name__ == '__main__':
-    a = [0, 1, 2, 3, 4, 5, 6]
-    for i in range(7):
-        print(a[i], a[6-i])
+    a = torch.randint(low=-10,high=11,size=[1, 10]) / 10
+    b = torch.sign(a)
+    c = torch.clamp(input=b, min=0, max=1)
+    print(c.size())
+    print(a)
+    print(b)
+    print(c)
+    # b = torch.ones([1, 10])
+    # c = torch.randint(low=1, high=10, size=[1,10])
+    # d = torch.cat((b, c), dim=0)
+    # e = torch.mul(a, d)
+    # print(a)
+    # print(e)
     pass
