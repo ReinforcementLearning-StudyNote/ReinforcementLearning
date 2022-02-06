@@ -2,6 +2,9 @@ import math
 import random
 import re
 import numpy as np
+import torch.nn as nn
+import torch.nn.functional as func
+import torch
 
 
 def deg2rad(deg: float) -> float:

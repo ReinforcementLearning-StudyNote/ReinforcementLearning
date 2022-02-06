@@ -152,7 +152,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
             self.terminal_flag = 2
             return True
         if self.collision_check():
-            # print('...collision...')
+            print('...collision...')
             self.terminal_flag = 4
             return True
         # if self.delta_phi_absolute > 4 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
@@ -330,7 +330,7 @@ class UGV_Forward_Obstacle_Continuous2(UGV):
 
         '''4. 其他'''
         if self.terminal_flag == 3:  # 成功了
-            r4 = 300
+            r4 = 100
         elif self.terminal_flag == 1:  # 转的角度太大了
             r4 = -10
         elif self.terminal_flag == 4:  # 碰撞障碍物

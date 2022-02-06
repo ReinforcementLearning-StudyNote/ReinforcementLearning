@@ -18,6 +18,7 @@ cfgFile = 'UGV_Forward_Obstacle_Continuous2.xml'
 optPath = '../../datasave/network/'
 dataBasePath = '../../environment/envs/pathplanning/5X5-DataBase-AllCircle2/'
 dataBasePath2 = '../../environment/envs/pathplanning/5X5-DataBase-AllCircle3/'
+dataBasePath3 = '../../environment/envs/pathplanning/5X5-DataBase-AllCircle4/'
 show_per = 1
 
 
@@ -129,7 +130,7 @@ if __name__ == '__main__':
                                            y_size=5.0,
                                            start=[2.5, 2.5],
                                            terminal=[4.5, 4.5],
-                                           dataBasePath=dataBasePath,
+                                           dataBasePath=dataBasePath3,
                                            controller=controller)
     '''初始位置，初始角度，目标位置均为随机'''
     agent = DDPG2(gamma=0.99,
@@ -143,7 +144,7 @@ if __name__ == '__main__':
                   path=simulationPath)
 
     c = cv.waitKey(1)
-    TRAIN = False  # 直接训练
+    TRAIN = True  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -247,15 +248,15 @@ if __name__ == '__main__':
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
-            # if agent.episode % 100 == 0:
-            #     print('check point save')
-            #     temp = simulationPath + str(agent.episode) + '_' + str(successCounter / agent.episode) + '_save/'
-            #     os.mkdir(temp)
-            #     time.sleep(0.01)
-            #     agent.actor.save_checkpoint(name='Actor_ddpg', path=temp, num=None)
-            #     agent.target_actor.save_checkpoint(name='TargetActor_ddpg', path=temp, num=None)
-            #     agent.critic.save_checkpoint(name='Critic_ddpg', path=temp, num=None)
-            #     agent.target_critic.save_checkpoint(name='TargetCritic_ddpg', path=temp, num=None)
+            if agent.episode % 100 == 0:
+                print('check point save')
+                temp = simulationPath + str(agent.episode) + '_' + str(successCounter / agent.episode) + '_save/'
+                os.mkdir(temp)
+                time.sleep(0.01)
+                agent.actor.save_checkpoint(name='Actor_ddpg', path=temp, num=None)
+                agent.target_actor.save_checkpoint(name='TargetActor_ddpg', path=temp, num=None)
+                agent.critic.save_checkpoint(name='Critic_ddpg', path=temp, num=None)
+                agent.target_critic.save_checkpoint(name='TargetCritic_ddpg', path=temp, num=None)
             if c == 27:
                 print('Over......')
                 break
@@ -266,7 +267,8 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        agent.load_actor_optimal(path='./20DDPG-UGV-Forward-Obstacle2-10000-65.86/', file='Actor_ddpg')
+        agent.load_actor_optimal(path='./DDPG2-UGV-Forward-Obstacle2-1290-848/', file='Actor_ddpg')
+        # DDPG2-UGV-Forward-Obstacle2-10000-65.86
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,

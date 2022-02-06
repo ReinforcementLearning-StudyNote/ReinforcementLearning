@@ -1,7 +1,7 @@
 # import random
-import torch.nn as nn
-import torch.nn.functional as func
-import torch
+# import torch.nn as nn
+# import torch.nn.functional as func
+# import torch
 from environment.config.xml_write import xml_cfg
 from common.common import *
 import pandas as pd
@@ -71,12 +71,15 @@ class CriticNetWork(nn.Module):
         nn.init.uniform_(self.q.weight.data, -f3, f3)
         nn.init.uniform_(self.q.bias.data, -f3, f3)
 
-    def save_checkpoint(self, name=None, path='', num=0):
+    def save_checkpoint(self, name=None, path='', num=None):
         print('...saving checkpoint...')
         if name is None:
             torch.save(self.state_dict(), self.checkpoint_file)
         else:
-            torch.save(self.state_dict(), path + name + str(num))
+            if num is None:
+                torch.save(self.state_dict(), path + name)
+            else:
+                torch.save(self.state_dict(), path + name + str(num))
 
     def load_checkpoint(self):
         print('...loading checkpoint...')
@@ -235,10 +238,10 @@ class DDPG2:
         '''DDPG'''
 
         '''obstacle2'''
-        # self.state_dim_nn1 = 10
-        # self.state_dim_nn2 = self.state_dim_nn - self.state_dim_nn1
-        #
-        # '''network'''
+        self.state_dim_nn1 = 10
+        self.state_dim_nn2 = self.state_dim_nn - self.state_dim_nn1
+
+        '''network'''
         # self.actor = ActorNetwork(self.actor_lr,
         #                           self.state_dim_nn1, 64, 32, 32,     # 非激光雷达
         #                           self.state_dim_nn2, 256, 128, 64,     # 激光雷达
@@ -251,22 +254,15 @@ class DDPG2:
         #                                  self.action_dim_nn, name='TargetActor', chkpt_dir=path)
         #
         # self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='Critic', chkpt_dir=path)
-        # self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
-        # '''network'''
-        '''obstacle2'''
+        # self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)   # 第一次的
 
-        '''obstacle'''
-        self.state_dim_nn1 = 8
-        self.state_dim_nn2 = self.state_dim_nn - self.state_dim_nn1
-
-        '''network'''
         self.actor = ActorNetwork(self.actor_lr,
-                                  self.state_dim_nn1, 128, 64, 32,     # 非激光雷达
+                                  self.state_dim_nn1, 128, 64, 64,     # 非激光雷达
                                   self.state_dim_nn2, 128, 64, 32,     # 激光雷达
                                   64,
                                   self.action_dim_nn, name='Actor', chkpt_dir=path)
         self.target_actor = ActorNetwork(self.actor_lr,
-                                         self.state_dim_nn1, 128, 64, 32,
+                                         self.state_dim_nn1, 128, 64, 64,
                                          self.state_dim_nn2, 128, 64, 32,
                                          64,
                                          self.action_dim_nn, name='TargetActor', chkpt_dir=path)
@@ -274,7 +270,7 @@ class DDPG2:
         self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='Critic', chkpt_dir=path)
         self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 64, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
         '''network'''
-        '''obstacle'''
+        '''obstacle2'''
 
         self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))
         self.noise_gaussian = GaussianNoise(mu=np.zeros(self.action_dim_nn))
