@@ -4,7 +4,7 @@ import sys
 # from torchviz import make_dot
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
-from environment.envs.ugv_forward_continuous_pathfollow import UGV_Forward_Continuous_Path_Follow
+from environment.envs.UGV.ugv_forward_pathfollow_continuous import UGV_Forward_Continuous_Path_Follow
 from algorithm.actor_critic.DDPG import DDPG
 import cv2 as cv
 from common.common import *
@@ -228,7 +228,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        agent.load_actor_optimal(path='./DDPG-UGV-Forwad-Best/', file='Actor_ddpg')  # './DDPG-UGV-Forward-Temp/'
+        agent.load_actor_optimal(path='./DDPG-UGV-Forward-Best/', file='Actor_ddpg')  # './DDPG-UGV-Forward-Temp/'
         # agent.load_actor_optimal(path=optPath, file='DDPG-UGV-Forward-all-random')  # './DDPG-UGV-Forward-Temp/'
         # cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
         #                      cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
@@ -241,6 +241,7 @@ if __name__ == '__main__':
         for i in range(simulation_num):
             print('==========START==========')
             print('episode = ', i)
+            env.reset_random()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
                     break
@@ -260,7 +261,6 @@ if __name__ == '__main__':
             cv.imwrite(simulationPath + 'sim_' + str(i) + '.png', env.image)
             log.append([env.index + 1, env.sampleNum])      # 成功的采样点数量，一共的采样点数量
             print('===========END===========')
-            env.reset_random()
             # env.samplePoints = [env.start, env.terminal]
             if env.terminal_flag == 5:
                 successCounter += 1

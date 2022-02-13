@@ -9,13 +9,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
     But they cannot be loaded directly in a python terminal if we do not add the path of the files into the system environment variables.
 '''
 
-'''This is a template py file to show us how to establish our own training project'''
+'''This is a template py file to show us how to establish our own training and testing project'''
 
 cfgPath = '../../environment/config/'  # the config path, all model description files (.xml) are stored in this directory.
 cfgFile = 'Two_Wheel_UGV.xml'  # the environment that you want to use
 optPath = '../../datasave/network/'  # trained nets that can be tested
 logPath = '../../datasave/log/'  # path to save the log file
 show_per = 1
+
+'''
+    0. Re-write two classes: CriticNetWork and ActorNetWork. This is designed for simplicity since different training projects 
+    have different net structures and parameters. The reference of CriticNetWork and ActorNetWork can be found in common.py.
+'''
 
 '''
     1. Two predefined functions. 
@@ -41,7 +46,7 @@ if __name__ == '__main__':
     simulationPath = logPath + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + 'yourStr'
     '''
         'yourStr' consists of two parts: name of the algorithm and name of the env. Such as:
-            'DDPG-Flight-Attitude-Simulator' or 'PPO-Car'
+            'DDPG-Flight-Attitude-Simulator', 'PPO-Car', or 'DQG-UAV', etc.
     '''
     os.mkdir(simulationPath)  # create a new directory for this time training
 
@@ -61,16 +66,6 @@ if __name__ == '__main__':
             a. Train    b. Retrain    c. Test
     '''
 
-    if RETRAIN:
-        print('...Retraining...')
-        '''
-            3-1: Function 'fullFillReplayMemory_with_Optimal' should be executed here.
-            If the formation of the reward function before retraining and after retraining is different, then:
-                Neural Network must be re-initialized.
-            Otherwise:
-                Neural Network reinitialization is optional.
-        '''
-
     if TRAIN:
         successCounter = 0  # counter for successful episodes
         timeOutCounter = 0  # counter for timeout episodes
@@ -78,7 +73,17 @@ if __name__ == '__main__':
         MAX_EPISODE = 5000  # maximum episode for this time training
         episode = 0
 
-        if not RETRAIN:
+
+        if RETRAIN:
+            print('...Retraining...')
+            '''
+                3-1: Function 'fullFillReplayMemory_with_Optimal' should be executed here.
+                If the formation of the reward function before retraining and after retraining is different, then:
+                    Neural Network must be re-initialized.
+                Otherwise:
+                    Neural Network reinitialization is optional.
+            '''
+        else:
             '''
                 3-2: Function 'fullFillReplayMemory_Random' should be executed here.
             '''

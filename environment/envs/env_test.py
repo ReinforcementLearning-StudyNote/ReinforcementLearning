@@ -85,19 +85,19 @@ def test_two_ugv_forward_continuous():
 def test_ugv_forward_obstacles_continuous():
     from UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
     env = UGV_Forward_Obstacle_Continuous(initPhi=deg2rad(0), save_cfg=True, x_size=5, y_size=5, start=[2.5, 2.5], terminal=[4.0, 2.5],
-                                          dataBasePath='./pathplanning/5X5-50X50-DataBase-AllCircle2/')
+                                          dataBasePath='./pathplanning/5X5-DataBase-AllCircle2/')
     num = 0
     while num < 30:
         # cap = cv.VideoWriter('test' +str(num)+'.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 120.0, (env.width, env.height))
         # env.reset_random()
         # env.reset()
         env.reset_random_with_database()
-        env.show_dynamic_image(isWait=False)
+        env.show_dynamic_image(isWait=True)
         while not env.is_terminal:
             # print(env.time)
             if cv.waitKey(1) == 27:
                 return
-            env.show_dynamic_image(isWait=True)
+            env.show_dynamic_image(isWait=False)
             # cap.write(env.save)
             action = [0, 3 * math.pi]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
     # test_two_ugv_forward_continuous()
-    # test_ugv_forward_obstacles_continuous()
+    test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_path_following()
-    test_ugv_forward_obstacle2()
+    # test_ugv_forward_obstacle2()
     pass

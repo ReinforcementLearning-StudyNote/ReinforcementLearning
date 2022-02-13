@@ -53,7 +53,7 @@ def str2list(string: str) -> list:
     return outer
 
 
-def sind(theta):
+def sind(theta: float) -> float:
     """
     :param theta:   degree, not rad
     :return:
@@ -61,7 +61,7 @@ def sind(theta):
     return math.sin(theta / 180.0 * math.pi)
 
 
-def cosd(theta):
+def cosd(theta: float) -> float:
     """
     :param theta:   degree, not rad
     :return:
@@ -69,7 +69,7 @@ def cosd(theta):
     return math.cos(theta / 180.0 * math.pi)
 
 
-def points_rotate(pts, theta):
+def points_rotate(pts: list, theta: float) -> list:
     """
     :param pts:
     :param theta:   rad, counter-clockwise
@@ -81,14 +81,14 @@ def points_rotate(pts, theta):
         return [math.cos(theta) * pts[0] - math.sin(theta) * pts[1], math.sin(theta) * pts[0] + math.cos(theta) * pts[1]]
 
 
-def points_move(pts, dis):
+def points_move(pts: list, dis: list) -> list:
     if type(pts[0]) == list:
         return [[pt[0] + dis[0], pt[1] + dis[1]] for pt in pts]
     else:
         return [pts[0] + dis[0], pts[1] + dis[1]]
 
 
-def cal_vector_rad(v1, v2):
+def cal_vector_rad(v1: list, v2: list) -> float:
     """
     :brief:         calculate the rad between two vectors
     :param v1:      vector1
@@ -390,3 +390,75 @@ class GaussianNoise(object):
 
     def __call__(self, sigma=1 / 3):
         return np.random.normal(self.mu, sigma, self.mu.shape)
+
+
+class CriticNetWork(nn.Module):
+    def __init__(self, beta=1e-3, state_dim=1, action_dim=1, name='CriticNetWork', chkpt_dir=''):
+        super(CriticNetWork, self).__init__()
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.beta = beta
+        self.checkpoint_file = chkpt_dir + name + '_ddpg'
+        self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
+
+    def forward(self, state, action):
+        state_action_value = func.relu(torch.add(state, action))
+
+        return state_action_value
+
+    def initialization(self):
+        pass
+
+    def save_checkpoint(self, name=None, path='', num=None):
+        print('...saving checkpoint...')
+        if name is None:
+            torch.save(self.state_dict(), self.checkpoint_file)
+        else:
+            if num is None:
+                torch.save(self.state_dict(), path + name)
+            else:
+                torch.save(self.state_dict(), path + name + str(num))
+
+    def save_all_net(self):
+        print('...saving all net...')
+        torch.save(self, self.checkpoint_file_whole_net)
+
+    def load_checkpoint(self):
+        print('...loading checkpoint...')
+        self.load_state_dict(torch.load(self.checkpoint_file))
+
+
+class ActorNetwork(nn.Module):
+    def __init__(self, alpha=1e-4, state_dim=1, action_dim=1, name='ActorNetwork', chkpt_dir=''):
+        super(ActorNetwork, self).__init__()
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.alpha = alpha
+        self.checkpoint_file = chkpt_dir + name + '_ddpg'
+        self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
+
+    def initialization(self):
+        pass
+
+    def forward(self, state):
+        # x = torch.tanh(state)  # bound the output to [-1, 1]
+        # return x
+        pass
+
+    def save_checkpoint(self, name=None, path='', num=None):
+        print('...saving checkpoint...')
+        if name is None:
+            torch.save(self.state_dict(), self.checkpoint_file)
+        else:
+            if num is None:
+                torch.save(self.state_dict(), path + name)
+            else:
+                torch.save(self.state_dict(), path + name + str(num))
+
+    def save_all_net(self):
+        print('...saving all net...')
+        torch.save(self, self.checkpoint_file_whole_net)
+
+    def load_checkpoint(self):
+        print('...loading checkpoint...')
+        self.load_state_dict(torch.load(self.checkpoint_file))

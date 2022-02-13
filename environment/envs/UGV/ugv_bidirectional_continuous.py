@@ -1,9 +1,6 @@
-import math
-
 from common.common import *
 from environment.envs import *
 from environment.envs.pathplanning.samplingmap import samplingmap
-from environment.envs.pathplanning.basic_geometry import *
 
 
 class UGV_Bidirectional_Continuous(samplingmap, rl_base):
@@ -190,10 +187,10 @@ class UGV_Bidirectional_Continuous(samplingmap, rl_base):
         else:
             r2 = 0
 
-        currentTheta = cal_vector_degree([self.current_state[0], self.current_state[1]],
-                                         [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
-        nextTheta = cal_vector_degree([self.next_state[0], self.next_state[1]],
-                                      [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
+        currentTheta = cal_vector_rad([self.current_state[0], self.current_state[1]],
+                                      [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
+        nextTheta = cal_vector_rad([self.next_state[0], self.next_state[1]],
+                                   [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
         # print(currentTheta, nextTheta)
         if currentTheta > nextTheta + 1e-3:  # 带1e-4是为了
             r3 = 2

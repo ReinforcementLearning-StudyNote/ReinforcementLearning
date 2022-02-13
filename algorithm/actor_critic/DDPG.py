@@ -1,7 +1,7 @@
 # import random
-import torch.nn as nn
-import torch.nn.functional as func
-import torch
+# import torch.nn as nn
+# import torch.nn.functional as func
+# import torch
 from environment.config.xml_write import xml_cfg
 from common.common import *
 import pandas as pd
@@ -13,140 +13,17 @@ device = torch.device("cpu") if use_cpu_only else torch.device("cuda" if use_cud
 """use CPU or GPU"""
 
 
-class CriticNetWork(nn.Module):
-    def __init__(self, beta, state_dim, fc1_dims, fc2_dims, action_dim, name, chkpt_dir):
-        super(CriticNetWork, self).__init__()
-        self.state_dim = state_dim
-        self.action_dim = action_dim
-        self.checkpoint_file = chkpt_dir + name + '_ddpg'
-
-        self.fc1 = nn.Linear(self.state_dim, fc1_dims)  # state -> hidden1
-        self.batch_norm1 = nn.LayerNorm(fc1_dims)
-
-        self.fc2 = nn.Linear(fc1_dims, fc2_dims)  # hidden1 -> hidden2
-        self.batch_norm2 = nn.LayerNorm(fc2_dims)
-
-        self.action_value = nn.Linear(self.action_dim, fc2_dims)  # action -> hidden2
-        self.q = nn.Linear(fc2_dims, 1)  # hidden2 -> output action value
-
-        self.initialization()
-
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=beta)
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.to(self.device)
-
-    def forward(self, state, action):
-        state_value = self.fc1(state)  # forward
-        state_value = self.batch_norm1(state_value)  # batch normalization
-        state_value = func.relu(state_value)  # relu
-
-        state_value = self.fc2(state_value)
-        state_value = self.batch_norm2(state_value)
-
-        action_value = func.relu(self.action_value(action))
-        state_action_value = func.relu(torch.add(state_value, action_value))
-        state_action_value = self.q(state_action_value)
-
-        return state_action_value
-
-    def initialization(self):
-        f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
-        nn.init.uniform_(self.fc1.weight.data, -f1, f1)
-        nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-
-        f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
-        nn.init.uniform_(self.fc2.weight.data, -f2, f2)
-        nn.init.uniform_(self.fc2.bias.data, -f2, f2)
-
-        f3 = 0.003
-        nn.init.uniform_(self.q.weight.data, -f3, f3)
-        nn.init.uniform_(self.q.bias.data, -f3, f3)
-
-    def save_checkpoint(self, name=None, path='', num=0):
-        print('...saving checkpoint...')
-        if name is None:
-            torch.save(self.state_dict(), self.checkpoint_file)
-        else:
-            torch.save(self.state_dict(), path + name + str(num))
-
-    def load_checkpoint(self):
-        print('...loading checkpoint...')
-        self.load_state_dict(torch.load(self.checkpoint_file))
-
-
-class ActorNetwork(nn.Module):
-    def __init__(self, alpha, state_dim, fc1_dims, fc2_dims, action_dim, name, chkpt_dir):
-        super(ActorNetwork, self).__init__()
-        self.state_dim = state_dim
-        self.action_dim = action_dim
-        # self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.checkpoint_file = chkpt_dir + name + '_ddpg'
-
-        self.fc1 = nn.Linear(self.state_dim, fc1_dims)  # 输入 -> 第一个隐藏层
-        self.batch_norm1 = nn.LayerNorm(fc1_dims)
-
-        self.fc2 = nn.Linear(fc1_dims, fc2_dims)  # 第一个隐藏层 -> 第二个隐藏层
-        self.batch_norm2 = nn.LayerNorm(fc2_dims)
-
-        self.mu = nn.Linear(fc2_dims, self.action_dim)  # 第二个隐藏层 -> 输出层
-
-        self.initialization()
-
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=alpha)
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.to(self.device)
-
-    def initialization(self):
-        f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
-        nn.init.uniform_(self.fc1.weight.data, -f1, f1)
-        nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-
-        f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
-        nn.init.uniform_(self.fc2.weight.data, -f2, f2)
-        nn.init.uniform_(self.fc2.bias.data, -f2, f2)
-
-        f3 = 0.003
-        nn.init.uniform_(self.mu.weight.data, -f3, f3)
-        nn.init.uniform_(self.mu.bias.data, -f3, f3)
-
-    def forward(self, state):
-        x = self.fc1(state)
-        x = self.batch_norm1(x)
-        x = func.relu(x)
-
-        x = self.fc2(x)
-        x = self.batch_norm2(x)
-        x = func.relu(x)
-
-        x = torch.tanh(self.mu(x))  # bound the output to [-1, 1]
-
-        return x
-
-    def save_checkpoint(self):
-        print('...saving checkpoint...')
-        torch.save(self.state_dict(), self.checkpoint_file)
-
-    def load_checkpoint(self):
-        print('...loading checkpoint...')
-        self.load_state_dict(torch.load(self.checkpoint_file))
-
-
 class DDPG:
     def __init__(self,
                  gamma: float = 0.9,
-                 actor_learning_rate: float = 1e-3,
-                 critic_learning_rate: float = 1e-3,
                  actor_soft_update: float = 1e-2,
                  critic_soft_update: float = 1e-2,
                  memory_capacity: int = 5000,
                  batch_size: int = 64,
                  modelFileXML: str = '',
-                 path: str = ''
-                 ):
+                 path: str = ''):
         """
         :param gamma:                   discount factor
-        :param actor_learning_rate:     learning rate of actor net
-        :param critic_learning_rate:    learning rate of critic net
         :param actor_soft_update:       soft update rate of actor
         :param critic_soft_update:      soft update rate of critic
         :param memory_capacity:         capacity of the replay memory
@@ -165,19 +42,21 @@ class DDPG:
 
         '''DDPG'''
         self.gamma = gamma
-        self.actor_lr = actor_learning_rate
-        self.critic_lr = critic_learning_rate
+        # self.actor_lr = actor_learning_rate
+        # self.critic_lr = critic_learning_rate
         self.actor_tau = actor_soft_update
         self.critic_tau = critic_soft_update
         self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_nn)
+        self.path = path
         '''DDPG'''
 
         '''network'''
-        self.actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='Actor', chkpt_dir=path)
-        self.target_actor = ActorNetwork(self.actor_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetActor', chkpt_dir=path)
 
-        self.critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='Critic', chkpt_dir=path)
-        self.target_critic = CriticNetWork(self.critic_lr, self.state_dim_nn, 128, 128, self.action_dim_nn, name='TargetCritic', chkpt_dir=path)
+        self.actor = ActorNetwork(1e-4, self.state_dim_nn, self.action_dim_nn, name='Actor', chkpt_dir=self.path)
+        self.target_actor = ActorNetwork(1e-4, self.state_dim_nn, self.action_dim_nn, name='TargetActor', chkpt_dir=self.path)
+        self.critic = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic', chkpt_dir=self.path)
+        self.target_critic = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic', chkpt_dir=self.path)
+
         '''network'''
 
         self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))
@@ -269,6 +148,12 @@ class DDPG:
         self.target_actor.save_checkpoint()
         self.target_critic.save_checkpoint()
 
+    def save_models_all(self):
+        self.actor.save_all_net()
+        self.critic.save_all_net()
+        self.target_actor.save_all_net()
+        self.target_critic.save_all_net()
+
     def load_models(self, path):
         """
         :brief:         only for test
@@ -284,6 +169,18 @@ class DDPG:
     def load_actor_optimal(self, path, file):
         print('...loading optimal...')
         self.actor.load_state_dict(torch.load(path + file))
+
+    def load_target_actor_optimal(self, path, file):
+        print('...loading optimal...')
+        self.target_actor.load_state_dict(torch.load(path + file))
+
+    def load_critic_optimal(self, path, file):
+        print('...loading optimal...')
+        self.critic.load_state_dict(torch.load(path + file))
+
+    def load_target_critic_optimal(self, path, file):
+        print('...loading optimal...')
+        self.target_critic.load_state_dict(torch.load(path + file))
 
     def get_RLBase_from_XML(self, filename):
         rl_base, agentName = self.load_rl_basefromXML(filename=filename)
@@ -320,34 +217,24 @@ class DDPG:
             linear_action.append(k * a + b)
         return linear_action
 
-    def saveData_Step_Reward(self,
-                             step,
-                             reward,
-                             is2file=False,
-                             filename='StepReward.csv',
-                             filepath=''):
+    def saveData_Step_Reward(self, step, reward, is2file=False, filename='StepReward.csv'):
         if is2file:
             data = pd.DataFrame({
                 'step:': self.save_step,
                 'stepreward': self.save_stepreward,
             })
-            data.to_csv(filepath + filename, index=False, sep=',')
+            data.to_csv(self.path + filename, index=False, sep=',')
         else:
             self.save_step.append(step)
             self.save_stepreward.append(reward)
 
-    def saveData_EpisodeReward(self,
-                               episode,
-                               reward,
-                               is2file=False,
-                               filename='EpisodeReward.csv',
-                               filepath=''):
+    def saveData_EpisodeReward(self, episode, reward, is2file=False, filename='EpisodeReward.csv'):
         if is2file:
             data = pd.DataFrame({
                 'episode:': self.save_episode,
                 'reward': self.save_reward,
             })
-            data.to_csv(filepath + filename, index=False, sep=',')
+            data.to_csv(self.path + filename, index=False, sep=',')
         else:
             self.save_episode.append(episode)
             self.save_reward.append(reward)

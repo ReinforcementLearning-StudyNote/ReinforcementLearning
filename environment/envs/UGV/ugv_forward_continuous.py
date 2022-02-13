@@ -42,7 +42,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.l_wheel = 0.06  # 车轮厚度
         self.rBody = 0.15  # 车主体半径
         self.L = 2 * self.rBody  # 车主体直径
-        self.dt = 0.02  # 50Hz
+        self.dt = 0.05  # 50Hz
         self.time = 0.  # time
         self.miss = 2 * self.rBody
         self.staticGain = 4
@@ -128,7 +128,8 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
     def draw_terminal(self):
         if self.terminal is not None and self.terminal != []:
-            cv.circle(self.image, self.dis2pixel(self.terminal), self.length2pixel(self.miss), Color().random_color_by_BGR(), 2)
+            # cv.circle(self.image, self.dis2pixel(self.terminal), self.length2pixel(self.miss), Color().random_color_by_BGR(), 2)
+            cv.circle(self.image, self.dis2pixel(self.terminal), 5, Color().random_color_by_BGR(), 2)
 
     def draw_region_grid(self, xNUm: int = 3, yNum: int = 3):
         if xNUm <= 1 or yNum <= 1:
@@ -149,6 +150,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.image = self.image_temp.copy()
         self.draw_region_grid(xNUm=3, yNum=3)
         self.map_draw_obs()
+        self.map_draw_photo_frame()
         self.map_draw_boundary()
         self.draw_car()
         self.draw_terminal()
@@ -175,10 +177,10 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             self.terminal_flag = 2
             return True
         # if self.delta_phi_absolute > 2 * math.pi + deg2rad(45) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
-        if self.delta_phi_absolute > 3 * math.pi + deg2rad(45):
-            print('...转的角度太大了...')
-            self.terminal_flag = 1
-            return True
+        # if self.delta_phi_absolute > 3 * math.pi + deg2rad(45):
+        #     print('...转的角度太大了...')
+        #     self.terminal_flag = 1
+        #     return True
         if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
             print('...success...')
             self.terminal_flag = 3
@@ -339,32 +341,36 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         :return:
         """
         '''physical parameters'''
-        if not uniform:
-            if random.uniform(0, 1) < 0.5:  # 有一半的概率实在上边三个格子
-                self.set_start([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
-                self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
-                self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-                self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-            else:
-                self.set_start([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
-                self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
-                self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-                self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-        else:
-            self.randomInitFLag = self.randomInitFLag % 81
-            start = self.randomInitFLag % 9  # start的区域编号
-            terminal = self.randomInitFLag // 9  # terminal的区域编号
-            stepX = self.x_size / 3
-            stepY = self.y_size / 3
-            s_X = [stepX * start % 3, stepX * (start % 3 + 1)]
-            s_Y = [stepY * start // 3, stepY * (start // 3 + 1)]
-            t_X = [stepX * terminal % 3, stepX * (terminal % 3 + 1)]
-            t_Y = [stepY * terminal % 3, stepY * (terminal % 3 + 1)]
-            self.randomInitFLag += 1
-            self.set_start([random.uniform(s_X[0], s_X[1]), random.uniform(s_Y[0], s_Y[1])])
-            self.set_terminal([random.uniform(t_X[0], t_X[1]), random.uniform(t_Y[0], t_Y[1])])
-            self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-            self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        # if not uniform:
+        #     if random.uniform(0, 1) < 0.5:  # 有一半的概率实在上边三个格子
+        #         self.set_start([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
+        #         self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+        #         self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        #         self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        #     else:
+        #         self.set_start([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+        #         self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+        #         self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        #         self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        # else:
+        #     self.randomInitFLag = self.randomInitFLag % 81
+        #     start = self.randomInitFLag % 9  # start的区域编号
+        #     terminal = self.randomInitFLag // 9  # terminal的区域编号
+        #     stepX = self.x_size / 3
+        #     stepY = self.y_size / 3
+        #     s_X = [stepX * start % 3, stepX * (start % 3 + 1)]
+        #     s_Y = [stepY * start // 3, stepY * (start // 3 + 1)]
+        #     t_X = [stepX * terminal % 3, stepX * (terminal % 3 + 1)]
+        #     t_Y = [stepY * terminal % 3, stepY * (terminal % 3 + 1)]
+        #     self.randomInitFLag += 1
+        #     self.set_start([random.uniform(s_X[0], s_X[1]), random.uniform(s_Y[0], s_Y[1])])
+        #     self.set_terminal([random.uniform(t_X[0], t_X[1]), random.uniform(t_Y[0], t_Y[1])])
+        #     self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        #     self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        self.set_start([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+        self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+        self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
+        self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]

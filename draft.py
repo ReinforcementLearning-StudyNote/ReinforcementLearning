@@ -10,7 +10,9 @@ import torch
 import pandas as pd
 import matplotlib.pyplot as plt
 from environment.envs.pathplanning.bezier import Bezier
-import emoji
+# import emoji
+import turtle
+
 
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
@@ -20,17 +22,4 @@ def add(a):
         a[i] += 1
 
 if __name__ == '__main__':
-    a = torch.randint(low=-10,high=11,size=[1, 10]) / 10
-    b = torch.sign(a)
-    c = torch.clamp(input=b, min=0, max=1)
-    print(c.size())
-    print(a)
-    print(b)
-    print(c)
-    # b = torch.ones([1, 10])
-    # c = torch.randint(low=1, high=10, size=[1,10])
-    # d = torch.cat((b, c), dim=0)
-    # e = torch.mul(a, d)
-    # print(a)
-    # print(e)
     pass

@@ -80,7 +80,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.isActionContinuous = [True, True]
         self.initial_action = [0.0, 0.0]
         self.current_action = self.initial_action.copy()
-
+        self.dt = 0.1
         self.reward = 0.0
         self.is_terminal = False
         self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-子目标成功 4-碰撞障碍物 5-最终成功
@@ -255,8 +255,8 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
                 self.successfulFlag[self.index] = True
                 self.terminal_flag = 3              # sub-terminal successful
                 self.index += 1
-                # self.dx = 0.  # 每到达一个节点，就按照第一阶段学习的结果初始化
-                # self.dy = 0.
+                self.dx = 0.  # 每到达一个节点，就按照第一阶段学习的结果初始化
+                self.dy = 0.
                 self.dphi = 0.
                 # print('...重置速度，角速度...')
                 return False
@@ -408,6 +408,11 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.get_reward()
         self.saveData()
 
+        if self.index == len(self.samplePoints) - 1:
+            self.miss = 2 * self.rBody
+        else:
+            self.miss = 4 * self.rBody
+
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
 
     def reset(self):
@@ -459,10 +464,16 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         """
         '''physical parameters'''
         if not uniform:
-            self.set_start([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
-            self.set_terminal([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
+            self.set_start([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
+            self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
             self.start_clip([3 * self.rBody, 3 * self.rBody], [self.x_size - 3 * self.rBody, self.y_size - 3 * self.rBody])
             self.terminal_clip([3 * self.rBody, 3 * self.rBody], [self.x_size - 3 * self.rBody, self.y_size - 3 * self.rBody])
+            # self.start = [7.531, 2.052]
+            # self.terminal =  [2.077, 3.632]
+            # self.set_start([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
+            # self.set_terminal([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
+            # self.start_clip([3 * self.rBody, 3 * self.rBody], [self.x_size - 3 * self.rBody, self.y_size - 3 * self.rBody])
+            # self.terminal_clip([3 * self.rBody, 3 * self.rBody], [self.x_size - 3 * self.rBody, self.y_size - 3 * self.rBody])
         else:
             self.randomInitFLag = self.randomInitFLag % 81
             start = self.randomInitFLag % 9         # start的区域编号
@@ -488,6 +499,7 @@ class UGV_Forward_Continuous_Path_Follow(UGV):
         self.bezier = Bezier(self.refPoints)  # 贝塞尔曲线
         self.curve = self.bezier.Curve()
         self.samplePoints = self.get_sample_auto(threshold=1.5)
+        # self.samplePoints = [[7.531, 2.052], [6.600454155204259, 3.363158059835146], [5.1305519792193435, 3.8647351812612176], [3.618778950076443, 3.614668328186206], [2.077, 3.632]]
         self.sampleNum = len(self.samplePoints)  # 采样点数量
         self.trajectory = [self.start]
         self.traj_length = 0
