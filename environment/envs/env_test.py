@@ -30,11 +30,13 @@ def test_flight_attitude_simulator_continuous():
     test_num = 1
     for _ in range(test_num):
         env.reset_random()
+        env.theta=0
         while not env.is_terminal:
             env.show_dynamic_image(isWait=False)
             # action = random.choice(env.action_space)
-            action = [0.0]
+            action = [0.8]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            print(env.reward)
     # env.saveData(is2file=True, filepath='../../datasave/')
 
 
@@ -139,52 +141,12 @@ def test_ugv_forward_path_following():
         # env.reset_random()
 
 
-# UGV Forward Obstacle2 Test
-def test_ugv_forward_obstacle2():
-    from UGV.ugv_forward_obstacle_continuous2 import UGV_Forward_Obstacle_Continuous2
-    from algorithm.actor_critic.DDPG import ActorNetwork
-
-    controller = ActorNetwork(1e-4, 8, 128, 128, 2, name='Actor', chkpt_dir='')
-    controller.load_state_dict(torch.load('../../datasave/network/DDPG-UGV-Forward-Best/Actor_ddpg'))
-    env = UGV_Forward_Obstacle_Continuous2(initPhi=deg2rad(45),
-                                           save_cfg=True,
-                                           x_size=5.0,
-                                           y_size=5.0,
-                                           start=[0.5, 0.5],
-                                           terminal=[4.5, 4.5],
-                                           dataBasePath='./pathplanning/5X5-DataBase-AllCircle2/',
-                                           controller=controller
-                                           )
-    num = 0
-    while num < 30:
-        # env.show_dynamic_imagewithobs(isWait=False)
-        # env.reset()
-        env.reset_random_with_database()
-        while not env.is_terminal:
-            # print(env.time)
-            if cv.waitKey(1) == 27:
-                return
-            env.show_dynamic_imagewithobs(isWait=False)
-            # cap.write(env.save)
-            # action = [10, 5]
-            action = [random.uniform(-env.wMax/2, env.wMax/2), random.uniform(-env.wMax/2, env.wMax/2)]
-            # if env.time < 2.0:
-            #     action = [3, -3]
-            # else:
-            #     action = [0, 0]
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
-            # print(env.current_state)
-            # print('总奖励', env.reward)
-        num += 1
-        # env.reset_random()
-
-
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
-    # test_flight_attitude_simulator_continuous()
+    test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
     # test_two_ugv_forward_continuous()
-    test_ugv_forward_obstacles_continuous()
+    # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_path_following()
     # test_ugv_forward_obstacle2()
     pass

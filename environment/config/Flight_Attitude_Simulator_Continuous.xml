@@ -11,7 +11,7 @@
 		<next_state>[-1.0471975511965976, -1.0471975511965976, 0.0, 1.0471975511965976]</next_state>
 		<action_dim>1</action_dim>
 		<action_step>[None]</action_step>
-		<action_range>[[-1.6, 3.0]]</action_range>
+		<action_range>[[-1.0, 1.8]]</action_range>
 		<action_num>[inf]</action_num>
 		<action_space>[None]</action_space>
 		<isActionContinuous>True</isActionContinuous>
@@ -22,20 +22,20 @@
 	<Physical>
 		<initTheta>-1.0471975511965976</initTheta>
 		<setTheta>0.0</setTheta>
-		<f_max>3.0</f_max>
-		<f_min>-1.6</f_min>
+		<f_max>1.8</f_max>
+		<f_min>-1.0</f_min>
 		<minTheta>-1.0471975511965976</minTheta>
 		<maxTheta>1.0471975511965976</maxTheta>
 		<theta>-1.0471975511965976</theta>
 		<dTheta>0.0</dTheta>
-		<freq>100</freq>
-		<T>0.01</T>
+		<freq>50</freq>
+		<T>0.02</T>
 		<Lw>0.02</Lw>
 		<L>0.362</L>
 		<J>0.082</J>
 		<k>0.09</k>
 		<m>0.3</m>
-		<dis>0.059</dis>
+		<dis>0.3</dis>
 		<copperl>0.06</copperl>
 		<copperw>0.03</copperw>
 		<g>9.8</g>

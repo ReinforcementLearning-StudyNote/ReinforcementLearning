@@ -24,14 +24,14 @@ class CriticNetWork(nn.Module):
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
         self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
 
-        self.fc1 = nn.Linear(self.state_dim, 128)  # state -> hidden1
-        self.batch_norm1 = nn.LayerNorm(128)
+        self.fc1 = nn.Linear(self.state_dim, 64)  # state -> hidden1
+        self.batch_norm1 = nn.LayerNorm(64)
 
-        self.fc2 = nn.Linear(128, 128)  # hidden1 -> hidden2
-        self.batch_norm2 = nn.LayerNorm(128)
+        self.fc2 = nn.Linear(64, 64)  # hidden1 -> hidden2
+        self.batch_norm2 = nn.LayerNorm(64)
 
-        self.action_value = nn.Linear(self.action_dim, 128)  # action -> hidden2
-        self.q = nn.Linear(128, 1)  # hidden2 -> output action value
+        self.action_value = nn.Linear(self.action_dim, 64)  # action -> hidden2
+        self.q = nn.Linear(64, 1)  # hidden2 -> output action value
 
         self.initialization()
 
@@ -96,10 +96,10 @@ class ActorNetwork(nn.Module):
         self.fc1 = nn.Linear(self.state_dim, 128)  # 输入 -> 第一个隐藏层
         self.batch_norm1 = nn.LayerNorm(128)
 
-        self.fc2 = nn.Linear(128, 128)  # 第一个隐藏层 -> 第二个隐藏层
-        self.batch_norm2 = nn.LayerNorm(128)
+        self.fc2 = nn.Linear(128, 64)  # 第一个隐藏层 -> 第二个隐藏层
+        self.batch_norm2 = nn.LayerNorm(64)
 
-        self.mu = nn.Linear(128, self.action_dim)  # 第二个隐藏层 -> 输出层
+        self.mu = nn.Linear(64, self.action_dim)  # 第二个隐藏层 -> 输出层
 
         self.initialization()
 
@@ -209,6 +209,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
             _action = agent.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
             env.show_dynamic_image(isWait=False)
+            # if env.reward > 0:
             agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
 
 
@@ -216,10 +217,10 @@ if __name__ == '__main__':
     simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-FlightAttitudeSimulator/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
-    is_storage_only_success = True
+    is_storage_only_success = False
 
     env = flight_sim_con(initTheta=-60.0, setTheta=0.0, save_cfg=False)
 
@@ -228,7 +229,7 @@ if __name__ == '__main__':
                      actor_soft_update=1e-2,
                      critic_soft_update=1e-2,
                      memory_capacity=20000,  # 10000
-                     batch_size=256,
+                     batch_size=512,
                      modelFileXML=cfgPath + cfgFile,
                      path=simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
@@ -292,8 +293,9 @@ if __name__ == '__main__':
                     new_state_.append(env.next_state)
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
+                    # if env.reward > 0:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
-                agent.learn()
+                agent.learn(is_reward_ascent=False)
             '''跳出循环代表回合结束'''
             if is_storage_only_success:
                 if env.terminal_flag == 3:
@@ -355,4 +357,4 @@ if __name__ == '__main__':
             print('===========END===========')
         cv.waitKey(0)
         env.saveData(is2file=True, filepath=simulationPath)
-        # agent.save_models_all()
+        agent.save_models_all()
