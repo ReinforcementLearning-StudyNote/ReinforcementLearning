@@ -37,14 +37,14 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.wLeft = 0.
         self.wRight = 0.
 
-        self.wMax = 10  # 车轮最大角速度rad/s
-        self.r = 0.1  # 车轮半径
-        self.l_wheel = 0.06  # 车轮厚度
-        self.rBody = 0.15  # 车主体半径
-        self.L = 2 * self.rBody  # 车主体直径
-        self.dt = 0.05  # 50Hz
-        self.time = 0.  # time
-        self.miss = 2 * self.rBody
+        self.wMax = 10                  # 车轮最大角速度rad/s
+        self.r = 0.1                    # 车轮半径
+        self.l_wheel = 0.06             # 车轮厚度
+        self.rBody = 0.15               # 车主体半径
+        self.L = 2 * self.rBody         # 车主体直径
+        self.dt = 0.1                   # 10Hz
+        self.time = 0.                  # time
+        self.miss = 1.0 * self.rBody
         self.staticGain = 4
         self.delta_phi_absolute = 0.
         self.timeMax = 8.0
@@ -154,9 +154,18 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.map_draw_boundary()
         self.draw_car()
         self.draw_terminal()
+        '''显示关键信息'''
         cv.putText(self.image, 'time: ' + str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.putText(self.image,
                    'dis: ' + str(round(dis_two_points([self.x, self.y], self.terminal), 3)), (120, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
+        thetaError = rad2deg(cal_vector_rad([self.current_state[0], self.current_state[1]], [math.cos(self.phi), math.sin(self.phi)]))
+        cv.putText(self.image,
+                   'theta: ' + str(round(thetaError, 3)),
+                   (240, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
+        '''显示关键信息'''
+        cv.line(self.image, self.dis2pixel(self.terminal), self.dis2pixel([self.x, self.y]), Color().Thistle, 2)
+        cv.line(self.image, self.dis2pixel([self.x, self.y]), self.dis2pixel([self.x + math.cos(self.phi), self.y + math.sin(self.phi)]),
+                Color().DarkSlateBlue, 2)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
         self.save = self.image.copy()
@@ -177,9 +186,9 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             self.terminal_flag = 2
             return True
         # if self.delta_phi_absolute > 2 * math.pi + deg2rad(45) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
-        # if self.delta_phi_absolute > 3 * math.pi + deg2rad(45):
+        # if self.delta_phi_absolute > 4 * math.pi + deg2rad(0):
         #     print('...转的角度太大了...')
-        #     self.terminal_flag = 1
+        #     # self.terminal_flag = 1
         #     return True
         if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
             print('...success...')
@@ -188,7 +197,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         if self.is_out():
             # print('...out...')
             # self.terminal_flag = 1
-            return False
+            return True
         return False
 
     def get_reward(self, param=None):
@@ -200,36 +209,39 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         nextError = math.sqrt(nex ** 2 + ney ** 2)
 
         r1 = -1  # 常值误差，每运行一步，就 -1
+        r1 = 0
 
-        if currentError > nextError + 1e-2:
+        if currentError > nextError + 1e-3:
             r2 = 5
-        elif 1e-2 + currentError < nextError:
+        elif 1e-3 + currentError < nextError:
             r2 = -5
         else:
             r2 = 0
+        r2 = 10 * (currentError - nextError)
 
         currentTheta = cal_vector_rad([cex, cey], [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
         nextTheta = cal_vector_rad([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
         # print(currentTheta, nextTheta)
-        if currentTheta > nextTheta + 1e-2:
-            r3 = 2
-        elif 1e-3 + currentTheta < nextTheta:
-            r3 = -2
-            # if 1e-1 + currentTheta < nextTheta:
-            #     self.terminal_flag = 1
-            #     self.is_terminal = True
+        if (nextTheta <= deg2rad(1)) and (currentTheta <= deg2rad(1)):  # 如果角度误差小于1度
+            r3 = math.pi
         else:
-            r3 = 0
-
+            r3 = (currentTheta - nextTheta) * 2
+            # if currentTheta > nextTheta + 1e-2:
+            #     r3 = 2
+            # elif 1e-2 + currentTheta < nextTheta:
+            #     r3 = -2
+            # else:
+            #     r3 = 0
+        r3 = 0
         '''4. 其他'''
         r4 = 0
-        if self.terminal_flag == 3:
-            r4 = 500
-        if self.terminal_flag == 1:  # 出界
-            r4 = -2
+        # if self.terminal_flag == 3:
+        #     r4 = 200
+        # if self.terminal_flag == 1:  # 出界
+        #     r4 = -2
         '''4. 其他'''
         # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
-        self.reward = r1 + (r2 + r3 + r4)
+        self.reward = r1 + r2 + r3 + r4
 
     def f(self, _phi):
         _dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(_phi)
@@ -341,32 +353,6 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         :return:
         """
         '''physical parameters'''
-        # if not uniform:
-        #     if random.uniform(0, 1) < 0.5:  # 有一半的概率实在上边三个格子
-        #         self.set_start([random.uniform(0, self.x_size), random.uniform(2 * self.y_size / 3, self.y_size)])
-        #         self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
-        #         self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-        #         self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-        #     else:
-        #         self.set_start([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
-        #         self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
-        #         self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-        #         self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-        # else:
-        #     self.randomInitFLag = self.randomInitFLag % 81
-        #     start = self.randomInitFLag % 9  # start的区域编号
-        #     terminal = self.randomInitFLag // 9  # terminal的区域编号
-        #     stepX = self.x_size / 3
-        #     stepY = self.y_size / 3
-        #     s_X = [stepX * start % 3, stepX * (start % 3 + 1)]
-        #     s_Y = [stepY * start // 3, stepY * (start // 3 + 1)]
-        #     t_X = [stepX * terminal % 3, stepX * (terminal % 3 + 1)]
-        #     t_Y = [stepY * terminal % 3, stepY * (terminal % 3 + 1)]
-        #     self.randomInitFLag += 1
-        #     self.set_start([random.uniform(s_X[0], s_X[1]), random.uniform(s_Y[0], s_Y[1])])
-        #     self.set_terminal([random.uniform(t_X[0], t_X[1]), random.uniform(t_Y[0], t_Y[1])])
-        #     self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
-        #     self.terminal_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
         self.set_start([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
         self.set_terminal([random.uniform(0, self.x_size), random.uniform(0, self.y_size)])
         self.start_clip([self.rBody, self.rBody], [self.x_size - self.rBody, self.y_size - self.rBody])
@@ -379,7 +365,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         phi0 = cal_vector_rad([self.terminal[0] - self.x, self.terminal[1] - self.y], [1, 0])
         phi0 = phi0 if self.y <= self.terminal[1] else -phi0
         # print(rad2deg(phi0))
-        self.phi = random.uniform(phi0 - deg2rad(45), phi0 + deg2rad(45))  # 将初始化的角度放在初始对准目标的90度范围内
+        self.phi = random.uniform(phi0 - deg2rad(90), phi0 + deg2rad(90))  # 将初始化的角度放在初始对准目标的90度范围内
         '''角度处理'''
         if self.phi > math.pi:
             self.phi -= 2 * math.pi

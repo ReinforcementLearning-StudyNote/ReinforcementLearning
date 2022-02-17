@@ -414,7 +414,7 @@ if __name__ == '__main__':
                 print('总成功率：', round(successCounter / agent.episode * 100, 3), '%')
             print('==========END=========')
             print()
-            agent.saveData_EpisodeReward(agent.episode, sumr)
+            agent.saveData_EpisodeReward(episode=agent.episode, reward=sumr, average_reward=sumr / env.time, is2file=False, filename='EpisodeReward.csv')
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
@@ -431,7 +431,7 @@ if __name__ == '__main__':
                 print('Over......')
                 break
         '''dataSave'''
-        agent.saveData_EpisodeReward(0.0, 0.0, True, 'EpisodeReward.csv')
+        agent.saveData_EpisodeReward(episode=0, reward=0.0, average_reward=0.0, is2file=True, filename='EpisodeReward.csv')
         agent.saveData_Step_Reward(0, 0, True, 'StepReward.csv')
         '''dataSave'''
 

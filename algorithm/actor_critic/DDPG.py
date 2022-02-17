@@ -66,10 +66,13 @@ class DDPG:
         self.episode = 0
         self.reward = 0
 
-        self.save_episode = []
-        self.save_reward = []
-        self.save_step = []
-        self.save_stepreward = []
+        self.save_episode = []          # 保存的每一个回合的回合数
+        self.save_reward = []           # 保存的每一个回合的奖励
+        self.save_time = []
+        self.save_average_reward = []   # 保存的每一个回合的平均时间的奖励
+        self.save_successful_rate = []
+        self.save_step = []             # 保存的每一步的步数
+        self.save_stepreward = []       # 保存的每一步的奖励
 
     def choose_action_random(self):
         """
@@ -228,13 +231,19 @@ class DDPG:
             self.save_step.append(step)
             self.save_stepreward.append(reward)
 
-    def saveData_EpisodeReward(self, episode, reward, is2file=False, filename='EpisodeReward.csv'):
+    def saveData_EpisodeReward(self, episode, time, reward, average_reward, successrate, is2file=False, filename='EpisodeReward.csv'):
         if is2file:
             data = pd.DataFrame({
-                'episode:': self.save_episode,
+                'episode': self.save_episode,
+                'time': self.save_time,
                 'reward': self.save_reward,
+                'average_reward': self.save_average_reward,
+                'success_rate': self.save_successful_rate
             })
             data.to_csv(self.path + filename, index=False, sep=',')
         else:
             self.save_episode.append(episode)
+            self.save_time.append(time)
             self.save_reward.append(reward)
+            self.save_average_reward.append(average_reward)
+            self.save_successful_rate.append(successrate)

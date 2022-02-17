@@ -331,13 +331,8 @@ class ReplayBuffer:
         """
         :return:        根据奖励大小得到所有数据的索引值，升序，即从小到大
         """
+        print('...sorting...')
         self.sorted_index = sorted(range(min(self.mem_counter, self.mem_size)), key=lambda k: self.r_mem[k], reverse=False)
-
-    def get_reward_resort(self, per):
-        if self.resort_count > per:
-            print('...resorting...')
-            self.resort_count = 0
-            self.get_reward_sort()
 
     def store_transition_per_episode(self, states, actions, rewards, states_, dones):
         self.resort_count += 1
