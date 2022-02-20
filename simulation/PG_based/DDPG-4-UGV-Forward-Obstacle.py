@@ -448,7 +448,7 @@ if __name__ == '__main__':
         agent.actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
         agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
         '''重新加载actor网络结构，这是必须的操作'''
-        cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 60.0, (env.width, env.height))
+        cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height))
         simulation_num = 5
         successCounter = 0
         timeOutCounter = 0
