@@ -442,7 +442,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        RECORD = False
+        RECORD = True
         optPath = '../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
         agent = DDPG(modelFileXML=cfgPath + cfgFile, path=simulationPath)
         '''重新加载actor网络结构，这是必须的操作'''
