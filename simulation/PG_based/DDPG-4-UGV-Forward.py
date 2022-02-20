@@ -105,13 +105,13 @@ class ActorNetwork(nn.Module):
         self.fc1 = nn.Linear(self.state_dim, 128)  # 输入 -> 第一个隐藏层
         self.batch_norm1 = nn.LayerNorm(128)
 
-        self.fc2 = nn.Linear(128, 64)  # 第一个隐藏层 -> 第二个隐藏层
-        self.batch_norm2 = nn.LayerNorm(64)
+        self.fc2 = nn.Linear(128, 128)  # 第一个隐藏层 -> 第二个隐藏层
+        self.batch_norm2 = nn.LayerNorm(128)
 
-        self.fc3 = nn.Linear(64, 32)  # 第2个隐藏层 -> 第3个隐藏层
-        self.batch_norm3 = nn.LayerNorm(32)
+        # self.fc3 = nn.Linear(64, 32)  # 第2个隐藏层 -> 第3个隐藏层
+        # self.batch_norm3 = nn.LayerNorm(32)
 
-        self.mu = nn.Linear(32, self.action_dim)  # 第3个隐藏层 -> 输出层
+        self.mu = nn.Linear(128, self.action_dim)  # 第3个隐藏层 -> 输出层
 
         # self.initialization()
         self.initialization_default()
@@ -138,8 +138,8 @@ class ActorNetwork(nn.Module):
         self.batch_norm1.reset_parameters()
         self.fc2.reset_parameters()
         self.batch_norm2.reset_parameters()
-        self.fc3.reset_parameters()
-        self.batch_norm3.reset_parameters()
+        # self.fc3.reset_parameters()
+        # self.batch_norm3.reset_parameters()
         self.mu.reset_parameters()
 
     def forward(self, state):
@@ -151,9 +151,9 @@ class ActorNetwork(nn.Module):
         x = self.batch_norm2(x)
         x = func.relu(x)
 
-        x = self.fc3(x)
-        x = self.batch_norm3(x)
-        x = func.relu(x)
+        # x = self.fc3(x)
+        # x = self.batch_norm3(x)
+        # x = func.relu(x)
 
         x = torch.tanh(self.mu(x))  # bound the output to [-1, 1]
 
@@ -268,7 +268,7 @@ if __name__ == '__main__':
     simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -410,7 +410,7 @@ if __name__ == '__main__':
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
                              (env.width, env.height))
-        simulation_num = 100
+        simulation_num = 10
         successCounter = 0
         timeOutCounter = 0
         failStartx, failStarty = [], []

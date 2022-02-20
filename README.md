@@ -68,3 +68,20 @@ In 'DDPG-4-UGV-Forward-Obstacle.py', set:
 <div align=center>
     <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle1.gif" width="400px"><img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle2.gif" width="400px">
 </div>
+
+### A DDPG trajectory planner in an empty world for a forward-only UGV.
+```commandline
+cd simulation/PG_based/
+python DDPG-4-UGV-Forward.py
+```
+The result should be similar to the following.
+
+In 'DDPG-4-UGV-Forward.py', set:
+```commandline
+    TRAIN = False
+    RETRAIN = False
+    TEST = not TRAIN
+```
+<div align=center>
+    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Forward1.gif" width="400px"><img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Forward2.gif" width="400px">
+</div>
