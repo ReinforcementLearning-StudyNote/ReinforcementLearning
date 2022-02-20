@@ -51,12 +51,10 @@ class DDPG:
         '''DDPG'''
 
         '''network'''
-
         self.actor = ActorNetwork(1e-4, self.state_dim_nn, self.action_dim_nn, name='Actor', chkpt_dir=self.path)
         self.target_actor = ActorNetwork(1e-4, self.state_dim_nn, self.action_dim_nn, name='TargetActor', chkpt_dir=self.path)
         self.critic = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic', chkpt_dir=self.path)
         self.target_critic = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic', chkpt_dir=self.path)
-
         '''network'''
 
         self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))
@@ -98,20 +96,26 @@ class DDPG:
         if self.memory.mem_counter < self.memory.batch_size:
             return
 
+        '''第一步：取数据'''
         state, action, reward, new_state, done = self.memory.sample_buffer(is_reward_ascent=is_reward_ascent)
         state = torch.tensor(state, dtype=torch.float).to(self.critic.device)
         action = torch.tensor(action, dtype=torch.float).to(self.critic.device)
         reward = torch.tensor(reward, dtype=torch.float).to(self.critic.device)
         new_state = torch.tensor(new_state, dtype=torch.float).to(self.critic.device)
         done = torch.tensor(done, dtype=torch.float).to(self.critic.device)
+        '''第一步：取数据'''
 
+        '''第二步：将网络设置到估计模式'''
         self.target_actor.eval()
         self.target_critic.eval()
         self.critic.eval()
+        '''第二步：将网络设置到估计模式'''
 
-        target_actions = self.target_actor.forward(new_state)  # 256 4
-        critic_value_ = self.target_critic.forward(new_state, target_actions)
-        critic_value = self.critic.forward(state, action)
+        '''第三步骤：得到action和Q-Value'''
+        target_actions = self.target_actor.forward(new_state)                       # a'
+        critic_value_ = self.target_critic.forward(new_state, target_actions)       # Q_Target(s', a')
+        critic_value = self.critic.forward(state, action)                           # Q(s, a)
+        '''第三步骤：得到action和Q-Value'''
 
         target = []
         for j in range(self.memory.batch_size):

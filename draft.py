@@ -14,12 +14,10 @@ from environment.envs.pathplanning.bezier import Bezier
 import turtle
 
 
-import os
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
-
-def add(a):
-    for i in [0,1,2,3]:
-        a[i] += 1
-
 if __name__ == '__main__':
+    a = torch.ones((10, 6))
+    b = torch.split(a, [4,6], dim=0)
+    print(b[1])
+    # print(a1)
+    # print(a2)
     pass

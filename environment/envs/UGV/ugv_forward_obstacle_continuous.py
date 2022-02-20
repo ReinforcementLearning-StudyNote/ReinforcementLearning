@@ -27,6 +27,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.dt = 0.1       # 10Hz
         self.timeMax = 15.0
         self.staticGain = 2
+        self.miss = 2.0 * self.rBody
         # 基本参数都继承了UGV，以上几个是重写的
 
         self.laserDis = 2.0  # 雷达探测半径

@@ -24,7 +24,8 @@ class DuelingNeuralNetwork(nn.Module):
         # self.out = nn.Linear(64, _output)  # hidden2 -> output
         self.value = nn.Linear(64, _output)
         self.advantage = nn.Linear(64, _output)
-        self.init()
+        # self.init()
+        self.init_default()
 
     def init(self):
         torch.nn.init.orthogonal_(self.hidden1.weight, gain=1)
@@ -37,6 +38,12 @@ class DuelingNeuralNetwork(nn.Module):
         torch.nn.init.uniform_(self.value.bias, 0, 1)
         torch.nn.init.orthogonal_(self.advantage.weight, gain=1)
         torch.nn.init.uniform_(self.advantage.bias, 0, 1)
+
+    def init_default(self):
+        self.hidden1.reset_parameters()
+        self.hidden2.reset_parameters()
+        self.value.reset_parameters()
+        self.advantage.reset_parameters()
 
     def forward(self, _x):
         """

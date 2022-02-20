@@ -3,7 +3,6 @@ import os
 import sys
 import datetime
 import time
-
 import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
@@ -15,9 +14,10 @@ from common.common import *
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'
 optPath = '../../datasave/network/'
-dataBasePath = '../../environment/envs/pathplanning/5X5-DataBase-AllCircle2/'
-dataBasePath2 = '../../environment/envs/pathplanning/5X5-DataBase-AllCircle3/'
-dataBasePath3 = '../../environment/envs/pathplanning/5X5-DataBase-AllCircle4/'
+dataBasePath1 = '../../environment/envs/pathplanning/11X11-AllCircle1/'
+dataBasePath2 = '../../environment/envs/pathplanning/5X5-AllCircle2/'
+dataBasePath3 = '../../environment/envs/pathplanning/5X5-AllCircle3/'
+dataBasePath4 = '../../environment/envs/pathplanning/5X5-AllCircle4/'
 show_per = 1
 
 
@@ -308,11 +308,11 @@ if __name__ == '__main__':
 
     env = UGV_Forward_Obstacle_Continuous(initPhi=0.,
                                           save_cfg=False,
-                                          x_size=5.0,
-                                          y_size=5.0,
+                                          x_size=11.0,
+                                          y_size=11.0,
                                           start=[2.5, 2.5],
                                           terminal=[4.5, 4.5],
-                                          dataBasePath=dataBasePath2)
+                                          dataBasePath=dataBasePath1)
     if TRAIN:
         agent = DDPG(gamma=0.99,
                      actor_soft_update=1e-2,
@@ -414,7 +414,12 @@ if __name__ == '__main__':
                 print('总成功率：', round(successCounter / agent.episode * 100, 3), '%')
             print('==========END=========')
             print()
-            agent.saveData_EpisodeReward(episode=agent.episode, reward=sumr, average_reward=sumr / env.time, is2file=False, filename='EpisodeReward.csv')
+            agent.saveData_EpisodeReward(episode=agent.episode,
+                                         time=env.time,
+                                         reward=sumr,
+                                         average_reward=sumr / env.time,
+                                         successrate=round(successCounter / max(agent.episode, 1), 3),
+                                         is2file=False, filename='EpisodeReward.csv')
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
@@ -431,8 +436,8 @@ if __name__ == '__main__':
                 print('Over......')
                 break
         '''dataSave'''
-        agent.saveData_EpisodeReward(episode=0, reward=0.0, average_reward=0.0, is2file=True, filename='EpisodeReward.csv')
-        agent.saveData_Step_Reward(0, 0, True, 'StepReward.csv')
+        agent.saveData_EpisodeReward(episode=0, time=0, reward=0, average_reward=0, successrate=0, is2file=True, filename='EpisodeReward.csv')
+        agent.saveData_Step_Reward(step=0, reward=0, is2file=True, filename='StepReward.csv')
         '''dataSave'''
 
     if TEST:
@@ -443,21 +448,14 @@ if __name__ == '__main__':
         agent.actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
         agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
         '''重新加载actor网络结构，这是必须的操作'''
-        cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
-                             cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
-                             120.0,
-                             (env.width, env.height))
-        simulation_num = 1
+        cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 60.0, (env.width, env.height))
+        simulation_num = 5
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
         for i in range(simulation_num):
-            print('==========START==========')
-            print('episode = ', i)
-            if random.uniform(0, 1) < 0.5:
-                env.reset_random()
-            else:
-                env.reset_random_with_database()
+            print('==========START' + str(i) + '==========')
+            env.reset_random_with_database()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
                     break
@@ -468,7 +466,6 @@ if __name__ == '__main__':
                 env.show_dynamic_imagewithobs(isWait=False)
                 cap.write(env.save)
                 env.saveData(is2file=False)
-            print('===========END===========')
             if env.terminal_flag == 2:
                 timeOutCounter += 1
                 print('timeout')
@@ -478,7 +475,8 @@ if __name__ == '__main__':
             if env.terminal_flag == 4:
                 collisionCounter += 1
                 print('collision')
+            print('===========END===========')
         print('Total:', simulation_num, '  successful:', successCounter, '  timeout:', timeOutCounter, '  collision:', collisionCounter)
         cv.waitKey(0)
         env.saveData(is2file=True, filepath=simulationPath)
-        # agent.save_models_all()
+        agent.save_models_all()
