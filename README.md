@@ -42,7 +42,9 @@ python DQN-4-Flight-Attitude-Simulator.py
 ```
 The result should be similar to the following.
 
-![image](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/dqn-4-flight-attitude-simulator.gif)
+<div align=center>
+    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/dqn-4-flight-attitude-simulator.gif" width="400px">
+</div>
 
 In 'DQN-4-Flight-Attitude-Simulator.py', set:
 ```commandline
@@ -56,9 +58,7 @@ cd simulation/PG_based/
 python DDPG-4-UGV-Forward-Obstacle.py
 ```
 The result should be similar to the following.
-<div align=center>
-    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/dqn-4-flight-attitude-simulator.gif" width="400px">
-</div>
+
 In 'DDPG-4-UGV-Forward-Obstacle.py', set:
 ```commandline
     TRAIN = False
