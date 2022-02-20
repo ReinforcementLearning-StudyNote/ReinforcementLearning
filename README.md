@@ -56,9 +56,8 @@ cd simulation/PG_based/
 python DDPG-4-UGV-Forward-Obstacle.py
 ```
 The result should be similar to the following.
-<img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/dqn-4-flight-attitude-simulator.gif" width="100px">
 
-[//]: # (![image]&#40;https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/dqn-4-flight-attitude-simulator.gif&#41;)
+<img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/dqn-4-flight-attitude-simulator.gif" width="500px">
 
 In 'DDPG-4-UGV-Forward-Obstacle.py', set:
 ```commandline
@@ -66,5 +65,5 @@ In 'DDPG-4-UGV-Forward-Obstacle.py', set:
     RETRAIN = False
     TEST = not TRAIN
 ```
-![image](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle1.gif)
-![image](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle2.gif)
+<img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle1.gif" width="500px">
+<img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle2.gif" width="500px">
