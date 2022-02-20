@@ -65,3 +65,5 @@ In 'DDPG-4-UGV-Forward-Obstacle.py', set:
     RETRAIN = False
     TEST = not TRAIN
 ```
+![image](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle1.gif)
+![image](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle2.gif)
