@@ -89,6 +89,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.reward = 0.0
         self.is_terminal = False
         self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功 4-碰撞
+        self.trajectory = [self.start]
         '''rl_base'''
 
         '''visualization_opencv'''
@@ -120,13 +121,23 @@ class UGV_Forward_Obstacle_Continuous(UGV):
                 cv.circle(self.image, self.dis2pixel(item), self.length2pixel(0.05), Color().Red, -1)           # 盲区
             index += 1
 
+    def draw_trajectory(self):
+        p1 = self.trajectory[0]
+        for p2 in self.trajectory[1:]:
+            cv.line(self.image, self.dis2pixel(p1), self.dis2pixel(p2), Color().Green, 2)
+            p1 = p2.copy()
+
+    def map_draw_inner_boundary(self):
+        cv.rectangle(self.image, self.dis2pixel([0.5, 0.5]), self.dis2pixel([self.x_size - 0.5, self.y_size - 0.5]), Color().Black, 1)
+
     def show_dynamic_imagewithobs(self, isWait=False):
         self.image = self.image_temp.copy()
-        self.draw_region_grid(xNUm=3, yNum=3)
+        self.map_draw_inner_boundary()
         self.map_draw_obs()
         self.map_draw_photo_frame()
         self.map_draw_boundary()
         self.draw_car()
+        self.draw_trajectory()
         self.draw_fake_laser()
         self.draw_terminal()
         cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
@@ -376,6 +387,10 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             self.dy = 0
         '''出界处理'''
 
+        '''处理轨迹绘制'''
+        self.trajectory.append([self.x, self.y])
+        '''处理轨迹绘制'''
+
         # self.state_normalization(self.next_state, gain=self.staticGain, index0=0, index1=3)
         self.get_reward()
         self.saveData()
@@ -398,6 +413,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.wRight = 0.
         self.time = 0.  # time
         self.delta_phi_absolute = 0.
+        self.trajectory = [self.start]
         '''physical parameters'''
 
         '''RL_BASE'''
@@ -451,6 +467,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.wRight = 0.
         self.time = 0.  # time
         self.delta_phi_absolute = 0.
+        self.trajectory = [self.start]
         '''physical parameters'''
 
         '''RL_BASE'''
@@ -507,6 +524,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.wRight = 0.
         self.time = 0.  # time
         self.delta_phi_absolute = 0.
+        self.trajectory = [self.start]
         '''physical parameters and map'''
 
         '''RL_BASE'''
