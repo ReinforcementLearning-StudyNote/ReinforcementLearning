@@ -56,8 +56,9 @@ cd simulation/PG_based/
 python DDPG-4-UGV-Forward-Obstacle.py
 ```
 The result should be similar to the following.
+<img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/dqn-4-flight-attitude-simulator.gif" width="100px">
 
-![image](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/dqn-4-flight-attitude-simulator.gif)
+[//]: # (![image]&#40;https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/dqn-4-flight-attitude-simulator.gif&#41;)
 
 In 'DDPG-4-UGV-Forward-Obstacle.py', set:
 ```commandline
