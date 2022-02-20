@@ -406,18 +406,14 @@ if __name__ == '__main__':
         agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
         # agent.load_actor_optimal(path='./昨晚上/', file='Actor_100')
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
-                             cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
-                             120.0,
-                             (env.width, env.height))
+        cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height))
         simulation_num = 10
         successCounter = 0
         timeOutCounter = 0
         failStartx, failStarty = [], []
         failTerminalx, failTerminaly = [], []
         for i in range(simulation_num):
-            print('==========START==========')
-            print('episode = ', i)
+            print('==========START' + str(i) +'==========')
             env.reset_random()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
@@ -431,14 +427,6 @@ if __name__ == '__main__':
                 env.show_dynamic_image(isWait=False)
                 cap.write(env.save)
                 env.saveData(is2file=False)
-                if 1e-2 + currentError < nextError:
-                    print('TMD，调头了...失败')
-                    failStartx.append(env.start[0])
-                    failStarty.append(env.start[1])
-                    failTerminalx.append(env.terminal[0])
-                    failTerminaly.append(env.terminal[1])
-                    env.terminal_flag = 2
-                    env.is_terminal = True
             print('===========END===========')
             if env.terminal_flag == 2:
                 timeOutCounter += 1
