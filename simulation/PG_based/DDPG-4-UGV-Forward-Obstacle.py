@@ -4,6 +4,7 @@ import sys
 import datetime
 import time
 import cv2 as cv
+import torch
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
@@ -151,8 +152,11 @@ class ActorNetwork(nn.Module):
         :param state:
         :return:            output of the net
         """
-        [state1, state2] = torch.split(state, [self.state_dim1, self.state_dim2])
-        x1 = self.linear11(state1)
+        if state.dim() == 1:
+            split_state = torch.split(state, [self.state_dim1, self.state_dim2], dim=0)
+        else:
+            split_state = torch.split(state, [self.state_dim1, self.state_dim2], dim=1)
+        x1 = self.linear11(split_state[0])
         x1 = self.batch_norm11(x1)
         x1 = func.relu(x1)
 
@@ -164,7 +168,7 @@ class ActorNetwork(nn.Module):
         x1 = self.batch_norm13(x1)
         x1 = func.relu(x1)  # 该合并了
 
-        x2 = self.linear21(state2)
+        x2 = self.linear21(split_state[1])
         x2 = self.batch_norm21(x2)
         x2 = func.relu(x2)
 
