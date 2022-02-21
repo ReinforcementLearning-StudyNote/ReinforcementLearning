@@ -314,7 +314,7 @@ if __name__ == '__main__':
                                           terminal=[4.5, 4.5],
                                           dataBasePath=dataBasePath1)
     if TRAIN:
-        agent = TD3(gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
+        agent = TD3(gamma=0., noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
                     actor_soft_update=1e-2,
@@ -335,8 +335,6 @@ if __name__ == '__main__':
         timeOutCounter = 0
         collisionCounter = 0
         # cv.waitKey(0)
-        agent.save_episode.append(agent.episode)
-        agent.save_reward.append(0.0)
         MAX_EPISODE = 20000
         if RETRAIN:
             print('Retraining')

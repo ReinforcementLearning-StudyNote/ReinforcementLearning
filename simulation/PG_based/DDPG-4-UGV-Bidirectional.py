@@ -266,8 +266,6 @@ if __name__ == '__main__':
         successCounter = 0
         timeOutCounter = 0
         # cv.waitKey(0)
-        agent.save_episode.append(agent.episode)
-        agent.save_reward.append(0.0)
         MAX_EPISODE = 5000
         if RETRAIN:
             print('Retraining')

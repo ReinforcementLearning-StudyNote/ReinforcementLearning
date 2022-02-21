@@ -240,8 +240,6 @@ if __name__ == '__main__':
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.DDPG_info()
         # cv.waitKey(0)
-        agent.save_episode.append(agent.episode)
-        agent.save_reward.append(0.0)
         MAX_EPISODE = 1500
         if RETRAIN:
             print('Retraining')

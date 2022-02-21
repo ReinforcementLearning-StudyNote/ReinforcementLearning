@@ -27,7 +27,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.dt = 0.1       # 10Hz
         self.timeMax = 15.0
         self.staticGain = 2
-        self.miss = 2.0 * self.rBody
+        self.miss = 1.0 * self.rBody
         # 基本参数都继承了UGV，以上几个是重写的
 
         self.laserDis = 2.0  # 雷达探测半径
@@ -297,10 +297,12 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         currentError = math.sqrt(cex ** 2 + cey ** 2)
         nextError = math.sqrt(nex ** 2 + ney ** 2)
 
+        gain = 2.0 * math.sqrt(self.dx ** 2 + self.dy ** 2)
+
         r1 = -1  # 常值误差，每运行一步，就 -1
 
         if currentError > nextError + 1e-3:
-            r2 = 5
+            r2 = gain * 5
         elif 1e-3 + currentError < nextError:
             r2 = -5
         else:
@@ -310,7 +312,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         nextTheta = cal_vector_rad([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
         # print(currentTheta, nextTheta)
         if currentTheta > nextTheta + 1e-2:
-            r3 = 2
+            r3 = gain * 2
         elif 1e-2 + currentTheta < nextTheta:
             r3 = -2
         else:
