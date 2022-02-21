@@ -132,9 +132,10 @@ class Twin_Delayed_DDPG:
         self.target_critic2.eval()          # Q2'
         self.critic2.eval()                 # Q2
 
-        target_actions = self.target_actor.forward(new_state)                   # a' = PI'(s')
+        target_actions = self.target_actor.forward(new_state).to(self.critic1.device)                   # a' = PI'(s')
         '''动作正则化'''
-        target_actions += torch.clip(torch.tensor(self.action_regularization(sigma=self.noise_policy)), -self.noise_clip, self.noise_clip)
+        action_noise = torch.clip(torch.tensor(self.action_regularization(sigma=self.noise_policy)), -self.noise_clip, self.noise_clip).to(self.critic1.device)
+        target_actions += action_noise
         '''动作正则化'''
         critic_value1_ = self.target_critic1.forward(new_state, target_actions)
         critic_value1 = self.critic1.forward(state, action)
