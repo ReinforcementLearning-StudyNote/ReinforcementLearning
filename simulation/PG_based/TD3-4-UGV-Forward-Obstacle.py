@@ -8,7 +8,7 @@ import cv2 as cv
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
 from environment.envs.UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
-from algorithm.actor_critic.DDPG import DDPG
+from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common import *
 
 cfgPath = '../../environment/config/'
@@ -314,18 +314,21 @@ if __name__ == '__main__':
                                           terminal=[4.5, 4.5],
                                           dataBasePath=dataBasePath1)
     if TRAIN:
-        agent = DDPG(gamma=0.99,
-                     actor_soft_update=1e-2,
-                     critic_soft_update=1e-2,
-                     memory_capacity=60000,  # 100000
-                     batch_size=512,  # 1024
-                     modelFileXML=cfgPath + cfgFile,
-                     path=simulationPath)
+        agent = TD3(gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
+                    critic1_soft_update=1e-2,
+                    critic2_soft_update=1e-2,
+                    actor_soft_update=1e-2,
+                    memory_capacity=60000,  # 100000
+                    batch_size=512,  # 1024
+                    modelFileXML=cfgPath + cfgFile,
+                    path=simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
         agent.target_actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
+        agent.critic1 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
+        agent.target_critic1 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
+        agent.critic2 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
+        agent.target_critic2 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.DDPG_info()
         successCounter = 0
@@ -428,8 +431,10 @@ if __name__ == '__main__':
                 time.sleep(0.01)
                 agent.actor.save_checkpoint(name='Actor_ddpg', path=temp, num=None)
                 agent.target_actor.save_checkpoint(name='TargetActor_ddpg', path=temp, num=None)
-                agent.critic.save_checkpoint(name='Critic_ddpg', path=temp, num=None)
-                agent.target_critic.save_checkpoint(name='TargetCritic_ddpg', path=temp, num=None)
+                agent.critic1.save_checkpoint(name='Critic1_ddpg', path=temp, num=None)
+                agent.target_critic1.save_checkpoint(name='TargetCritic1_ddpg', path=temp, num=None)
+                agent.critic2.save_checkpoint(name='Critic2_ddpg', path=temp, num=None)
+                agent.target_critic2.save_checkpoint(name='TargetCritic2_ddpg', path=temp, num=None)
             if c == 27:
                 print('Over......')
                 break
@@ -442,7 +447,7 @@ if __name__ == '__main__':
         print('TESTing...')
         RECORD = True
         optPath = '../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
-        agent = DDPG(modelFileXML=cfgPath + cfgFile, path=simulationPath)
+        agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
         '''重新加载actor网络结构，这是必须的操作'''
         agent.actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
         agent.load_actor_optimal(path=optPath, file='Actor_ddpg')

@@ -15,9 +15,9 @@ import turtle
 
 
 if __name__ == '__main__':
-    a = torch.ones((10, 6))
-    b = torch.split(a, [4,6], dim=0)
-    print(b[1])
-    # print(a1)
-    # print(a2)
+    # clip = 1/3
+    # a = GaussianNoise(mu=np.zeros(1))
+    # b = torch.clip(torch.tensor(a(sigma=1.0)), -clip, clip)
+    # print(b)
+    print(random.randint(0, 1))
     pass

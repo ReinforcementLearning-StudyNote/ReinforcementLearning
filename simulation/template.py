@@ -73,7 +73,6 @@ if __name__ == '__main__':
         MAX_EPISODE = 5000  # maximum episode for this time training
         episode = 0
 
-
         if RETRAIN:
             print('...Retraining...')
             '''

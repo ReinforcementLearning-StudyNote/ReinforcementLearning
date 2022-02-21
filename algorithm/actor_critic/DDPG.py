@@ -177,18 +177,6 @@ class DDPG:
         print('...loading optimal...')
         self.actor.load_state_dict(torch.load(path + file))
 
-    def load_target_actor_optimal(self, path, file):
-        print('...loading optimal...')
-        self.target_actor.load_state_dict(torch.load(path + file))
-
-    def load_critic_optimal(self, path, file):
-        print('...loading optimal...')
-        self.critic.load_state_dict(torch.load(path + file))
-
-    def load_target_critic_optimal(self, path, file):
-        print('...loading optimal...')
-        self.target_critic.load_state_dict(torch.load(path + file))
-
     def get_RLBase_from_XML(self, filename):
         rl_base, agentName = self.load_rl_basefromXML(filename=filename)
         state_dim_nn = int(rl_base['state_dim'])  # input dimension of NN
