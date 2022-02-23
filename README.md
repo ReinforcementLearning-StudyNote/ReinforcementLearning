@@ -25,13 +25,14 @@ THe 'envs' directory is the detailed implementation of all the physical environm
 Simulation is the place where we implement our simulation experiments, which means, using different algorithms in different environments.
 
 ## Demos
-Currently, we only five well-trained agents.
+Currently, we only six well-trained agents.
 
 1. A DDPG controller for a flight attitude simulator.
 2. A DDPG trajectory planner for a bidirectional UGV.
 3. A DDPG trajectory planner for a forward-only UGV.
 4. A DDPG trajectory planner which can avoid obstacles for a forward-only UGV.
 5. A DQN controller for a flight attitude simulator.
+6. A TD3 trajectory planner which can avoid obstacles for a forward-only UGV.
 
 ## Run the scripts
 All runnable scripts are in './simulation/'.
