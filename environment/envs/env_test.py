@@ -62,24 +62,25 @@ def test_ugv_bidirectional_continuous():
 # UGV Forward Continuous Test
 def test_ugv_forward_continuous():
     from UGV.ugv_forward_continuous import UGV_Forward_Continuous
-    env = UGV_Forward_Continuous(initPhi=deg2rad(45),
+    env = UGV_Forward_Continuous(initPhi=deg2rad(60),
                                  save_cfg=True,
                                  x_size=5.0,
                                  y_size=5.0,
                                  start=[2.5, 2.5],
                                  terminal=[4.8, 4.8])
     while True:
-        # env.reset_random()
-        env.reset()
+        env.reset_random()
+        # env.reset()
         env.show_dynamic_image(isWait=True)
         while not env.is_terminal:
             # print(env.time)
             if cv.waitKey(1) == 27:
                 return
-            env.show_dynamic_image(isWait=True)
-            action = [9, 6]
+            env.show_dynamic_image(isWait=False)
+            # action = [9, 6]
+            action = env.towards_target_PID(threshold=10, kp=10, ki=0, kd=0)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
-            print(env.reward)
+            # print(env.reward)
             # print(env.current_state)
 
 
@@ -110,43 +111,11 @@ def test_ugv_forward_obstacles_continuous():
         num += 1
 
 
-# UGV Forward Path Following Test
-def test_ugv_forward_path_following():
-    from UGV.ugv_forward_pathfollow_continuous import UGV_Forward_Continuous_Path_Follow
-    env = UGV_Forward_Continuous_Path_Follow(initPhi=deg2rad(45),
-                                             save_cfg=True,
-                                             x_size=10.0,
-                                             y_size=10.0,
-                                             start=[3.5, 3.5],
-                                             terminal=[9.5, 9.5])
-    num = 0
-    while num < 30:
-        # env.show_dynamic_imagePathFollow(isWait=False)
-        env.samplePoints = [  # [0.5, 0.5], [1.5, 1.5], [2.5, 2.5],
-            [3.5, 3.5], [4.5, 4.5], [5.5, 5.5],
-            [6.5, 6.5], [7.5, 7.5], [8.5, 8.5], [9.5, 9.5]]
-        env.sampleNum = 7
-        env.reset()
-        while not env.is_terminal:
-            # print(env.time)
-            if cv.waitKey(1) == 27:
-                return
-            env.show_dynamic_imagePathFollow(isWait=False)
-            # cap.write(env.save)
-            action = [10, 5]
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
-            # print(env.current_state)
-            # print('总奖励', env.reward)
-        num += 1
-        # env.reset_random()
-
-
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
     test_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
-    # test_ugv_forward_path_following()
     # test_ugv_forward_obstacle2()
     pass

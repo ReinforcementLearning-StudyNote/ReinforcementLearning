@@ -1,3 +1,4 @@
+import math
 import random
 
 from common.common import *
@@ -42,13 +43,16 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.l_wheel = 0.06             # 车轮厚度
         self.rBody = 0.15               # 车主体半径
         self.L = 2 * self.rBody         # 车主体直径
-        self.dt = 0.1                   # 10Hz
+        self.dt = 0.02                   # 50Hz
         self.time = 0.                  # time
         self.miss = 1.0 * self.rBody
         self.staticGain = 4
         self.delta_phi_absolute = 0.
         self.timeMax = 8.0
         self.randomInitFLag = 0
+        self.dTheta = 0.
+        self.ddTheta = 0.
+        self.intdTheta = 0.
         '''physical parameters'''
 
         '''rl_base'''
@@ -209,7 +213,6 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         nextError = math.sqrt(nex ** 2 + ney ** 2)
 
         r1 = -1  # 常值误差，每运行一步，就 -1
-        r1 = 0
 
         if currentError > nextError + 1e-3:
             r2 = 5
@@ -217,28 +220,22 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             r2 = -5
         else:
             r2 = 0
-        r2 = 10 * (currentError - nextError)
 
         currentTheta = cal_vector_rad([cex, cey], [math.cos(self.current_state[4]), math.sin(self.current_state[4])])
         nextTheta = cal_vector_rad([nex, ney], [math.cos(self.next_state[4]), math.sin(self.next_state[4])])
         # print(currentTheta, nextTheta)
-        if (nextTheta <= deg2rad(1)) and (currentTheta <= deg2rad(1)):  # 如果角度误差小于1度
-            r3 = math.pi
+        if currentTheta > nextTheta + 1e-2:
+            r3 = 2
+        elif 1e-2 + currentTheta < nextTheta:
+            r3 = -2
         else:
-            r3 = (currentTheta - nextTheta) * 2
-            # if currentTheta > nextTheta + 1e-2:
-            #     r3 = 2
-            # elif 1e-2 + currentTheta < nextTheta:
-            #     r3 = -2
-            # else:
-            #     r3 = 0
-        r3 = 0
+            r3 = 0
         '''4. 其他'''
         r4 = 0
-        # if self.terminal_flag == 3:
-        #     r4 = 200
-        # if self.terminal_flag == 1:  # 出界
-        #     r4 = -2
+        if self.terminal_flag == 3:
+            r4 = 200
+        if self.terminal_flag == 1:  # 出界
+            r4 = -2
         '''4. 其他'''
         # print('r1=', r1, 'r2=', r2, 'r3=', r3, 'r4=', r4)
         self.reward = r1 + r2 + r3 + r4
@@ -310,6 +307,25 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.saveData()
 
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
+
+    def towards_target_PID(self, threshold: float, kp: float, ki: float, kd: float):
+        action = [0, 0]
+        if dis_two_points([self.x, self.y], self.terminal) <= threshold:
+            temp = self.dTheta  # 上一step的dTheta
+            self.dTheta = cal_vector_rad([self.terminal[0] - self.x, self.terminal[1] - self.y], [math.cos(self.phi), math.sin(self.phi)])
+            if cross_product([self.terminal[0] - self.x, self.terminal[1] - self.y], [math.cos(self.phi), math.sin(self.phi)]) > 0:
+                self.dTheta = -self.dTheta
+            self.ddTheta = self.dTheta - temp
+            self.intdTheta += self.dTheta
+            '''角度差越大，转得越快'''
+            w = kp * self.dTheta + kd * self.ddTheta + ki * self.intdTheta
+            w = min(max(w, -self.wMax), self.wMax)  # 角速度
+            action = [self.wMax - w, self.wMax] if w > 0 else [self.wMax, self.wMax + w]
+            print(self.dTheta, w)
+            '''角度差越大，转得越快'''
+        else:
+            pass
+        return action
 
     def reset(self):
         """
