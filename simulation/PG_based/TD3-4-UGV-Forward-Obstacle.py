@@ -301,7 +301,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG2-UGV-Forward-Obstacle/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-UGV-Forward-Obstacle/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -447,14 +447,14 @@ if __name__ == '__main__':
     if TEST:
         print('TESTing...')
         RECORD = True
-        optPath = '../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
+        optPath = '../../datasave/network/TD3-UGV-Obstacle-Avoidance/parameters/'
         agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
         '''重新加载actor网络结构，这是必须的操作'''
         agent.actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
         agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
         '''重新加载actor网络结构，这是必须的操作'''
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height)) if RECORD else None
-        simulation_num = 5
+        simulation_num = 1000
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
@@ -465,8 +465,11 @@ if __name__ == '__main__':
                 if cv.waitKey(1) == 27:
                     break
                 env.current_state = env.next_state.copy()
-                action_from_actor = agent.choose_action(env.current_state, True)
-                action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
+                if dis_two_points([env.x, env.y], env.terminal) <= 0.8:
+                    action = env.towards_target_PID(threshold=0.8, kp=100, ki=0, kd=0)
+                else:
+                    action_from_actor = agent.choose_action(env.current_state, True)
+                    action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
                 env.show_dynamic_imagewithobs(isWait=False)
                 cap.write(env.save) if RECORD else None

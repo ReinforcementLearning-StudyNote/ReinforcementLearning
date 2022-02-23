@@ -317,12 +317,9 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
                 self.dTheta = -self.dTheta
             self.ddTheta = self.dTheta - temp
             self.intdTheta += self.dTheta
-            '''角度差越大，转得越快'''
             w = kp * self.dTheta + kd * self.ddTheta + ki * self.intdTheta
             w = min(max(w, -self.wMax), self.wMax)  # 角速度
             action = [self.wMax - w, self.wMax] if w > 0 else [self.wMax, self.wMax + w]
-            print(self.dTheta, w)
-            '''角度差越大，转得越快'''
         else:
             pass
         return action
