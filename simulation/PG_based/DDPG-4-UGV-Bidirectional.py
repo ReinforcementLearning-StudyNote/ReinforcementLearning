@@ -356,14 +356,8 @@ if __name__ == '__main__':
         optPath = '../../datasave/network/DDPG-UGV-Bidirectional/parameters/'
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
-        agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
-        agent.load_critic_optimal(path=optPath, file='Critic_ddpg')
-        agent.load_target_critic_optimal(path=optPath, file='TargetCritic_ddpg')
         # ddpg.load_models()
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),

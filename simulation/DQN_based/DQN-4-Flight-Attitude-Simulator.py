@@ -36,7 +36,7 @@ def fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file: str, randomEnv
     _new_reward = []
     _new_state_ = []
     _new_done = []
-    while agent.memory.replay_count < fullFillCount:
+    while agent.memory.mem_counter < fullFillCount:
         env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
@@ -56,11 +56,11 @@ def fullFillReplayMemory_with_Optimal_Exploration(torch_pkl_file: str, randomEnv
                 _new_done.append(1 if env.is_terminal else 0)
             else:
                 agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
-                if agent.memory.replay_count % 100 == 0:
-                    print('replay_count = ', agent.memory.replay_count)
+                if agent.memory.mem_counter % 100 == 0:
+                    print('replay_count = ', agent.memory.mem_counter)
         if is_only_success and env.terminal_flag == 3:
             agent.memory.store_transition_per_episode(_new_state, _new_action, _new_reward, _new_state_, _new_done)
-            print('replay_count = ', agent.memory.replay_count)
+            print('replay_count = ', agent.memory.mem_counter)
 
 
 def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
@@ -73,11 +73,11 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
     print('Collecting...')
     fullFillCount = int(fullFillRatio * agent.memory_capacity)
     fullFillCount = max(min(fullFillCount, agent.memory_capacity), agent.batch_size)
-    while agent.memory.replay_count < fullFillCount:
+    while agent.memory.mem_counter < fullFillCount:
         env.reset_random() if randomEnv else env.reset()
         while not env.is_terminal:
-            if agent.memory.replay_count % 100 == 0:
-                print('replay_count = ', agent.memory.replay_count)
+            if agent.memory.mem_counter % 100 == 0:
+                print('replay_count = ', agent.memory.mem_counter)
             env.current_state = env.next_state.copy()  # 状态更新
             _numAction = agent.get_action_random()
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(agent.actionNUm2PhysicalAction(_numAction))
