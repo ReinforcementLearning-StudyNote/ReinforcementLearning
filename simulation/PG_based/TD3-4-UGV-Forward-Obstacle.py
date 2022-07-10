@@ -206,9 +206,7 @@ class ActorNetwork(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-def fullFillReplayMemory_with_Optimal(randomEnv: bool,
-                                      fullFillRatio: float,
-                                      is_only_success: bool):
+def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
     agent.load_models(path='./500_0.716_save-第四次/')
@@ -454,7 +452,7 @@ if __name__ == '__main__':
         agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
         '''重新加载actor网络结构，这是必须的操作'''
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height)) if RECORD else None
-        simulation_num = 1000
+        simulation_num = 10
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0

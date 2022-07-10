@@ -2,9 +2,11 @@ import math
 import random
 import re
 import numpy as np
+from numpy import linalg
 import torch.nn as nn
 import torch.nn.functional as func
 import torch
+import scipy.spatial as spt
 
 
 def deg2rad(deg: float) -> float:
@@ -100,6 +102,16 @@ def cal_vector_rad(v1: list, v2: list) -> float:
         return 0
     cosTheta = min(max(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)), -1), 1)
     return math.acos(cosTheta)
+
+
+def cal_vector_rad_oriented(v1, v2):
+    """
+    """
+    '''有朝向的，从v1到v2'''
+    if np.linalg.norm(v2) < 1e-4 or np.linalg.norm(v1) < 1e-4:
+        return 0
+    cosTheta = min(max(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)), -1), 1)
+    return np.sign(cross_product(v1, v2)) * math.acos(cosTheta)
 
 
 def cross_product(vec1: list, vec2: list) -> float:
@@ -302,6 +314,367 @@ def line_is_in_poly(center: list, r: float, points: list, point1: list, point2: 
                     else:
                         continue
     return False
+
+
+def uniform_sample_on_ellipse(center, long, short, theta, numPt):
+    pts = []
+    for _ in range(numPt):
+        a = random.random() * 2 * math.pi
+        ra = long
+        rb = short
+        x = center[0] + ra * math.cos(a) * math.cos(theta) - rb * math.sin(a) * math.sin(theta)
+        y = center[1] + rb * math.sin(a) * math.cos(theta) + ra * math.cos(a) * math.sin(theta)
+        pts.append([x, y])
+    return pts
+
+
+def uniform_sample_in_ellipse(center, long, short, theta, numPt):
+    pts = []
+    for _ in range(numPt):
+        a = random.random() * 2 * math.pi
+        ra = random.random() ** 0.5 * long
+        rb = random.random() ** 0.5 * short
+        x = center[0] + ra * math.cos(a) * math.cos(theta) - rb * math.sin(a) * math.sin(theta)
+        y = center[1] + rb * math.sin(a) * math.cos(theta) + ra * math.cos(a) * math.sin(theta)
+        pts.append([x, y])
+    return pts
+
+
+def uniform_sample_in_circle(center, r, numPt):
+    pts = []
+    for _ in range(numPt):
+        a = random.random() * 2 * math.pi
+        r = random.uniform(0, r)
+        x = center[0] + r * math.cos(a)
+        y = center[1] + r * math.sin(a)
+        pts.append([x, y])
+    return pts
+
+
+def cal_two_pt_set_dis(ptSet1, ptSet2):
+    res = [None, None]
+    dis = np.inf
+    for pt1 in ptSet1:
+        for pt2 in ptSet2:
+            new_dis = dis_two_points(pt1, pt2)
+            if dis > new_dis:
+                dis = new_dis
+                res = [pt1, pt2]
+    return dis, res
+
+
+def find_convex_hull(nodes):
+    p = np.array(nodes)
+    hull = spt.ConvexHull(p)
+    pt = []
+    for i in hull.vertices:
+        pt.append(list(nodes[i]))
+    return pt
+
+
+def is_point_in_convex_hull(nodes, point):
+    lll = len(nodes)
+    s1 = cross_product([point[j] - nodes[0][j] for j in [0, 1]], [nodes[(j + 1) % lll][j] - nodes[0][j] for j in [0, 1]])
+    for i in range(lll):
+        vec1 = [point[j] - nodes[i][j] for j in [0, 1]]
+        vec2 = [nodes[(i + 1) % lll][j] - nodes[i][j] for j in [0, 1]]
+        s2 = cross_product(vec1, vec2)
+        if s1 * s2 < 0:
+            return False
+        else:
+            s1 = s2
+    return True
+
+
+def get_convex_hull_area(nodes):
+    start = nodes[0]
+    area = 0
+    for i in range(len(nodes) - 2):
+        s1 = start
+        s2 = nodes[i + 1]
+        s3 = nodes[i + 2]
+        x1 = s2[0] - s1[0]
+        y1 = s2[1] - s1[1]
+        x2 = s3[0] - s1[0]
+        y2 = s3[1] - s1[1]
+        area += 0.5 * np.fabs(x1 * y2 - x2 * y1)
+    return area
+
+
+def convex_hull_dilate(nodes, d):
+    center = [0, 0]
+    new = []
+    for i in range(len(nodes)):
+        center[0] += nodes[i][0]
+        center[1] += nodes[i][1]
+    center = [center[i] / len(nodes) for i in [0, 1]]
+    for i in range(len(nodes)):
+        s = dis_two_points(center, nodes[i]) / d
+        x = nodes[i][0] + (nodes[i][0] - center[0]) * s
+        y = nodes[i][1] + (nodes[i][1] - center[1]) * s
+        new.append([x, y])
+    return new, center
+
+
+def convex_hull_dilate2(nodes, d):
+    ll = len(nodes)
+    center = [0, 0]
+    line = []
+    new_line = []
+    if ll > 2:
+        '''1. 得到原来的直线'''
+        for i in range(ll):
+            [x1, y1] = nodes[i]
+            [x2, y2] = nodes[(i + 1) % ll]
+            center[0] += x1
+            center[1] += y1
+            if x1 == x2:
+                line.append([np.inf, x1])
+            else:
+                k = (y1 - y2) / (x1 - x2)
+                b = y1 - k * x1
+                line.append([k, b])
+        '''对于夹角过于小的点，做直线填充'''
+        insert_node = []  # 新插入的点编号
+        insert_line = []  # 新插入的直线
+        for i in range(len(line)):  # 第i个角
+            pt1 = nodes[i - 1]
+            pt2 = nodes[i]
+            pt3 = nodes[(i + 1) % len(line)]
+            vec1 = [pt3[j] - pt2[j] for j in [0, 1]]
+            vec2 = [pt1[j] - pt2[j] for j in [0, 1]]
+            theta = cal_vector_rad_oriented(vec1, vec2)
+            '''凸包的点都是逆时针的'''
+            if theta <= np.fabs(deg2rad(62)):  # 如果夹角比较小，那么做直线填充，并同样扩充d，这个夹角是从vec1旋转到vec2的，顺序别弄错了
+                insert_node.append(i)
+                new_theta = cal_vector_rad_oriented([1, 0], vec1) + theta / 2  # 新的直线斜率
+                k = np.inf if new_theta == np.pi / 2 else np.tan(new_theta)
+                k = 0 if k == np.inf else -1 / k
+                b = pt2[1] - k * pt2[0]
+                insert_line.append([k, b])
+            else:
+                pass
+        if insert_node:
+            insert_node.reverse()
+            insert_line.reverse()
+            for j in range(len(insert_line)):
+                line.insert(insert_node[j], insert_line[j])
+        center = [center[i] / ll for i in [0, 1]]  # 得到中心点位置，如果增加过线，那么中心点位置就会变，不过不用管，不会影响最终结果
+        [x0, y0] = center
+
+        '''2. 计算扩充的直线'''
+        for _line in line:
+            [k, b] = _line
+            if k == np.inf:
+                b1 = b + d if x0 < b else b - d
+                new_line.append([k, b1])
+            else:
+                d0 = np.fabs(k * x0 - y0 + b) / np.sqrt(k ** 2 + 1)
+                d1 = np.fabs(k * x0 - y0 + b + d * np.sqrt(k ** 2 + 1)) / np.sqrt(k ** 2 + 1)
+                if d1 > d0 and d1 > d:
+                    b1 = b + d * np.sqrt(k ** 2 + 1)
+                else:
+                    b1 = b - d * np.sqrt(k ** 2 + 1)
+                new_line.append([k, b1])
+
+    elif ll == 2:
+        '''原来的凸包就是一条直线'''
+        [x1, y1] = nodes[0]
+        [x2, y2] = nodes[1]
+        # x0 = (x1 + x2) / 2
+        # y0 = (y1 + y2) / 2
+        if x1 == x2:
+            new_line.append([0, min(y1, y2) - d])
+            new_line.append([np.inf, x1 + d])
+            new_line.append([0, max(y1, y2) + d])
+            new_line.append([np.inf, x1 - d])
+        elif y1 == y2:
+            new_line.append([0, y1 - d])
+            new_line.append([np.inf, max(x1, x2) + d])
+            new_line.append([0, y1 + d])
+            new_line.append([np.inf, min(x1, x2) - d])
+        else:
+            k = (y1 - y2) / (x1 - x2)
+            b = y1 - k * x1
+            if k > 0:
+                if x1 > x2:
+                    new_line.append([k, b - d * np.sqrt(k ** 2 + 1)])
+                    new_line.append([-1 / k, y1 + x1 / k + d * np.sqrt(1 / k ** 2 + 1)])
+                    new_line.append([k, b + d * np.sqrt(k ** 2 + 1)])
+                    new_line.append([-1 / k, y2 + x2 / k - d * np.sqrt(1 / k ** 2 + 1)])
+                else:
+                    new_line.append([k, b - d * np.sqrt(k ** 2 + 1)])
+                    new_line.append([-1 / k, y2 + x2 / k + d * np.sqrt(1 / k ** 2 + 1)])
+                    new_line.append([k, b + d * np.sqrt(k ** 2 + 1)])
+                    new_line.append([-1 / k, y1 + x1 / k - d * np.sqrt(1 / k ** 2 + 1)])
+            else:
+                if x1 > x2:
+                    new_line.append([-1 / k, y1 + x1 / k - d * np.sqrt(1 / k ** 2 + 1)])
+                    new_line.append([k, b + d * np.sqrt(k ** 2 + 1)])
+                    new_line.append([-1 / k, y2 + x2 / k + d * np.sqrt(1 / k ** 2 + 1)])
+                    new_line.append([k, b - d * np.sqrt(k ** 2 + 1)])
+                else:
+                    new_line.append([-1 / k, y2 + x2 / k - d * np.sqrt(1 / k ** 2 + 1)])
+                    new_line.append([k, b + d * np.sqrt(k ** 2 + 1)])
+                    new_line.append([-1 / k, y1 + x1 / k + d * np.sqrt(1 / k ** 2 + 1)])
+                    new_line.append([k, b - d * np.sqrt(k ** 2 + 1)])
+
+    else:
+        [x0, y0] = nodes[0]
+        new_line.append([0, y0 - d])
+        new_line.append([np.inf, x0 + d])
+        new_line.append([0, y0 + d])
+        new_line.append([np.inf, x0 - d])
+
+    '''计算新的交点'''
+    new_nodes = []
+    for i in range(len(new_line)):
+        [k1, b1] = new_line[i - 1]
+        [k2, b2] = new_line[i]
+        if k1 == k2:
+            print('in function \' convex_hull_dilate2 \'error...')
+            exit(0)
+        if k1 == np.inf:
+            x = b1
+            y = k2 * x + b2
+        elif k2 == np.inf:
+            x = b2
+            y = k1 * x + b1
+        else:
+            x = (b2 - b1) / (k1 - k2)
+            y = k1 * x + b1
+        new_nodes.append([x, y])
+    # return new_nodes, center
+    return new_nodes
+
+
+def get_minAeraEllipse(nodes=None, tolerance=0.01):
+    P = np.array(nodes)
+    (N, d) = np.shape(P)
+    d = float(d)
+
+    # Q will be our working array
+    Q = np.vstack([np.copy(P.T), np.ones(N)])
+    QT = Q.T
+
+    # initializations
+    err = 1.0 + tolerance
+    u = (1.0 / N) * np.ones(N)
+
+    while err > tolerance:
+        V = np.dot(Q, np.dot(np.diag(u), QT))
+        M = np.diag(np.dot(QT, np.dot(linalg.inv(V), Q)))  # M the diagonal vector of an NxN matrix
+        j = np.argmax(M)
+        maximum = M[j]
+        step_size = (maximum - d - 1.0) / ((d + 1.0) * (maximum - 1.0))
+        new_u = (1.0 - step_size) * u
+        new_u[j] += step_size
+        err = np.linalg.norm(new_u - u)
+        u = new_u
+
+    center = np.dot(P.T, u)
+
+    # the A matrix for the ellipse
+    A = linalg.inv(
+        np.dot(P.T, np.dot(np.diag(u), P)) -
+        np.array([[a * b for b in center] for a in center])
+    ) / d
+
+    # Get the values we'd like to return
+    U, s, rotation = linalg.svd(A)
+    radii = 1.0 / np.sqrt(s)
+
+    # return center, radii, rotation, math.acos(rotation[0][0])
+    return center, radii[0], radii[1], math.acos(rotation[0][0]) * np.sign(rotation[0][1])
+
+
+def uniform_sample_in_triangle(nodes, num):
+    r1 = np.sqrt(np.random.uniform(0, 1, num))
+    r2 = np.random.uniform(0, 1, num)
+    array = np.array(nodes)
+    ab = array[1] - array[0]
+    bc = array[2] - array[1]
+    ap = []
+    for i in range(num):
+        n = r1[i] * ab + r1[i] * r2[i] * bc + array[0]
+        ap.append(list(n))
+    return ap
+
+
+def get_convex_hull_triangle(hull):
+    p1 = hull[0]
+    ss = 0
+    t = []
+    for i in range(len(hull) - 2):
+        p2 = hull[(i + 1) % len(hull)]
+        p3 = hull[(i + 2) % len(hull)]
+        s = np.fabs(cross_product(vec1=[p2[0] - p1[0], p2[1] - p1[1]], vec2=[p3[0] - p1[0], p3[1] - p1[1]])) * 0.5
+        ss += s
+        t.append([p1, p2, p3, s])
+    for i in range(len(t)):
+        t[i][3] /= ss  # 得到面积的比例
+    return t
+
+
+def uniform_sample_in_hull(hull, num):
+    triangle = get_convex_hull_triangle(hull)
+    iPDF = []
+    for i in range(len(triangle)):
+        if i == 0:
+            iPDF.append(triangle[i][3])
+        else:
+            iPDF.append(iPDF[i - 1] + triangle[i][3])
+
+    pts = []
+    for _ in range(num):
+        index = np.random.uniform(0, 1, 1)
+        for i in range(len(iPDF)):
+            if index <= iPDF[i]:
+                index = i
+                break
+        pt = uniform_sample_in_triangle(triangle[index][0:3], 1)[0]
+        pts.append(pt)
+
+    return pts
+
+
+def uniform_sample_between_two_hull(inner, outer, num):
+    assert len(inner) == len(outer)
+    t = []
+    ll = len(inner)
+    ss = 0
+    for i in range(ll):
+        p1 = inner[i]
+        p2 = outer[i]
+        p3 = inner[(i + 1) % ll]
+        p4 = outer[(i + 1) % ll]
+        s1 = np.fabs(cross_product(vec1=[p2[0] - p1[0], p2[1] - p1[1]], vec2=[p4[0] - p1[0], p4[1] - p1[1]])) * 0.5  # 124
+        s2 = np.fabs(cross_product(vec1=[p3[0] - p1[0], p3[1] - p1[1]], vec2=[p4[0] - p1[0], p4[1] - p1[1]])) * 0.5  # 134
+        ss += s1 + s2
+        t.append([p1, p2, p4, s1])
+        t.append([p1, p3, p4, s2])
+    for i in range(len(t)):
+        t[i][3] /= ss
+
+    '''得到三角形'''
+    iPDF = []
+    for i in range(len(t)):
+        if i == 0:
+            iPDF.append(t[i][3])
+        else:
+            iPDF.append(iPDF[i - 1] + t[i][3])
+    pts = []
+
+    for _ in range(num):
+        index = np.random.uniform(0, 1, 1)
+        for i in range(len(iPDF)):
+            if index <= iPDF[i]:
+                index = i
+                break
+        pt = uniform_sample_in_triangle(t[index][0:3], 1)[0]
+        pts.append(pt)
+
+    return pts
 
 
 class ReplayBuffer:

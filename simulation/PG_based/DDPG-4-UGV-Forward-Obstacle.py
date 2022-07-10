@@ -302,7 +302,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG2-UGV-Forward-Obstacle/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward-Obstacle/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
