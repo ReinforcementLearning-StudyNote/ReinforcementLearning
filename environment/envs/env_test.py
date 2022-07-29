@@ -1,4 +1,5 @@
 import os
+import random
 import sys
 import cv2 as cv
 import torch
@@ -87,8 +88,8 @@ def test_ugv_forward_continuous():
 # UGV Forward Obstacles Continuous Test
 def test_ugv_forward_obstacles_continuous():
     from UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
-    env = UGV_Forward_Obstacle_Continuous(initPhi=deg2rad(0), save_cfg=True, x_size=5, y_size=5, start=[2.5, 2.5], terminal=[4.0, 2.5],
-                                          dataBasePath='./pathplanning/5X5-DataBase-AllCircle2/')
+    env = UGV_Forward_Obstacle_Continuous(initPhi=deg2rad(0), save_cfg=True, x_size=11, y_size=11, start=[2.5, 2.5], terminal=[4.0, 2.5],
+                                          dataBasePath='./pathplanning/11X11-AllCircle1/')
     num = 0
     while num < 30:
         # cap = cv.VideoWriter('test' +str(num)+'.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 120.0, (env.width, env.height))
@@ -111,11 +112,58 @@ def test_ugv_forward_obstacles_continuous():
         num += 1
 
 
+# UGV Forward Discrete Test
+def test_ugv_forward_discrete():
+    from UGV.ugv_forward_discrete import UGV_Forward_Discrete
+    env = UGV_Forward_Discrete(initPhi=deg2rad(60), save_cfg=True, x_size=5.0, y_size=5.0, start=[2.5, 2.5], terminal=[4.8, 4.8])
+    while True:
+        env.reset_random()
+        env.show_dynamic_image(isWait=True)
+        while not env.is_terminal:
+            if cv.waitKey(1) == 27:
+                return
+            env.show_dynamic_image(isWait=False)
+            action = env.towards_target_PID(threshold=10, kp=10, ki=0, kd=0)
+            wLeft = random.choice(env.action_space[0])
+            wRight = random.choice(env.action_space[1])
+            action = [wLeft, wRight]
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+
+
+# UGV Forward OBstacle Discrete Test
+def test_ugv_forward_obstacles_discrete():
+    from UGV.ugv_forward_obstacle_discrete import UGV_Forward_Obstacle_Discrete
+    env = UGV_Forward_Obstacle_Discrete(initPhi=deg2rad(0), save_cfg=True, x_size=11, y_size=11, start=[2.5, 2.5], terminal=[4.0, 2.5],
+                                          dataBasePath='./pathplanning/11X11-AllCircle1/')
+    num = 0
+    while num < 30:
+        # cap = cv.VideoWriter('test' +str(num)+'.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 120.0, (env.width, env.height))
+        # env.reset_random()
+        # env.reset()
+        env.reset_random_with_database()
+        env.show_dynamic_image(isWait=True)
+        while not env.is_terminal:
+            # print(env.time)
+            if cv.waitKey(1) == 27:
+                return
+            env.show_dynamic_image(isWait=False)
+            wLeft = random.choice(env.action_space[0])
+            wRight = random.choice(env.action_space[1])
+            action = [wLeft, wRight]
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            # print(env.current_state[0 : 4])
+            if env.terminal_flag == 4:
+                print(env.reward)
+            # print(env.current _state)
+        num += 1
+
+
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
-    test_ugv_forward_continuous()
+    # test_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
-    # test_ugv_forward_obstacle2()
+    # test_ugv_forward_discrete()
+    test_ugv_forward_obstacles_discrete()
     pass

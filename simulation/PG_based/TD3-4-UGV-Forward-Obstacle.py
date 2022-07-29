@@ -452,7 +452,7 @@ if __name__ == '__main__':
         agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
         '''重新加载actor网络结构，这是必须的操作'''
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height)) if RECORD else None
-        simulation_num = 10
+        simulation_num = 50
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
@@ -477,6 +477,7 @@ if __name__ == '__main__':
                 print('timeout')
             if env.terminal_flag == 3:
                 successCounter += 1
+                cv.imwrite(str(i) + '.png', env.save)
                 print('success')
             if env.terminal_flag == 4:
                 collisionCounter += 1

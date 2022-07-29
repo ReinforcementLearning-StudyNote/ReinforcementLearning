@@ -15,9 +15,9 @@
 		<action_dim>2</action_dim>
 		<action_step>[None, None]</action_step>
 		<action_range>[[0, 10], [0, 10]]</action_range>
-		<action_num>[inf, inf]</action_num>
-		<action_space>[None, None]</action_space>
-		<isActionContinuous>[True, True]</isActionContinuous>
+		<action_num>[21, 21]</action_num>
+		<action_space>[[0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0], [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0]]</action_space>
+		<isActionContinuous>[False, False]</isActionContinuous>
 		<initial_action>[0.0, 0.0]</initial_action>
 		<current_action>[0.0, 0.0]</current_action>
 		<is_terminal>False</is_terminal>
@@ -34,6 +34,7 @@
 		<dphi>0</dphi>
 		<wLeft>0.0</wLeft>
 		<wRight>0.0</wRight>
+		<wStep>0.5</wStep>
 		<wMax>10</wMax>
 		<r>0.1</r>
 		<l_wheel>0.06</l_wheel>
@@ -56,7 +57,7 @@
 	<Image>
 		<width>500</width>
 		<height>500</height>
-		<name4image>TwoWheelUGV</name4image>
+		<name4image>UGVForwardDiscrete</name4image>
 		<x_offset>25.0</x_offset>
 		<y_offset>25.0</y_offset>
 		<pixel_per_meter>40.90909090909091</pixel_per_meter>
