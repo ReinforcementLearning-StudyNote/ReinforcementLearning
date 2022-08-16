@@ -162,6 +162,91 @@ def point_is_in_ellipse(long: float, short: float, rotate_angle: float, center: 
     return (x / long) ** 2 + (y / short) ** 2 <= 1
 
 
+def dis_point_2_line_segment(pt, pt1, pt2):
+    p = np.array(pt)
+    a = np.array(pt1)
+    b = np.array(pt2)
+    ap = p - a
+    ab = b - a
+    ba = a - b
+    bp = p - b
+    cos_PAB = np.dot(ap, ab) / (np.linalg.norm(ap) * np.linalg.norm(ab))
+    cos_PBA = np.dot(bp, ba) / (np.linalg.norm(bp) * np.linalg.norm(ba))
+    if cos_PAB >= 0 and cos_PBA >= 0:
+        return np.linalg.norm(ap) * np.sqrt(1 - cos_PAB ** 2)
+    else:
+        if cos_PAB < 0:
+            return np.linalg.norm(ap)
+        else:
+            return np.linalg.norm(bp)
+
+
+def cross_2_line_seg(seg11, seg12, seg21, seg22):
+    a = np.array(seg11)
+    b = np.array(seg12)
+    c = np.array(seg21)
+    d = np.array(seg22)
+
+    if (max(c[0], d[0]) < min(a[0], b[0])) or (max(c[1], d[1]) < min(a[1], b[1])) or (max(a[0], b[0]) < min(c[0], d[0])) or (max(a[1], b[1]) < min(c[1], d[1])):
+        return False, None
+
+    else:       # 一定有交点
+        if a[0] == b[0]:
+            kk = (c[1] - d[1]) / (c[0] - d[0])
+            bb = c[1] - kk * c[0]
+            y = kk * a[0] + bb
+            if (y > max(a[1], b[1])) or (y < min(a[1], b[1])):
+                return False, None
+            else:
+                return True, [a[0], y]
+        elif c[0] == d[0]:
+            kk = (a[1] - b[1]) / (a[0] - b[0])
+            bb = a[1] - kk * a[0]
+            y = kk * c[0] + bb
+            if (y > max(c[1], d[1])) or (y < min(c[1], d[1])):
+                return False, None
+            else:
+                return True, [c[0], y]
+        else:
+            kk1 = (a[1] - b[1]) / (a[0] - b[0])
+            bb1 = a[1] - kk1 * a[0]
+            kk2 = (c[1] - d[1]) / (c[0] - d[0])
+            bb2 = c[1] - kk2 * c[0]
+            x = (bb1 - bb2) / (kk2 - kk1)
+            y = kk1 * x + bb1
+            if (x > min(max(a[0], b[0]), max(c[0], d[0]))) or (x < max(min(a[0],b[0]), min(c[0], d[0]))) or \
+                    (y > min(max(a[1], b[1]), max(c[1], d[1]))) or (y < max(min(a[1],b[1]), min(c[1], d[1]))):
+                return False, None
+            else:
+                return True, [x, y]
+
+
+def cross_pt_ray_2_poly(ray_s, ray_t, points):
+    l = len(points)
+    PT = []
+    dis = np.inf
+    HAVE = False
+    for i in range(l):
+        have, pt = cross_2_line_seg(ray_s, ray_t, points[i], points[(i + 1) % l])
+        if have:
+            _dis = dis_two_points(pt, ray_s)
+            HAVE = True
+            if _dis < dis:
+                dis = _dis
+                PT = pt.copy()
+    return HAVE, PT, dis
+
+
+def dis_point_2_poly(points, point):
+    l = len(points)
+    dis = np.inf
+    for i in range(l):
+        _dis = dis_point_2_line_segment(point, points[i], points[(i + 1) % l])
+        if _dis < dis:
+            dis = _dis
+    return dis
+
+
 def point_is_in_poly(center, r, points: list, point: list) -> bool:
     """
     :brief:                     if a point is in a polygon

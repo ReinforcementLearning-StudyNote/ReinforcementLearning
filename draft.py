@@ -13,23 +13,18 @@ from environment.envs.pathplanning.bezier import Bezier
 
 
 if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    import random
-    from pylab import mpl
-
-    # 设置显示中文字体
-    mpl.rcParams["font.sans-serif"] = ["SimHei"]
-
-    # 0.准备数据
-    # x = np.random.uniform(0, 1, 1000000)  # 在[0,1)上产生100000000个数
-    x = np.random.beta(a=2, b=2, size=1000000)
-
-    # 1.创建画布
-    # plt.figure(figsize=(10, 10), dpi=100)
-
-    plt.xlim(0,1)
-    plt.hist(x, bins=100)  # 0-1区间上 划分为1000份
-    # 2.1 保存图像
-
-    # 3.图像展示
-    plt.show()
+    for _ in range(100):
+        # a = np.random.rand(4, 2) * 10
+        a = np.array([[5, 2],
+                      [5, 8],
+                      [6, 4],
+                      [6, 10]])
+        have, pt = cross_2_line_seg(a[0], a[1], a[2], a[3])
+        plt.figure(0)
+        plt.plot(a[0:2, 0], a[0:2, 1], c='red')
+        plt.plot(a[2:4, 0], a[2:4, 1], c='blue')
+        plt.scatter(a[0:2, 0], a[0:2, 1], c='red')
+        plt.scatter(a[2:4, 0], a[2:4, 1], c='blue')
+        if have:
+            plt.scatter(pt[0], pt[1], c='black')
+        plt.show()

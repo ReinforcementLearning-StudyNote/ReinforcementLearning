@@ -188,7 +188,10 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         '''1. 提前求出起点与障碍物中心距离，然后将距离排序'''
         ref_dis = []
         for _obs in self.obs:
-            ref_dis.append(dis_two_points([self.x, self.y], _obs[2]))
+            if _obs[0] == 'circle':
+                ref_dis.append(dis_two_points([self.x, self.y], _obs[2]))
+            else:
+                ref_dis.append(dis_point_2_poly(_obs[2], [self.x, self.y]))
         ref_sort = np.argsort(ref_dis)  # 排序的障碍物，距离从小到达，越小的说明离机器人越近
         '''1. 提前求出起点与障碍物中心距离，然后将距离排序'''
         for phi in detectPhi:
@@ -198,12 +201,14 @@ class UGV_Forward_Obstacle_Continuous(UGV):
                 phi += 2 * math.pi
             m = np.tan(phi)  # 斜率
             b = self.y - m * self.x  # 截距
+
             '''2. 确定当前机器人与四个角点的连接'''
             theta1 = cal_vector_rad([1, 0], [self.x_size - self.x, self.y_size - self.y])  # 左上
             theta2 = cal_vector_rad([1, 0], [0 - self.x, self.y_size - self.y])  # 右上
             theta3 = -cal_vector_rad([1, 0], [0 - self.x, 0 - self.y])  # 右下
             theta4 = -cal_vector_rad([1, 0], [self.x_size - self.x, 0 - self.y])  # 左下
             '''2. 确定当前机器人与四个角点的连接'''
+
             '''3. 找到终点'''
             cosTheta = math.fabs(m) / math.sqrt(1 + m ** 2)
             sinTheta = 1 / math.sqrt(1 + m ** 2)
@@ -228,45 +233,57 @@ class UGV_Forward_Obstacle_Continuous(UGV):
                 if tx > 0:
                     terminal = [tx, self.y - cosTheta * self.laserDis] if m >= 0 else [tx, self.y + cosTheta * self.laserDis]
             '''3. 找到终点'''
+
             '''4. 开始找探测点'''
             find = False
             for index in ref_sort:
                 _obs = self.obs[index]
-                x0 = _obs[2][0]
-                y0 = _obs[2][1]
-                r0 = _obs[1][0]
-                if ref_dis[index] > self.laserDis + r0:
-                    continue  # 如果障碍物本身超出可探测范围，那么肯定不用考虑
-                if np.fabs(m * x0 - y0 + b) / np.sqrt(1 + m ** 2) > r0:
-                    continue  # 如果圆心到线段所在直线的距离大于圆的半径，那么肯定不用考虑
-                if cal_vector_rad([terminal[0] - start[0], terminal[1] - start[1]], [x0 - start[0], y0 - start[1]]) > math.pi / 2:
-                    continue  # 如果圆心的位置在探测线段的后方，那么肯定是不需要考虑
-                '''能执行到这，就说明存在一个园，使得线段所在的射线满足条件，只需要计算点是否在线段上即可'''
-                # 垂足坐标
-                foot_x = (x0 + m * y0 - m * b) / (m ** 2 + 1)
-                foot_y = (m * x0 + m ** 2 * y0 + b) / (m ** 2 + 1)
-                r_dis = dis_two_points([foot_x, foot_y], [x0, y0])
-                # dis_slide = math.sqrt(r0 ** 2 - r_dis ** 2)     # 垂足到交点滑动距离
-                crossPtx = foot_x - np.sign(terminal[0] - start[0]) * math.sqrt(r0 ** 2 - r_dis ** 2) / math.sqrt(m ** 2 + 1)
-                if min(start[0], terminal[0]) <= crossPtx <= max(start[0], terminal[0]):
-                    find = True
-                    dis = math.fabs(crossPtx - start[0]) * math.sqrt(m ** 2 + 1)
-                    if dis < self.laserBlind:  # too close
-                        laser.append(self.laserBlind)
-                        newX = start[0] + self.laserBlind / math.sqrt(m ** 2 + 1) * np.sign(terminal[0] - start[0])
-                        self.visualLaser[count] = [newX, m * newX + b]
-                        self.visualFlag[count] = 2
-                    else:
+                if _obs[0] == 'circle':     # 如果障碍物是圆
+                    x0 = _obs[2][0]
+                    y0 = _obs[2][1]
+                    r0 = _obs[1][0]
+                    if ref_dis[index] > self.laserDis + r0:
+                        continue  # 如果障碍物本身超出可探测范围，那么肯定不用考虑
+                    if np.fabs(m * x0 - y0 + b) / np.sqrt(1 + m ** 2) > r0:
+                        continue  # 如果圆心到线段所在直线的距离大于圆的半径，那么肯定不用考虑
+                    if cal_vector_rad([terminal[0] - start[0], terminal[1] - start[1]], [x0 - start[0], y0 - start[1]]) > math.pi / 2:
+                        continue  # 如果圆心的位置在探测线段的后方，那么肯定是不需要考虑
+                    '''能执行到这，就说明存在一个园，使得线段所在的射线满足条件，只需要计算点是否在线段上即可'''
+                    # 垂足坐标
+                    foot_x = (x0 + m * y0 - m * b) / (m ** 2 + 1)
+                    foot_y = (m * x0 + m ** 2 * y0 + b) / (m ** 2 + 1)
+                    r_dis = dis_two_points([foot_x, foot_y], [x0, y0])
+                    # dis_slide = math.sqrt(r0 ** 2 - r_dis ** 2)     # 垂足到交点滑动距离
+                    crossPtx = foot_x - np.sign(terminal[0] - start[0]) * math.sqrt(r0 ** 2 - r_dis ** 2) / math.sqrt(m ** 2 + 1)
+                    if min(start[0], terminal[0]) <= crossPtx <= max(start[0], terminal[0]):
+                        find = True
+                        dis = math.fabs(crossPtx - start[0]) * math.sqrt(m ** 2 + 1)
+                        if dis < self.laserBlind:  # too close
+                            laser.append(self.laserBlind)
+                            newX = start[0] + self.laserBlind / math.sqrt(m ** 2 + 1) * np.sign(terminal[0] - start[0])
+                            self.visualLaser[count] = [newX, m * newX + b]
+                            self.visualFlag[count] = 2
+                        else:
+                            laser.append(dis)
+                            self.visualLaser[count] = [crossPtx, m * crossPtx + b]
+                            self.visualFlag[count] = 1
+                        break
+                else:                   # 如果障碍物是多边形
+                    [x0, y0, r0] = _obs[1]
+                    pts = _obs[2]
+                    if ref_dis[index] > self.laserDis + r0:
+                        continue  # 如果障碍物本身超出可探测范围，那么肯定不用考虑
+                    have, pt, dis = cross_pt_ray_2_poly(ray_s=start, ray_t=terminal, points=pts)
+                    if have:
+                        find = True
                         laser.append(dis)
-                        self.visualLaser[count] = [crossPtx, m * crossPtx + b]
+                        self.visualLaser[count] = pt
                         self.visualFlag[count] = 1
-                    break
+                        break
             '''4. 开始找探测点'''
+
             if not find:  # 点一定是终点，但是属性不一定
                 dis = dis_two_points(start, terminal)
-                # laser.append(self.laserDis)
-                # self.visualLaser[count] = terminal.copy()
-                # self.visualFlag[count] = 0                  # 只要没有，就给2.0
                 if dis > self.laserDis:         # 如果起始点与终点的距离大于探测半径，那么就直接给探测半径，相当于空场地
                     laser.append(self.laserDis)
                     self.visualLaser[count] = terminal.copy()
@@ -285,8 +302,15 @@ class UGV_Forward_Obstacle_Continuous(UGV):
     def collision_check(self):
         # 假设所有的障碍物都是圆
         for _obs in self.obs:
-            if dis_two_points([self.x, self.y], _obs[2]) < _obs[1][0] + self.rBody:
-                return True
+            if _obs[0] == 'circle':
+                if dis_two_points([self.x, self.y], _obs[2]) < _obs[1][0] + self.rBody:
+                    return True
+            elif _obs[0] == 'rectangle':
+                if point_is_in_poly(center=_obs[1][0:2], r=_obs[1][2], points=_obs[2], point=[self.x, self.y]):
+                    return True
+                else:
+                    if dis_point_2_poly(_obs[2], [self.x, self.y]) < self.rBody:
+                        return True
         return False
 
     def get_reward(self, param=None):
@@ -444,7 +468,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         '''physical parameters'''
         self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
         self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_random_obstacles(3)
+        self.set_random_obstacles(30)
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]

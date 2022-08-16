@@ -444,7 +444,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        RECORD = True
+        RECORD = False
         optPath = '../../datasave/network/TD3-UGV-Obstacle-Avoidance/parameters/'
         agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
         '''重新加载actor网络结构，这是必须的操作'''
@@ -458,7 +458,8 @@ if __name__ == '__main__':
         collisionCounter = 0
         for i in range(simulation_num):
             print('==========START' + str(i) + '==========')
-            env.reset_random_with_database()
+            # env.reset_random_with_database()
+            env.reset_random()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
                     break
