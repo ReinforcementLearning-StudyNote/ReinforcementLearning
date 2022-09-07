@@ -2,6 +2,7 @@ import os
 import random
 import sys
 import cv2 as cv
+import numpy as np
 import torch
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
@@ -100,15 +101,15 @@ def test_ugv_forward_obstacles_continuous():
             if cv.waitKey(1) == 27:
                 return
             env.show_dynamic_imagewithobs(isWait=False)
+            action = env.towards_target_PID(threshold=np.inf, kp=10, kd=0, ki=0)
             # cap.write(env.save)
-            action = [0, 1 * math.pi]
+            # action = [0, 1 * math.pi]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             # print(env.current_state[0 : 4])
             if env.terminal_flag == 4:
                 print(env.reward)
             # print(env.current _state)
         num += 1
-
 
 # UGV Forward Discrete Test
 def test_ugv_forward_discrete():
@@ -160,8 +161,8 @@ if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
-    # test_ugv_forward_continuous()
-    test_ugv_forward_obstacles_continuous()
+    test_ugv_forward_continuous()
+    # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
     pass

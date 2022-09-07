@@ -417,3 +417,20 @@ class samplingmap(obstacle):
         for database in databases:
             merge += database
         return merge
+
+    def pre_fill_bound_with_rectangles(self):
+        self.obs = []
+        rx = math.sqrt(0.25 ** 2 + self.x_size ** 2 / 4)
+        ry = math.sqrt(0.25 ** 2 + self.y_size ** 2 / 4)
+        self.obs.append(['rectangle',
+                         [self.x_size / 2, 0.25, rx],
+                         [[0, 0], [self.x_size, 0],[self.x_size, 0.5], [0, 0.5]]])
+        self.obs.append(['rectangle',
+                         [self.x_size - 0.25, self.y_size / 2, ry],
+                         [[self.x_size - 0.5, 0], [self.x_size, 0], [self.x_size, self.y_size], [self.x_size - 0.5, self.y_size]]])
+        self.obs.append(['rectangle',
+                         [self.x_size / 2, self.y_size - 0.25, rx],
+                         [[self.x_size, self.y_size - 0.5], [self.x_size - 0.5, self.y_size], [0, self.y_size], [0, self.y_size - 0.5]]])
+        self.obs.append(['rectangle',
+                         [0.25, self.y_size / 2, ry],
+                         [[0.5, self.y_size], [0, self.y_size], [0, 0], [0.5, 0]]])

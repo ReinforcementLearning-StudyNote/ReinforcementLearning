@@ -1,6 +1,3 @@
-import math
-import random
-
 from common.common import *
 from environment.envs import *
 from environment.envs.pathplanning.samplingmap import samplingmap
@@ -38,13 +35,13 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.wLeft = 0.
         self.wRight = 0.
 
-        self.wMax = 10                  # 车轮最大角速度rad/s
-        self.r = 0.1                    # 车轮半径
-        self.l_wheel = 0.06             # 车轮厚度
-        self.rBody = 0.15               # 车主体半径
-        self.L = 2 * self.rBody         # 车主体直径
-        self.dt = 0.02                   # 50Hz
-        self.time = 0.                  # time
+        self.wMax = 10  # 车轮最大角速度rad/s
+        self.r = 0.1  # 车轮半径
+        self.l_wheel = 0.06  # 车轮厚度
+        self.rBody = 0.15  # 车主体半径
+        self.L = 2 * self.rBody  # 车主体直径
+        self.dt = 0.02  # 50Hz
+        self.time = 0.  # time
         self.miss = 1.0 * self.rBody
         self.staticGain = 4
         self.delta_phi_absolute = 0.

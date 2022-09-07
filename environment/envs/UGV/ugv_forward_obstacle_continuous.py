@@ -132,7 +132,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
 
     def show_dynamic_imagewithobs(self, isWait=False):
         self.image = self.image_temp.copy()
-        self.map_draw_inner_boundary()
+        # self.map_draw_inner_boundary()
         self.map_draw_obs()
         self.map_draw_photo_frame()
         self.map_draw_boundary()
@@ -468,7 +468,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         '''physical parameters'''
         self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
         self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_random_obstacles(30)
+        self.set_random_obstacles(25)
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]

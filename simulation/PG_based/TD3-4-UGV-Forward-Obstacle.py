@@ -459,6 +459,7 @@ if __name__ == '__main__':
         for i in range(simulation_num):
             print('==========START' + str(i) + '==========')
             # env.reset_random_with_database()
+            # env.pre_fill_bound_with_rectangles()
             env.reset_random()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
@@ -478,7 +479,7 @@ if __name__ == '__main__':
                 print('timeout')
             if env.terminal_flag == 3:
                 successCounter += 1
-                cv.imwrite(str(i) + '.png', env.save)
+                # cv.imwrite(str(i) + '.png', env.save)
                 print('success')
             if env.terminal_flag == 4:
                 collisionCounter += 1
