@@ -479,7 +479,7 @@ if __name__ == '__main__':
                 print('timeout')
             if env.terminal_flag == 3:
                 successCounter += 1
-                # cv.imwrite(str(i) + '.png', env.save)
+                cv.imwrite(str(i) + '.png', env.save)
                 print('success')
             if env.terminal_flag == 4:
                 collisionCounter += 1

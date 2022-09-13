@@ -40,8 +40,12 @@ class samplingmap(obstacle):
         self.image_white = self.image.copy()  # 纯白图
 
         self.name4image = image_name
-        self.x_offset = self.width / 20  # leave blank for image
-        self.y_offset = self.height / 20
+        # self.x_offset = self.width / 20  # leave blank for image
+        # self.y_offset = self.height / 20
+
+        self.x_offset = 2
+        self.y_offset = 2
+
         self.pixel_per_meter = min((self.width - 2 * self.x_offset) / self.x_size,
                                    (self.height - 2 * self.y_offset) / self.y_size)
 
@@ -188,8 +192,10 @@ class samplingmap(obstacle):
             print('No obstacles!!')
             return
         for [name, constraints, pts] in self.obs:  # [name, [], [pt1, pt2, pt3]]
+            color = Color().DarkGray
+            # color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             if name == 'circle':
-                cv.circle(self.image, self.dis2pixel(pts), self.length2pixel(constraints[0]), Color().DarkGray, -1)
+                cv.circle(self.image, self.dis2pixel(pts), self.length2pixel(constraints[0]), color, -1)
             elif name == 'ellipse':
                 cv.ellipse(img=self.image,
                            center=self.dis2pixel(pts),
@@ -197,11 +203,11 @@ class samplingmap(obstacle):
                            angle=-constraints[2],
                            startAngle=0.,
                            endAngle=360.,
-                           color=Color().DarkGray,
+                           color=color,
                            thickness=-1)
             else:
                 cv.fillConvexPoly(self.image, points=np.array([list(self.dis2pixel(pt)) for pt in pts]),
-                                  color=Color().DarkGray)
+                                  color=color)
 
     def map_draw_photo_frame(self):
         cv.rectangle(self.image, (0, 0), (self.width - 1, self.dis2pixel([self.x_size, self.y_size])[1]), Color().White, -1)

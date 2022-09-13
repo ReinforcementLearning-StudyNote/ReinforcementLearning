@@ -140,7 +140,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.draw_trajectory()
         self.draw_fake_laser()
         self.draw_terminal()
-        cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
+        # cv.putText(self.image, str(round(self.time, 3)), (0, 15), cv.FONT_HERSHEY_COMPLEX, 0.6, Color().Purple, 1)
         cv.imshow(self.name4image, self.image)
         cv.waitKey(0) if isWait else cv.waitKey(1)
         self.save = self.image.copy()
@@ -468,7 +468,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         '''physical parameters'''
         self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
         self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_random_obstacles(25)
+        self.set_random_obstacles(30)
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]
