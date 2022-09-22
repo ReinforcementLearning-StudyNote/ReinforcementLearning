@@ -121,7 +121,6 @@ class obstacle:
             rRange = [0.5, 0.8]
         namelist = ['triangle', 'rectangle', 'pentagon', 'hexagon', 'heptagon', 'octagon']
         edge = random.sample([0, 1, 2, 3, 4, 5], 1)[0]
-        # edge = 1
         x = random.uniform(xRange[0], xRange[1])
         y = random.uniform(yRange[0], yRange[1])
         r = random.uniform(rRange[0], rRange[1])

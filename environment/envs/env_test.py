@@ -92,25 +92,27 @@ def test_ugv_forward_obstacles_continuous():
     env = UGV_Forward_Obstacle_Continuous(initPhi=deg2rad(0), save_cfg=True, x_size=11, y_size=11, start=[2.5, 2.5], terminal=[4.0, 2.5],
                                           dataBasePath='./pathplanning/11X11-AllCircle1/')
     num = 0
-    while num < 12:
+    while num < 1:
         # env.reset_random_with_database()
         env.reset_random()
-        env.show_dynamic_imagewithobs(isWait=False)
-        cv.imwrite(str(num) + '.png', env.image)
+        env.start = [1, 1]
+        env.terminal = [9, 9]
+        # env.show_dynamic_imagewithobs(isWait=False)
+        # cv.imwrite(str(num) + '.png', env.image)
 
-        # while not env.is_terminal:
-        #     # print(env.time)
-        #     if cv.waitKey(1) == 27:
-        #         return
-        #     env.show_dynamic_imagewithobs(isWait=False)
-        #     action = env.towards_target_PID(threshold=np.inf, kp=10, kd=0, ki=0)
-        #     # cap.write(env.save)
-        #     # action = [0, 1 * math.pi]
-        #     env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
-        #     # print(env.current_state[0 : 4])
-        #     if env.terminal_flag == 4:
-        #         print(env.reward)
-        #     # print(env.current _state)
+        while not env.is_terminal:
+            # print(env.time)
+            if cv.waitKey(1) == 27:
+                return
+            env.show_dynamic_imagewithobs(isWait=False)
+            action = env.towards_target_PID(threshold=np.inf, kp=10, kd=0, ki=0)
+            # cap.write(env.save)
+            # action = [0, 1 * math.pi]
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            # print(env.current_state[0 : 4])
+            # if env.terminal_flag == 4:
+            #     print(env.reward)
+            # print(env.current _state)
         num += 1
 
 # UGV Forward Discrete Test

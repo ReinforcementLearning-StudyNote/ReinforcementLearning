@@ -300,12 +300,14 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         return laser
 
     def collision_check(self):
-        # 假设所有的障碍物都是圆
         for _obs in self.obs:
             if _obs[0] == 'circle':
                 if dis_two_points([self.x, self.y], _obs[2]) < _obs[1][0] + self.rBody:
                     return True
-            elif _obs[0] == 'rectangle':
+            elif _obs[0] == 'ellipse':
+                print('In function: <collision_check> ERROR!!!')
+                return False
+            else:
                 if point_is_in_poly(center=_obs[1][0:2], r=_obs[1][2], points=_obs[2], point=[self.x, self.y]):
                     return True
                 else:
@@ -468,7 +470,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         '''physical parameters'''
         self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
         self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_random_obstacles(30)
+        self.set_random_obstacles(25)
         self.x = self.start[0]  # X
         self.y = self.start[1]  # Y
         self.initX = self.start[0]
