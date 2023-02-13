@@ -1,4 +1,4 @@
-from common.common import *
+from common.common_func import *
 from environment.envs import *
 from environment.envs.pathplanning.samplingmap import samplingmap
 
@@ -504,12 +504,12 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             })
             data.to_csv(filepath + filename, index=False, sep=',')
         else:
-            self.saveX = [self.x]
-            self.saveY = [self.y]
-            self.savePhi = [self.phi]
-            self.savedX = [self.dx]
-            self.savedY = [self.dy]
-            self.savedPhi = [self.dphi]
-            self.savewLeft = [self.wLeft]
-            self.savewRight = [self.wRight]
-            self.saveTime = [self.time]
+            self.saveX.append(self.x)
+            self.saveY.append(self.y)
+            self.savePhi.append(self.phi)
+            self.savedX.append(self.dx)
+            self.savedY.append(self.dy)
+            self.savedPhi.append(self.dphi)
+            self.savewLeft.append(self.wLeft)
+            self.savewRight.append(self.wRight)
+            self.saveTime.append(self.time)

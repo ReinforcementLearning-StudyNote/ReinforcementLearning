@@ -1,7 +1,7 @@
 import math
 import random
 
-from common.common import *
+from common.common_func import *
 from environment.envs import *
 from environment.envs.pathplanning.samplingmap import samplingmap
 

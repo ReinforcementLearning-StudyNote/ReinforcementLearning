@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../")
 from environment.Color import Color
 from environment.envs.pathplanning.samplingmap import samplingmap
-from common.common import *
+from common.common_func import *
 
 
 class rasterizedmap(samplingmap):

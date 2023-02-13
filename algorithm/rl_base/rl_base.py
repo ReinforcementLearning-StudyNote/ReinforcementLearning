@@ -144,7 +144,7 @@ class rl_base:
     def step_update(self, action):
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
 
-    def get_reward(self, param=None):
+    def get_reward(self, param):
         """
         :param param:       other parameters
         :return:            reward function
@@ -152,7 +152,7 @@ class rl_base:
         '''should be the function of current state, time, or next state. It needs to be re-written in a specific environment.'''
         pass
 
-    def is_Terminal(self, param=None):
+    def is_Terminal(self, param):
         return False
 
     def reset(self):

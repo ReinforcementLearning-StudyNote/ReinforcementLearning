@@ -163,10 +163,10 @@ def test_ugv_forward_obstacles_discrete():
 
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
-    # test_flight_attitude_simulator_continuous()
+    test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
     # test_ugv_forward_continuous()
-    test_ugv_forward_obstacles_continuous()
+    # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
     pass

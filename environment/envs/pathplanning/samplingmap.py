@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
 from environment.Color import Color
 from environment.envs.pathplanning.obstacle import obstacle
-from common.common import *
+from common.common_func import *
 
 
 class samplingmap(obstacle):
@@ -226,6 +226,12 @@ class samplingmap(obstacle):
             cv.waitKey(0) if isWait else cv.waitKey(1)
 
     def path_draw(self, path, name, color):
+        """
+        :param path:
+        :param name:
+        :param color:
+        :return:
+        """
         pt1 = path.pop()
         pt1_int = self.dis2pixel(pt1)
         while path:
@@ -249,6 +255,9 @@ class samplingmap(obstacle):
     '''random obstacles'''
 
     def set_random_obs_single(self):
+        """
+        :return:
+        """
         index = random.sample([0, 2, 3, 4, 5], 1)[0]  # 0-circle, 1-ellipse, 2-poly，大于1的数字越多，多边形的概率越大
         # index = 2
         if index == 0:

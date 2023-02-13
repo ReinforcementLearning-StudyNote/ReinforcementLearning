@@ -1,4 +1,4 @@
-from common.common import *
+from common.common_func import *
 from environment.envs import *
 
 

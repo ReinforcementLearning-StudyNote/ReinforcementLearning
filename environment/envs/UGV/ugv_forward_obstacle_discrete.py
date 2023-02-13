@@ -1,5 +1,5 @@
 import cv2 as cv
-from common.common import *
+from common.common_func import *
 from environment.envs import *
 from environment.envs.UGV.ugv_forward_discrete import UGV_Forward_Discrete as UGV
 
