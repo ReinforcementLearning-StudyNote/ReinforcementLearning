@@ -18,7 +18,7 @@ class UAV_Visualization:
         self.xbound = xbound
         self.ybound = ybound
         self.zbound = zbound
-        self.origin = origin
+        self.o = origin
         self.ax = axes3d.Axes3D(self.fig)
         self.ax.set_aspect('auto')      # 只能auto
         self.ax.set_xlim3d(self.xbound)
@@ -31,7 +31,10 @@ class UAV_Visualization:
         self.ax.yaxis.set_major_locator(MultipleLocator(2))
         self.ax.set_title('QuadrotorFly Simulation', fontsize='13')
 
-        self.trajectory = [[], [], []]
+        self.traj_data = [[self.o[0]], [self.o[1]], [self.o[2]]]
+        self.traj_count = 200
+        self.sim_index = 0
+        self.length_per_n = 0.6
         self.color = ['r', 'b', 'g', 'k', 'm', 'y', 'k']
 
         '''UAV相关部件'''
@@ -44,7 +47,13 @@ class UAV_Visualization:
         self.bar4, = self.ax.plot([], [], [], color='black', linewidth=4, antialiased=False)                       # 机臂4
         self.head, = self.ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)               # 机头点
         self.head_bar, = self.ax.plot([], [], [], color='green', markersize=6, antialiased=False)                       # 朝向臂
-        # self.grav = self.ax.quiver(self.origin[0], self.origin[1], self.origin[2], 0, 0, -2, length=1, color='red')
+        self.traj, = self.ax.plot([], [], [], color='blue', linewidth=1.5)
+        self.grav = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, -1, length=0.8*9.8*self.length_per_n, color='red')
+        self.f1 = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, 0, length=1, color='red')
+        self.f2 = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, 0, length=1, color='orange')
+        self.f3 = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, 0, length=1, color='blue')
+        self.f4 = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, 0, length=1, color='black')
+
         self.quadGui = {
             'origin_point': self.origin_point,
             'label': self.label,
@@ -55,7 +64,7 @@ class UAV_Visualization:
             'bar4': self.bar4,
             'head': self.head,
             'head_bar': self.head_bar,
-            # 'grav': self.grav
+            'traj': self.traj,
         }
         cx = np.mean(self.xbound)
         cy = np.mean(self.ybound)
@@ -70,6 +79,9 @@ class UAV_Visualization:
         self.draw_bound()
 
     def draw_bound(self):
+        """
+        :return:        绘制外框
+        """
         for _z in self.zbound:
             for ik in [0, 1]:
                 posx = self.xbound
@@ -84,10 +96,9 @@ class UAV_Visualization:
         for _x in self.xbound:
             for _y in self.ybound:
                 self.figure = self.ax.plot([_x, _x], [_y, _y], self.zbound, 'y')
-        # plt.show()
-        # plt.pause(0.0000000001)
 
-    def rotate_matrix(self, attitude: np.ndarray):
+    @staticmethod
+    def rotate_matrix(attitude: np.ndarray):
         [phi, theta, psi] = attitude
         _R_i_b1 = np.array([[math.cos(psi), math.sin(psi), 0],
                             [-math.sin(psi), math.cos(psi), 0],
@@ -102,45 +113,106 @@ class UAV_Visualization:
         _R_b_i = _R_i_b.T  # 从机体系到惯性系的转换矩阵
         return _R_b_i
 
-    def render(self, position: np.ndarray, attitude: np.ndarray, d: float):
+    def render(self,
+               p: np.ndarray,
+               a: np.ndarray,
+               f: np.ndarray,
+               d: float,
+               win: int):
         """
-        :param position:        无人机在 观察系 下的位置
-        :param attitude:        无人机在 观察系 下的姿态
-        :param d:               机臂长
+        :param p:   无人机在 观察系 下的位置
+        :param a:   无人机在 观察系 下的姿态
+        :param f:   无人机螺旋桨的升力
+        :param d:   无人机机臂长度
+        :param win: 时间窗口长度
         :return:
         """
-        R_b_i = self.rotate_matrix(attitude)
-        d0 = d / math.sqrt(2)
-        bar1 = np.dot(R_b_i, [d0, d0, 0]) + position
-        bar2 = np.dot(R_b_i, [d0, -d0, 0]) + position
-        bar3 = np.dot(R_b_i, [-d0, -d0, 0]) + position
-        bar4 = np.dot(R_b_i, [-d0, +d0, 0]) + position
-        head = np.dot(R_b_i, [2 * d0, 0, 0]) + position
+        '''轨迹数据存储'''
+        if self.sim_index < self.traj_count:
+            self.traj_data[0].append(p[0])
+            self.traj_data[1].append(p[1])
+            self.traj_data[2].append(p[2])
+        else:
+            self.traj_data[0].pop(0)
+            self.traj_data[1].pop(0)
+            self.traj_data[2].pop(0)
+            self.traj_data[0].append(p[0])
+            self.traj_data[1].append(p[1])
+            self.traj_data[2].append(p[2])
+        '''轨迹数据存储'''
 
-        '''初始位置'''
-        self.quadGui['origin_point'].set_data([self.origin[0], self.origin[0]], [self.origin[1], self.origin[1]])
-        self.quadGui['origin_point'].set_3d_properties([self.origin[2], self.origin[2]])
-        '''初始位置'''
+        if self.sim_index % win == 0:
+            R_b_i = self.rotate_matrix(a)
+            d0 = d / math.sqrt(2)
+            bar1 = np.dot(R_b_i, [d0, d0, 0]) + p
+            bar2 = np.dot(R_b_i, [d0, -d0, 0]) + p
+            bar3 = np.dot(R_b_i, [-d0, -d0, 0]) + p
+            bar4 = np.dot(R_b_i, [-d0, +d0, 0]) + p
+            head = np.dot(R_b_i, [2 * d0, 0, 0]) + p
+            # f1_tail = np.dot(R_b_i, [d0, d0, f[0] * self.length_per_n]) + p
+            # f2_tail = np.dot(R_b_i, [d0, -d0, f[1] * self.length_per_n]) + p
+            # f3_tail = np.dot(R_b_i, [-d0, -d0, f[2] * self.length_per_n]) + p
+            # f4_tail = np.dot(R_b_i, [-d0, +d0, f[3] * self.length_per_n]) + p
+            dir_f1 = np.dot(R_b_i, [0, 0, 1])
+            dir_f2 = np.dot(R_b_i, [0, 0, 1])
+            dir_f3 = np.dot(R_b_i, [0, 0, 1])
+            dir_f4 = np.dot(R_b_i, [0, 0, 1])
 
-        '''无人机中心位置'''
-        self.quadGui['center'].set_data([position[0], position[0]], [position[1], position[1]])
-        self.quadGui['center'].set_3d_properties([position[2], position[2]])
-        '''无人机中心位置'''
+            '''初始位置'''
+            self.quadGui['origin_point'].set_data([self.o[0], self.o[0]], [self.o[1], self.o[1]])
+            self.quadGui['origin_point'].set_3d_properties([self.o[2], self.o[2]])
+            '''初始位置'''
 
-        '''四个机臂位置'''
-        self.quadGui['bar1'].set_data([bar1[0], position[0]], [bar1[1], position[1]])
-        self.quadGui['bar1'].set_3d_properties([bar1[2], position[2]])
-        self.quadGui['bar2'].set_data([bar2[0], position[0]], [bar2[1], position[1]])
-        self.quadGui['bar2'].set_3d_properties([bar2[2], position[2]])
-        self.quadGui['bar3'].set_data([bar3[0], position[0]], [bar3[1], position[1]])
-        self.quadGui['bar3'].set_3d_properties([bar3[2], position[2]])
-        self.quadGui['bar4'].set_data([bar4[0], position[0]], [bar4[1], position[1]])
-        self.quadGui['bar4'].set_3d_properties([bar4[2], position[2]])
-        '''四个机臂位置'''
+            '''无人机中心位置'''
+            self.quadGui['center'].set_data([p[0], p[0]], [p[1], p[1]])
+            self.quadGui['center'].set_3d_properties([p[2], p[2]])
+            '''无人机中心位置'''
 
-        '''机头'''
-        self.quadGui['head_bar'].set_data([head[0], position[0]], [head[1], position[1]])
-        self.quadGui['head_bar'].set_3d_properties([head[2], position[2]])
-        self.quadGui['head'].set_data([head[0], head[0]], [head[1], head[1]])
-        self.quadGui['head'].set_3d_properties([head[2], head[2]])
-        '''机头'''
+            '''四个机臂位置'''
+            self.quadGui['bar1'].set_data([bar1[0], p[0]], [bar1[1], p[1]])
+            self.quadGui['bar1'].set_3d_properties([bar1[2], p[2]])
+            self.quadGui['bar2'].set_data([bar2[0], p[0]], [bar2[1], p[1]])
+            self.quadGui['bar2'].set_3d_properties([bar2[2], p[2]])
+            self.quadGui['bar3'].set_data([bar3[0], p[0]], [bar3[1], p[1]])
+            self.quadGui['bar3'].set_3d_properties([bar3[2], p[2]])
+            self.quadGui['bar4'].set_data([bar4[0], p[0]], [bar4[1], p[1]])
+            self.quadGui['bar4'].set_3d_properties([bar4[2], p[2]])
+            '''四个机臂位置'''
+
+            '''机头'''
+            self.quadGui['head_bar'].set_data([head[0], p[0]], [head[1], p[1]])
+            self.quadGui['head_bar'].set_3d_properties([head[2], p[2]])
+            self.quadGui['head'].set_data([head[0], head[0]], [head[1], head[1]])
+            self.quadGui['head'].set_3d_properties([head[2], head[2]])
+            '''机头'''
+
+            '''轨迹'''
+            self.quadGui['traj'].set_data(self.traj_data[0], self.traj_data[1])
+            self.quadGui['traj'].set_3d_properties(self.traj_data[2])
+            '''轨迹'''
+
+            '''重力加速度'''
+            self.grav.remove()
+            self.grav = self.ax.quiver(p[0], p[1], p[2], 0, 0, -1, length=0.8*9.8*self.length_per_n, color='black')
+            '''重力加速度'''
+
+            '''升力'''
+            self.f1.remove()
+            self.f2.remove()
+            self.f3.remove()
+            self.f4.remove()
+            self.f1 = self.ax.quiver(bar1[0], bar1[1], bar1[2],
+                                     dir_f1[0], dir_f1[1], dir_f1[2],
+                                     length=f[0]*self.length_per_n, color='red')
+            self.f2 = self.ax.quiver(bar2[0], bar2[1], bar2[2],
+                                     dir_f2[0], dir_f2[1], dir_f2[2],
+                                     length=f[1]*self.length_per_n, color='orange')
+            self.f3 = self.ax.quiver(bar3[0], bar3[1], bar3[2],
+                                     dir_f3[0], dir_f3[1], dir_f3[2],
+                                     length=f[2]*self.length_per_n, color='blue')
+            self.f4 = self.ax.quiver(bar4[0], bar4[1], bar4[2],
+                                     dir_f4[0], dir_f4[1], dir_f4[2],
+                                     length=f[3]*self.length_per_n, color='black')
+            '''升力'''
+
+        self.sim_index += 1
