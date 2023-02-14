@@ -1,17 +1,23 @@
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as axes3d
 from matplotlib.pyplot import MultipleLocator
-from matplotlib.axes import Axes
+# from matplotlib.axes import Axes
 import numpy as np
 import math
 
 
 class UAV_Visualization:
-    def __init__(self, xbound: list, ybound: list, zbound: list, origin: list):
-        self.fig = plt.figure(figsize=(12, 9))
+    def __init__(self, xbound: np.ndarray, ybound: np.ndarray, zbound: np.ndarray, origin: np.ndarray):
+        """
+        :param xbound:      观察系的
+        :param ybound:      观察系的
+        :param zbound:      观察系的
+        :param origin:      观察系的
+        """
+        self.fig = plt.figure(figsize=(9, 9))
         self.xbound = xbound
         self.ybound = ybound
-        self.zbound = [-zbound[1], -zbound[0]]
+        self.zbound = zbound
         self.origin = origin
         self.ax = axes3d.Axes3D(self.fig)
         self.ax.set_aspect('auto')      # 只能auto
@@ -21,8 +27,8 @@ class UAV_Visualization:
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
         self.ax.set_zlabel('Z')
-        self.ax.xaxis.set_major_locator(MultipleLocator(1))
-        self.ax.yaxis.set_major_locator(MultipleLocator(1))
+        self.ax.xaxis.set_major_locator(MultipleLocator(2))
+        self.ax.yaxis.set_major_locator(MultipleLocator(2))
         self.ax.set_title('QuadrotorFly Simulation', fontsize='13')
 
         self.trajectory = [[], [], []]
@@ -31,13 +37,14 @@ class UAV_Visualization:
         '''UAV相关部件'''
         self.origin_point, = self.ax.plot([], [], [], marker='o', color='black', markersize=6, antialiased=False)       # 画原点
         self.label = self.ax.text(0., 0., 0., 'quad', fontsize='11')                                                    # 写名字
-        self.center, = self.ax.plot([], [], [], marker='o', color='blue', markersize=15, antialiased=False)  # 中心
+        self.center, = self.ax.plot([], [], [], marker='o', color='blue', markersize=10, antialiased=False)  # 中心
         self.bar1, = self.ax.plot([], [], [], color='red', linewidth=4, antialiased=False)                        # 机臂1
-        self.bar2, = self.ax.plot([], [], [], color='red', linewidth=4, antialiased=False)                        # 机臂2
-        self.bar3, = self.ax.plot([], [], [], color='black', linewidth=4, antialiased=False)                       # 机臂3
+        self.bar2, = self.ax.plot([], [], [], color='orange', linewidth=4, antialiased=False)                        # 机臂2
+        self.bar3, = self.ax.plot([], [], [], color='blue', linewidth=4, antialiased=False)                       # 机臂3
         self.bar4, = self.ax.plot([], [], [], color='black', linewidth=4, antialiased=False)                       # 机臂4
         self.head, = self.ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)               # 机头点
         self.head_bar, = self.ax.plot([], [], [], color='green', markersize=6, antialiased=False)                       # 朝向臂
+        # self.grav = self.ax.quiver(self.origin[0], self.origin[1], self.origin[2], 0, 0, -2, length=1, color='red')
         self.quadGui = {
             'origin_point': self.origin_point,
             'label': self.label,
@@ -47,14 +54,22 @@ class UAV_Visualization:
             'bar3': self.bar3,
             'bar4': self.bar4,
             'head': self.head,
-            'head_bar': self.head_bar
+            'head_bar': self.head_bar,
+            # 'grav': self.grav
         }
+        cx = np.mean(self.xbound)
+        cy = np.mean(self.ybound)
+        cz = np.mean(self.zbound)
+        self.ax.scatter3D([cx, self.xbound[0], self.xbound[1], cx, cx, cx, cx],
+                          [cy, cy, cy, self.ybound[0], self.ybound[1], cy, cy],
+                          [cz, cz, cz, cz, cz, self.zbound[0], self.zbound[1]],
+                          s=30, c='red')
         '''UAV相关部件'''
 
         self.figure = self.ax.plot([], [])
-        self.draw_grid()
+        self.draw_bound()
 
-    def draw_grid(self):
+    def draw_bound(self):
         for _z in self.zbound:
             for ik in [0, 1]:
                 posx = self.xbound
@@ -89,19 +104,18 @@ class UAV_Visualization:
 
     def render(self, position: np.ndarray, attitude: np.ndarray, d: float):
         """
-        :param position:        无人机在惯性系下的位置
-        :param attitude:        无人机在惯性系下的姿态
+        :param position:        无人机在 观察系 下的位置
+        :param attitude:        无人机在 观察系 下的姿态
         :param d:               机臂长
         :return:
         """
         R_b_i = self.rotate_matrix(attitude)
         d0 = d / math.sqrt(2)
-        bar1 = np.dot(R_b_i, [d0, -d0, 0]) + position
-        bar2 = np.dot(R_b_i, [d0, d0, 0]) + position
-        bar3 = np.dot(R_b_i, [-d0, d0, 0]) + position
-        bar4 = np.dot(R_b_i, [-d0, -d0, 0]) + position
+        bar1 = np.dot(R_b_i, [d0, d0, 0]) + position
+        bar2 = np.dot(R_b_i, [d0, -d0, 0]) + position
+        bar3 = np.dot(R_b_i, [-d0, -d0, 0]) + position
+        bar4 = np.dot(R_b_i, [-d0, +d0, 0]) + position
         head = np.dot(R_b_i, [2 * d0, 0, 0]) + position
-        # print(R_b_i, position, attitude)
 
         '''初始位置'''
         self.quadGui['origin_point'].set_data([self.origin[0], self.origin[0]], [self.origin[1], self.origin[1]])
@@ -110,23 +124,23 @@ class UAV_Visualization:
 
         '''无人机中心位置'''
         self.quadGui['center'].set_data([position[0], position[0]], [position[1], position[1]])
-        self.quadGui['center'].set_3d_properties([-position[2], -position[2]])
+        self.quadGui['center'].set_3d_properties([position[2], position[2]])
         '''无人机中心位置'''
 
         '''四个机臂位置'''
         self.quadGui['bar1'].set_data([bar1[0], position[0]], [bar1[1], position[1]])
-        self.quadGui['bar1'].set_3d_properties([-bar1[2], -position[2]])
+        self.quadGui['bar1'].set_3d_properties([bar1[2], position[2]])
         self.quadGui['bar2'].set_data([bar2[0], position[0]], [bar2[1], position[1]])
-        self.quadGui['bar2'].set_3d_properties([-bar2[2], -position[2]])
+        self.quadGui['bar2'].set_3d_properties([bar2[2], position[2]])
         self.quadGui['bar3'].set_data([bar3[0], position[0]], [bar3[1], position[1]])
-        self.quadGui['bar3'].set_3d_properties([-bar3[2], -position[2]])
+        self.quadGui['bar3'].set_3d_properties([bar3[2], position[2]])
         self.quadGui['bar4'].set_data([bar4[0], position[0]], [bar4[1], position[1]])
-        self.quadGui['bar4'].set_3d_properties([-bar4[2], -position[2]])
+        self.quadGui['bar4'].set_3d_properties([bar4[2], position[2]])
         '''四个机臂位置'''
 
         '''机头'''
         self.quadGui['head_bar'].set_data([head[0], position[0]], [head[1], position[1]])
-        self.quadGui['head_bar'].set_3d_properties([-head[2], -position[2]])
+        self.quadGui['head_bar'].set_3d_properties([head[2], position[2]])
         self.quadGui['head'].set_data([head[0], head[0]], [head[1], head[1]])
-        self.quadGui['head'].set_3d_properties([-head[2], -head[2]])
+        self.quadGui['head'].set_3d_properties([head[2], head[2]])
         '''机头'''

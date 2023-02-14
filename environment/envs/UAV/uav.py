@@ -6,7 +6,17 @@ import math
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as axes3d
 
-
+'''保存的参数
+m: float = 1.5,
+                 g: float = 9.8,
+                 Jxx: float = 1.75e-2,
+                 Jyy: float = 1.75e-2,
+                 Jzz: float = 3.18e-2,
+                 d: float = 0.45,
+                 CT: float = 1.11e-5,
+                 CM: float = 1.49e-7,
+                 J0: float = 9.90e-5,
+保存的参数'''
 class UAV:
     def __init__(self,
                  m: float = 0.8,
@@ -55,7 +65,7 @@ class UAV:
         [self.p, self.q, self.r] = omega0_body  # 无人机在机体坐标系下的初始角速度
         # [self.dp, self.dq, self.dr] = domega0_body              # 无人机在机体坐标系下的初始角加速度
 
-        self.dt = 0.02  # 控制频率，50Hz
+        self.dt = 0.01  # 控制频率，100Hz
         self.time = 0.  # 当前时间
         self.tmax = 20  # 每回合最大时间
         self.staticGain = 4
@@ -66,16 +76,15 @@ class UAV:
                                        self.dphi, self.dtheta, self.dpsi])  # 控制系统的状态，不是强化学习的状态
 
         'state limitation'
-        self.xmax, self.ymax, self.zmax = 10, 10, 0
-        self.xmin, self.ymin, self.zmin = -10, -10, -5
+        self.xmax, self.ymax, self.zmax = 10, 10, 10
+        self.xmin, self.ymin, self.zmin = -10, -10, -10
         self.vxmax, self.vymax, self.vzmax = 10, 10, 10
         self.vxmin, self.vymin, self.vzmin = -10, -10, -10
 
         self.phimax, self.thetamax, self.psimax = deg2rad(80), deg2rad(80), deg2rad(180)
         self.phimin, self.thetamin, self.psimin = -deg2rad(80), -deg2rad(80), -deg2rad(180)
-
-        self.dphimax, self.dthetamax, self.dpsimax = deg2rad(180), deg2rad(180), deg2rad(100)
-        self.dphimin, self.dthetamin, self.dpsimin = -deg2rad(180), -deg2rad(180), -deg2rad(100)
+        self.dphimax, self.dthetamax, self.dpsimax = deg2rad(180), deg2rad(180), deg2rad(180)
+        self.dphimin, self.dthetamin, self.dpsimin = -deg2rad(180), -deg2rad(180), -deg2rad(180)
         'state limitation'
 
         'control'
@@ -97,9 +106,7 @@ class UAV:
 
         '''physical parameters'''
 
-        '''visualization_opencv'''
-
-        '''visualization_opencv'''
+        self.terminal_flag = 0
 
         '''datasave'''
         self.save_x = [self.x]
@@ -218,12 +225,12 @@ class UAV:
         square_w = np.array([self.w1 ** 2, self.w2 ** 2, self.w3 ** 2, self.w4 ** 2])
         '''1. 无人机绕机体系旋转的角速度p q r 的微分方程'''
         dp = (self.CT * self.d / math.sqrt(2) * np.dot(square_w, [1, -1, -1, 1]) +
-              (self.Jyy - self.Jzz) * _q * _r +
+              (self.Jyy - self.Jzz) * _q * _r -
               self.J0 * _q * (self.w1 - self.w2 + self.w3 - self.w4)) / self.Jxx
-        dq = (self.CT * self.d / math.sqrt(2) * np.dot(square_w, [1, 1, -1, -1]) +
-              (self.Jzz - self.Jxx) * _p * _r +
+        dq = (self.CT * self.d / math.sqrt(2) * np.dot(square_w, [-1, -1, 1, 1]) +
+              (self.Jzz - self.Jxx) * _p * _r -
               self.J0 * _p * (-self.w1 + self.w2 - self.w3 + self.w4)) / self.Jyy
-        dr = (self.CM * np.dot(square_w, [1, -1, 1, -1]) + (self.Jyy - self.Jxx) * _p * _q) / self.Jzz
+        dr = (self.CM * np.dot(square_w, [-1, 1, -1, 1]) + (self.Jxx - self.Jyy) * _p * _q) / self.Jzz
         '''1. 无人机绕机体系旋转的角速度 p q r 的微分方程'''
 
         '''2. 无人机在惯性系下的姿态角 phi theta psi 的微分方程'''
@@ -235,9 +242,9 @@ class UAV:
 
         '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
         [dx, dy, dz] = [_vx, _vy, _vz]
-        dvx = -f / self.m * (math.cos(_psi) * math.sin(_theta) * math.cos(_phi) + math.sin(_psi) * math.sin(_phi))
-        dvy = -f / self.m * (math.sin(_psi) * math.sin(_theta) * math.cos(_phi) - math.cos(_psi) * math.sin(_phi))
-        dvz = self.g - f / self.m * math.cos(_phi) * math.cos(_theta)
+        dvx = f / self.m * (math.cos(_psi) * math.sin(_theta) * math.cos(_phi) + math.sin(_psi) * math.sin(_phi))
+        dvy = f / self.m * (math.sin(_psi) * math.sin(_theta) * math.cos(_phi) - math.cos(_psi) * math.sin(_phi))
+        dvz = -self.g + f / self.m * math.cos(_phi) * math.cos(_theta)
         '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
 
         return np.array([dx, dy, dz, dvx, dvy, dvz, dphi, dtheta, dpsi, dp, dq, dr])
