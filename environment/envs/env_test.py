@@ -7,7 +7,7 @@ import torch
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "./")
-from common.common import *
+from common.common_func import *
 
 
 # Flight Attitude Simulator Test

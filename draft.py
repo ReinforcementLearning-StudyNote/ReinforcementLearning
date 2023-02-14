@@ -16,8 +16,8 @@ if __name__ == '__main__':
     # a = np.array([1, 2, 3])
     # b = np.diag([1, -1, 2])
     # print(np.dot(a, [1, -1, 1]))
-    a = 1.123456
-    b = 1.123456
-    c = 1.123456
-    d = 1.123456
-    print('Pos:[%.4f, %.3f, %.5f]' % (a, b, c) )
+    a = np.array([1,2])
+    b = np.array([3,4])
+    c = np.array([-1,5])
+    print(np.max(a))
+

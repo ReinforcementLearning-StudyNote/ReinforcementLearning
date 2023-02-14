@@ -21,14 +21,20 @@ class UAV_Visualization:
         self.o = origin
         self.ax = axes3d.Axes3D(self.fig)
         self.ax.set_aspect('auto')      # 只能auto
-        self.ax.set_xlim3d(self.xbound)
-        self.ax.set_ylim3d(self.ybound)
-        self.ax.set_zlim3d(self.zbound)
+        self.is_dynamic_axis = max(np.max(np.fabs(xbound)), np.max(np.fabs(ybound)), np.max(np.fabs(zbound))) >= math.inf
+        if not self.is_dynamic_axis:
+            self.ax.set_xlim3d(self.xbound)
+            self.ax.set_ylim3d(self.ybound)
+            self.ax.set_zlim3d(self.zbound)
+        else:
+            self.ax.set_xlim3d([self.o[0] - 10, self.o[0] + 10])
+            self.ax.set_ylim3d([self.o[1] - 10, self.o[1] + 10])
+            self.ax.set_zlim3d([self.o[2] - 10, self.o[2] + 10])
+        self.ax.xaxis.set_major_locator(MultipleLocator(2))
+        self.ax.yaxis.set_major_locator(MultipleLocator(2))
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
         self.ax.set_zlabel('Z')
-        self.ax.xaxis.set_major_locator(MultipleLocator(2))
-        self.ax.yaxis.set_major_locator(MultipleLocator(2))
         self.ax.set_title('QuadrotorFly Simulation', fontsize='13')
 
         self.traj_data = [[self.o[0]], [self.o[1]], [self.o[2]]]
@@ -157,6 +163,11 @@ class UAV_Visualization:
             dir_f2 = np.dot(R_b_i, [0, 0, 1])
             dir_f3 = np.dot(R_b_i, [0, 0, 1])
             dir_f4 = np.dot(R_b_i, [0, 0, 1])
+
+            if self.is_dynamic_axis:
+                self.ax.set_xlim3d([p[0] - 10, p[0] + 10])
+                self.ax.set_ylim3d([p[1] - 10, p[1] + 10])
+                self.ax.set_zlim3d([p[2] - 10, p[2] + 10])
 
             '''初始位置'''
             self.quadGui['origin_point'].set_data([self.o[0], self.o[0]], [self.o[1], self.o[1]])

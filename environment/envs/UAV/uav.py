@@ -137,6 +137,18 @@ class UAV:
         self.save_t = [self.time]
         '''datasave'''
 
+    def set_position_limitation2inf(self):
+        """
+        :func:      将无人机的位置限制设置为infinity，该函数仅在设计位置控制器时应用
+        :return:
+        """
+        self.xmin = -math.inf
+        self.ymin = -math.inf
+        self.zmin = -math.inf
+        self.xmax = math.inf
+        self.ymax = math.inf
+        self.zmax = math.inf
+
     def is_out(self):
         """
         :return:
@@ -388,5 +400,3 @@ class UAV:
 
         self.save_t = [self.time]
         '''datasave'''
-
-
