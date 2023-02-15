@@ -38,10 +38,13 @@ class UAV_Visualization:
         self.ax.set_title('QuadrotorFly Simulation', fontsize='13')
 
         self.traj_data = [[self.o[0]], [self.o[1]], [self.o[2]]]
-        self.traj_count = 200
+        self.traj_ref_data = [[], [], []]
+        self.traj_count = 600
         self.sim_index = 0
         self.length_per_n = 0.6
         self.color = ['r', 'b', 'g', 'k', 'm', 'y', 'k']
+
+        self.has_ref = False
 
         '''UAV相关部件'''
         self.origin_point, = self.ax.plot([], [], [], marker='o', color='black', markersize=6, antialiased=False)       # 画原点
@@ -53,7 +56,8 @@ class UAV_Visualization:
         self.bar4, = self.ax.plot([], [], [], color='black', linewidth=4, antialiased=False)                       # 机臂4
         self.head, = self.ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)               # 机头点
         self.head_bar, = self.ax.plot([], [], [], color='green', markersize=6, antialiased=False)                       # 朝向臂
-        self.traj, = self.ax.plot([], [], [], color='blue', linewidth=1.5)
+        self.traj, = self.ax.plot([], [], [], color='red', linewidth=1.5)
+        self.traj_ref, = self.ax.plot([], [], [], color='blue', linewidth=1.5)
         self.grav = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, -1, length=0.8*9.8*self.length_per_n, color='red')
         self.f1 = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, 0, length=1, color='red')
         self.f2 = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, 0, length=1, color='orange')
@@ -71,6 +75,7 @@ class UAV_Visualization:
             'head': self.head,
             'head_bar': self.head_bar,
             'traj': self.traj,
+            'traj_ref': self.traj_ref,
         }
         cx = np.mean(self.xbound)
         cy = np.mean(self.ybound)
@@ -121,6 +126,7 @@ class UAV_Visualization:
 
     def render(self,
                p: np.ndarray,
+               ref_p: np.ndarray,
                a: np.ndarray,
                f: np.ndarray,
                d: float,
@@ -138,13 +144,25 @@ class UAV_Visualization:
             self.traj_data[0].append(p[0])
             self.traj_data[1].append(p[1])
             self.traj_data[2].append(p[2])
+            if self.has_ref:
+                self.traj_ref_data[0].append(ref_p[0])
+                self.traj_ref_data[1].append(ref_p[1])
+                self.traj_ref_data[2].append(ref_p[2])
         else:
             self.traj_data[0].pop(0)
             self.traj_data[1].pop(0)
             self.traj_data[2].pop(0)
+            if self.has_ref:
+                self.traj_ref_data[0].pop(0)
+                self.traj_ref_data[1].pop(0)
+                self.traj_ref_data[2].pop(0)
             self.traj_data[0].append(p[0])
             self.traj_data[1].append(p[1])
             self.traj_data[2].append(p[2])
+            if self.has_ref:
+                self.traj_ref_data[0].append(ref_p[0])
+                self.traj_ref_data[1].append(ref_p[1])
+                self.traj_ref_data[2].append(ref_p[2])
         '''轨迹数据存储'''
 
         if self.sim_index % win == 0:
@@ -201,6 +219,12 @@ class UAV_Visualization:
             self.quadGui['traj'].set_data(self.traj_data[0], self.traj_data[1])
             self.quadGui['traj'].set_3d_properties(self.traj_data[2])
             '''轨迹'''
+
+            '''参考轨迹 (如果有)'''
+            if self.has_ref:
+                self.quadGui['traj_ref'].set_data(self.traj_ref_data[0], self.traj_ref_data[1])
+                self.quadGui['traj_ref'].set_3d_properties(self.traj_ref_data[2])
+            '''参考轨迹 (如果有)'''
 
             '''重力加速度'''
             self.grav.remove()

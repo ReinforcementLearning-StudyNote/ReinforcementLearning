@@ -3,11 +3,8 @@ from common.common_func import *
 from environment.envs import *
 import math
 
-import matplotlib.pyplot as plt
-import mpl_toolkits.mplot3d.axes3d as axes3d
-
 '''保存的参数
-m: float = 1.5,
+                 m: float = 1.5,
                  g: float = 9.8,
                  Jxx: float = 1.75e-2,
                  Jyy: float = 1.75e-2,
@@ -65,9 +62,15 @@ class UAV:
         [self.p, self.q, self.r] = omega0_body  # 无人机在机体坐标系下的初始角速度
         # [self.dp, self.dq, self.dr] = domega0_body              # 无人机在机体坐标系下的初始角加速度
 
+        self.power_allocation_mat = \
+            np.array([[CT, CT, CT, CT],
+                      [CT * d / math.sqrt(2), -CT * d / math.sqrt(2), -CT * d / math.sqrt(2), CT * d / math.sqrt(2)],
+					  [-CT * d / math.sqrt(2), -CT * d / math.sqrt(2), CT * d / math.sqrt(2), CT * d / math.sqrt(2)],
+					  [-CM, CM, -CM, CM]])  # 这个矩阵满秩
+
         self.dt = 0.01  # 控制频率，100Hz
         self.time = 0.  # 当前时间
-        self.tmax = 20  # 每回合最大时间
+        self.tmax = 40  # 每回合最大时间
         self.staticGain = 4
 
         self.control_state = np.array([self.x, self.y, self.z,
@@ -78,13 +81,14 @@ class UAV:
         'state limitation'
         self.xmax, self.ymax, self.zmax = 10, 10, 10
         self.xmin, self.ymin, self.zmin = -10, -10, -10
-        self.vxmax, self.vymax, self.vzmax = 10, 10, 10
-        self.vxmin, self.vymin, self.vzmin = -10, -10, -10
+        # self.vxmax, self.vymax, self.vzmax = 10, 10, 10
+        # self.vxmin, self.vymin, self.vzmin = -10, -10, -10
 
         self.phimax, self.thetamax, self.psimax = deg2rad(80), deg2rad(80), deg2rad(180)
         self.phimin, self.thetamin, self.psimin = -deg2rad(80), -deg2rad(80), -deg2rad(180)
-        self.dphimax, self.dthetamax, self.dpsimax = deg2rad(180), deg2rad(180), deg2rad(180)
-        self.dphimin, self.dthetamin, self.dpsimin = -deg2rad(180), -deg2rad(180), -deg2rad(180)
+
+        # self.dphimax, self.dthetamax, self.dpsimax = deg2rad(360 * 3), deg2rad(360 * 3), deg2rad(360 * 2)
+        # self.dphimin, self.dthetamin, self.dpsimin = -deg2rad(360 * 3), -deg2rad(360 * 3), -deg2rad(360 * 2)
         'state limitation'
 
         'control'
@@ -153,13 +157,12 @@ class UAV:
         """
         :return:
         """
-        '''简化处理，只判断中心的大圆有没有出界就好'''
-        is_omg_out = (self.dphi > self.dphimax + 1e-1) or (self.dphi < self.dphimin - 1e-1) or \
-                     (self.dtheta > self.dthetamax + 1e-1) or (self.dtheta < self.dthetamin - 1e-1) or \
-                     (self.dpsi > self.dpsimax + 1e-1) or (self.dpsi < self.dpsimin - 1e-1)
-        if is_omg_out:
-            print('Omega out...')
-            return True
+        # is_omg_out = (self.dphi > self.dphimax + 1e-1) or (self.dphi < self.dphimin - 1e-1) or \
+        #              (self.dtheta > self.dthetamax + 1e-1) or (self.dtheta < self.dthetamin - 1e-1) or \
+        #              (self.dpsi > self.dpsimax + 1e-1) or (self.dpsi < self.dpsimin - 1e-1)
+        # if is_omg_out:
+        #     print('Omega out...')
+        #     return True
 
         is_ang_out = (self.phi > self.phimax + 1e-2) or (self.phi < self.phimin - 1e-2) or \
                      (self.theta > self.thetamax + 1e-2) or (self.theta < self.thetamin - 1e-2) or \
@@ -168,12 +171,12 @@ class UAV:
             print('Attitude out...')
             return True
 
-        is_vel_out = (self.vx > self.vxmax + 1e-1) or (self.vx < self.vxmin - 1e-1) or \
-                     (self.vy > self.vymax + 1e-1) or (self.vy < self.vymin - 1e-1) or \
-                     (self.vz > self.vzmax + 1e-1) or (self.vz < self.vzmin - 1e-1)
-        if is_vel_out:
-            print('Velocity out...')
-            return True
+        # is_vel_out = (self.vx > self.vxmax + 1e-1) or (self.vx < self.vxmin - 1e-1) or \
+        #              (self.vy > self.vymax + 1e-1) or (self.vy < self.vymin - 1e-1) or \
+        #              (self.vz > self.vzmax + 1e-1) or (self.vz < self.vzmin - 1e-1)
+        # if is_vel_out:
+        #     print('Velocity out...')
+        #     return True
 
         is_pos_out = (self.x > self.xmax + 1e-2) or (self.x < self.xmin - 1e-2) or \
                      (self.y > self.ymax + 1e-2) or (self.y < self.ymin - 1e-2) or \
@@ -206,9 +209,8 @@ class UAV:
 
     def f(self, xx: np.ndarray):
         """
-        :func:          微分方程
-        :param u:       控制输入
-        :return:        状态的导数，也就是微分方程的左端
+        :param xx:      状态
+        :return:        状态的导数
         """
         '''
         在微分方程里面的状态 X = [x y z vx vy vz phi theta psi p q r] 一共12个
@@ -258,10 +260,10 @@ class UAV:
         dvy = f / self.m * (math.sin(_psi) * math.sin(_theta) * math.cos(_phi) - math.cos(_psi) * math.sin(_phi))
         dvz = -self.g + f / self.m * math.cos(_phi) * math.cos(_theta)
         '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
-
+        # dvx, dvy, dvz = 0, 0, 0     # 将速度强行限制
         return np.array([dx, dy, dz, dvx, dvy, dvz, dphi, dtheta, dpsi, dp, dq, dr])
 
-    def rk44(self, action: list):
+    def rk44(self, action: np.ndarray):
         [self.f1, self.f2, self.f3, self.f4] = action
         h = self.dt / 1  # RK-44 解算步长
         tt = self.time + self.dt

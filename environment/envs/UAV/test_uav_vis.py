@@ -9,7 +9,7 @@ if __name__ == '__main__':
 	angle0 = [deg2rad(0), deg2rad(0), deg2rad(0)]  # 给的都是惯性系 东北天
 
 	quad = UAV(pos0=pos0, angle0=angle0)
-	quad.set_position_limitation2inf()
+	# quad.set_position_limitation2inf()
 
 	xbound = np.array([quad.xmin, quad.xmax])
 	ybound = np.array([quad.ymin, quad.ymax])
@@ -22,7 +22,7 @@ if __name__ == '__main__':
 	while not quad.is_episode_Terminal():
 		position = np.array([quad.x, quad.y, quad.z])
 		attitude = np.array([quad.phi, quad.theta, quad.psi])
-		d = 10 * quad.d
+		d = 4 * quad.d
 
 		'''一些常规力选择'''
 		f0 = 9.8 / 5
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 		'''visualization'''
 
 		action = f  # 给无人机四个螺旋桨的力
-		quad.rk44(action=action)
+		quad.rk44(action=np.array(action))
 		index += 1
 	plt.ioff()
 	plt.show()
