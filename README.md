@@ -12,7 +12,7 @@ The version of PyTorch depends on the device you have. You can choose CPU only o
 # ReinforcementLearning
 Currently, this repository consists of algorithm, common, datasave, environment, and simulation.
 
-Algorithm includes the core reinforcement learning algorithms, DQN, DDPG, TD3, for example.
+Algorithm includes some commonly used reinforcement learning algorithms, DQN, DDPG, TD3, for example.
 
 Common includes common.py that has some basic functions, cross product of two vectors, vector transformation, rotation, etc. Details of them can be found in common.py
 
