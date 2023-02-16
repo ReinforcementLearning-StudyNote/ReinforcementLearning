@@ -1,5 +1,5 @@
 # Installation
-This platform can be implemented ob both windows and ubuntu since it is all established by Python. Currently, there is no ROS, Gazebo or PX4 related packages.
+This platform can be implemented on both windows and ubuntu since it is all established by Python. Currently, there is no ROS, Gazebo or PX4 related packages.
 ## Python version
 Python 3.6, 3.7 and 3.9 have been tested. (There seems to be a bug in OpenCV-python3.8, which has something to do with visualization. But I forgot, sorry...)
 ## Installation
