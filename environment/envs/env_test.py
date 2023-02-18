@@ -161,12 +161,29 @@ def test_ugv_forward_obstacles_discrete():
         num += 1
 
 
+def test_cartpole():
+    from cartpole.cartpole import CartPole
+    env = CartPole(initTheta=deg2rad(0), initX=0)
+    num = 0
+    while num < 1:
+        env.reset()
+        while not env.is_terminal:
+            if cv.waitKey(1) == 27:
+                return
+            env.image = env.show.copy()
+            env.show_dynamic_image(isWait=False)
+            f = random.uniform(-env.fm, env.fm)
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=[f])
+        num += 1
+
+
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
-    test_flight_attitude_simulator_continuous()
+    # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
     # test_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
+    test_cartpole()
     pass
