@@ -8,7 +8,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
 from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous as flight_sim_con
 from algorithm.actor_critic.DDPG import DDPG
-from common.common import *
+from common.common_func import *
+from common.common_cls import *
 
 cfgPath = '../../environment/config/'
 cfgFile = 'Flight_Attitude_Simulator_Continuous.xml'

@@ -6,7 +6,9 @@ import cv2 as cv
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator import Flight_Attitude_Simulator as flight_sim
 from algorithm.value_base.DQN import DQN
-from common.common import *
+
+from common.common_func import *
+from common.common_cls import *
 
 cfgPath = '../../environment/config/'
 cfgFile = 'Flight_Attitude_Simulator.xml'

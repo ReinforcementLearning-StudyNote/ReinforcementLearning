@@ -9,7 +9,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
 from environment.envs.UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
 from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
-from common.common import *
+from common.common_func import *
+from common.common_cls import *
 
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'

@@ -9,7 +9,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
 from environment.envs.UGV.ugv_forward_continuous import UGV_Forward_Continuous
 from algorithm.actor_critic.DDPG import DDPG
-from common.common import *
+from common.common_func import *
+from common.common_cls import *
 
 cfgPath = '../../environment/config/'
 cfgFile = 'UGV_Forward_Continuous.xml'
