@@ -1,6 +1,7 @@
 import pandas as pd
 
-from common.common import *
+from common.common_func import *
+from common.common_cls import *
 from environment.config.xml_write import xml_cfg
 
 """use CPU or GPU"""
