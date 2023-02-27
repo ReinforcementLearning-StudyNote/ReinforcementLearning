@@ -32,13 +32,13 @@ class Flight_Attitude_Simulator(rl_base):
         # 这个状态与控制系统的状态不一样
         self.state_dim = 4  # initTheta, Theta, dTheta, error
         self.state_num = [math.inf, math.inf, math.inf, math.inf]
-        self.state_step = [None, None, None, None]
-        self.state_space = [None, None, None, None]
+        self.state_step = [None for _ in range(self.state_dim)]
+        self.state_space = [None for _ in range(self.state_dim)]
         self.state_range = [[self.minTheta, self.maxTheta],
                             [self.minTheta, self.maxTheta],
                             [-math.inf, math.inf],
                             [self.minTheta - self.maxTheta, self.maxTheta - self.minTheta]]
-        self.isStateContinuous = [True, True, True, True]
+        self.isStateContinuous = [True for _ in range(self.state_dim)]
         self.initial_state = [self.initTheta, self.theta, self.dTheta, self.thetaError]
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
@@ -206,7 +206,7 @@ class Flight_Attitude_Simulator(rl_base):
             a0 = self.L * _action / (self.J + self.m * self.dis ** 2)
             return a2 * dangle + a1 * np.cos(angle) + a0
 
-        h = self.T / 100
+        h = self.T / 10
         t_sim = 0.0
         self.current_state = [self.initTheta, self.theta, self.dTheta, self.thetaError]
         '''differential equation'''
