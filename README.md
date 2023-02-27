@@ -1,26 +1,26 @@
 # Installation
-This platform can be implemented on both windows and ubuntu since it is all established by Python. Currently, there is no ROS, Gazebo or PX4 related packages.
+This platform can be implemented on both windows and ubuntu since it is all established by Python. Currently, there is no ROS-related packages.
 ## Python version
-Python 3.6, 3.7 and 3.9 have been tested. (There seems to be a bug in OpenCV-python3.8, which has something to do with visualization. But I forgot, sorry...)
+Python 3.6 to 3.9 have been tested.
 ## Installation
-Pre-installed: Anaconda3, any version that has a default python3.6, 3.7 or 3.9 is fine.
+Pre-installed: Anaconda3, any version that has a default python3.6 to 3.9 is fine.
 ```commandline
 pip install opencv-python
 pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio===0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 ```
-The version of PyTorch depends on the device you have. You can choose CPU only or a specified CUDA version different from mine.
+The version of PyTorch depends on the device you have. You can choose CPU only or a specified CUDA version according to your GPU.
 # ReinforcementLearning
 Currently, this repository consists of algorithm, common, datasave, environment, and simulation.
 
-Algorithm includes some commonly used reinforcement learning algorithms, DQN, DDPG, TD3, for example.
+Algorithm includes some commonly used reinforcement learning algorithms, DQN (Double, Dueling-), DDPG, TD3, for example.
 
-Common includes common.py that has some basic functions, cross product of two vectors, vector transformation, rotation, etc. Details of them can be found in common.py
+Common includes common_func.py and common_cls.py which contain some basic functions. common_func.py contains some commonly used functions, and common_cls.py contains some commonly used classes.
 
 Datasave saves networks trained by RL algorithms, and some data files.
 
 Environment contains some physical models, which are called 'environment' in RL.
 The 'config' directory contains the model description files for all environments, which are '**.xml' files.
-THe 'envs' directory is the detailed implementation of all the physical environments.
+THe 'envs' directory covers the ODE of the physical environments.
 
 Simulation is the place where we implement our simulation experiments, which means, using different algorithms in different environments.
 
