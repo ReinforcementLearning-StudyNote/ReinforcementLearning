@@ -3,9 +3,6 @@ import random
 import re
 import numpy as np
 from numpy import linalg
-import torch.nn as nn
-import torch.nn.functional as func
-import torch
 import scipy.spatial as spt
 
 
@@ -190,7 +187,7 @@ def cross_2_line_seg(seg11, seg12, seg21, seg22):
     if (max(c[0], d[0]) < min(a[0], b[0])) or (max(c[1], d[1]) < min(a[1], b[1])) or (max(a[0], b[0]) < min(c[0], d[0])) or (max(a[1], b[1]) < min(c[1], d[1])):
         return False, None
 
-    else:       # 一定有交点
+    else:  # 一定有交点
         if a[0] == b[0]:
             kk = (c[1] - d[1]) / (c[0] - d[0])
             bb = c[1] - kk * c[0]
@@ -214,20 +211,20 @@ def cross_2_line_seg(seg11, seg12, seg21, seg22):
             bb2 = c[1] - kk2 * c[0]
             x = (bb1 - bb2) / (kk2 - kk1)
             y = kk1 * x + bb1
-            if (x > min(max(a[0], b[0]), max(c[0], d[0]))) or (x < max(min(a[0],b[0]), min(c[0], d[0]))) or \
-                    (y > min(max(a[1], b[1]), max(c[1], d[1]))) or (y < max(min(a[1],b[1]), min(c[1], d[1]))):
+            if (x > min(max(a[0], b[0]), max(c[0], d[0]))) or (x < max(min(a[0], b[0]), min(c[0], d[0]))) or \
+                    (y > min(max(a[1], b[1]), max(c[1], d[1]))) or (y < max(min(a[1], b[1]), min(c[1], d[1]))):
                 return False, None
             else:
                 return True, [x, y]
 
 
 def cross_pt_ray_2_poly(ray_s, ray_t, points):
-    l = len(points)
+    _l = len(points)
     PT = []
     dis = np.inf
     HAVE = False
-    for i in range(l):
-        have, pt = cross_2_line_seg(ray_s, ray_t, points[i], points[(i + 1) % l])
+    for i in range(_l):
+        have, pt = cross_2_line_seg(ray_s, ray_t, points[i], points[(i + 1) % _l])
         if have:
             _dis = dis_two_points(pt, ray_s)
             HAVE = True
@@ -238,10 +235,10 @@ def cross_pt_ray_2_poly(ray_s, ray_t, points):
 
 
 def dis_point_2_poly(points, point):
-    l = len(points)
+    _l = len(points)
     dis = np.inf
-    for i in range(l):
-        _dis = dis_point_2_line_segment(point, points[i], points[(i + 1) % l])
+    for i in range(_l):
+        _dis = dis_point_2_line_segment(point, points[i], points[(i + 1) % _l])
         if _dis < dis:
             dis = _dis
     return dis

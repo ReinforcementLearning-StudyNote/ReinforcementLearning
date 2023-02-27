@@ -193,7 +193,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        agent.get_optimalfrompkl(optPath + 'agent-4-flight-attitude-simulator.pkl')
+        agent.get_optimalfrompkl(optPath + 'duelingdqn-4-flight-attitude-simulator.pkl')
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,

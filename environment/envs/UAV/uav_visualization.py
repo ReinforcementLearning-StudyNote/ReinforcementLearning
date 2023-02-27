@@ -22,14 +22,14 @@ class UAV_Visualization:
         self.ax = axes3d.Axes3D(self.fig)
         self.ax.set_aspect('auto')      # 只能auto
         self.is_dynamic_axis = max(np.max(np.fabs(xbound)), np.max(np.fabs(ybound)), np.max(np.fabs(zbound))) >= math.inf
-        if not self.is_dynamic_axis:
+        if not self.is_dynamic_axis:        # 动态坐标轴
             self.ax.set_xlim3d(self.xbound)
             self.ax.set_ylim3d(self.ybound)
             self.ax.set_zlim3d(self.zbound)
         else:
-            self.ax.set_xlim3d([self.o[0] - 10, self.o[0] + 10])
-            self.ax.set_ylim3d([self.o[1] - 10, self.o[1] + 10])
-            self.ax.set_zlim3d([self.o[2] - 10, self.o[2] + 10])
+            self.ax.set_xlim3d([self.o[0] - xbound[0] / 2, self.o[0] + xbound[1] / 2])
+            self.ax.set_ylim3d([self.o[1] - ybound[0] / 2, self.o[1] + ybound[1] / 2])
+            self.ax.set_zlim3d([self.o[2] - zbound[0] / 2, self.o[2] + zbound[1] / 2])
         self.ax.xaxis.set_major_locator(MultipleLocator(2))
         self.ax.yaxis.set_major_locator(MultipleLocator(2))
         self.ax.set_xlabel('X')

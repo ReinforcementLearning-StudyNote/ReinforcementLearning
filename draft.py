@@ -27,10 +27,7 @@ if __name__ == '__main__':
     # b = (math.sin(psi) * math.sin(theta) * math.cos(phi) - math.cos(psi) * math.sin(phi)) ** 2
     # c = (math.cos(phi) * math.cos(theta)) ** 2
     # print(a + b + c)
-    a = np.array([1, 2, 3, 4, 5])
-    for i in a:
-        if i > 3:
-            i -=1
-        else:
-            i+=1
+    a = np.array([1,2,3,4,5.6,7.5,-0.456]).tolist()
     print(a)
+    print(list(a))
+

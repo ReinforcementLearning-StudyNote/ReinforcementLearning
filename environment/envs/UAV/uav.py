@@ -1,4 +1,3 @@
-import numpy as np
 from common.common_func import *
 from environment.envs import *
 import math
@@ -14,6 +13,8 @@ import math
                  CM: float = 1.49e-7,
                  J0: float = 9.90e-5,
 保存的参数'''
+
+
 class UAV:
     def __init__(self,
                  m: float = 0.8,
@@ -35,58 +36,61 @@ class UAV:
         # if domega0_body is None:
         #     domega0_body = [0, 0, 0]
         if omega0_body is None:
-            omega0_body = [0, 0, 0]
+            omega0_body = np.array([0, 0, 0])
         if omega0_inertial is None:
-            omega0_inertial = [0, 0, 0]
+            omega0_inertial = np.array([0, 0, 0])
         if angle0 is None:
-            angle0 = [0, 0, 0]
+            angle0 = np.array([0, 0, 0])
         if vel0 is None:
-            vel0 = [0, 0, 0]
+            vel0 = np.array([0, 0, 0])
         if pos0 is None:
-            pos0 = [0, 0, 0]
+            pos0 = np.array([0, 0, 0])
         '''physical parameters'''
-        self.m = m  # 无人机质量
-        self.g = g  # 重力加速度
+        self.m = m      # 无人机质量
+        self.g = g      # 重力加速度
         self.Jxx = Jxx  # X方向转动惯量
         self.Jyy = Jyy  # Y方向转动惯量
         self.Jzz = Jzz  # Z方向转动惯量
-        self.d = d  # 机臂长度 'X'构型
-        self.CT = CT  # 螺旋桨升力系数
-        self.CM = CM  # 螺旋桨力矩系数
-        self.J0 = J0  # 电机和螺旋桨的转动惯量
+        self.d = d      # 机臂长度 'X'构型
+        self.CT = CT    # 螺旋桨升力系数
+        self.CM = CM    # 螺旋桨力矩系数
+        self.J0 = J0    # 电机和螺旋桨的转动惯量
 
-        [self.x, self.y, self.z] = pos0  # 无人机在世界坐标系下的初始位置
-        [self.vx, self.vy, self.vz] = vel0  # 无人机在世界坐标系下的初始速度
-        [self.phi, self.theta, self.psi] = angle0  # 无人机在世界坐标系下的初始角度
-        [self.dphi, self.dtheta, self.dpsi] = omega0_inertial  # 无人机在世界坐标系下的初始角速度
-        [self.p, self.q, self.r] = omega0_body  # 无人机在机体坐标系下的初始角速度
-        # [self.dp, self.dq, self.dr] = domega0_body              # 无人机在机体坐标系下的初始角加速度
+        self.pos = pos0                             # 无人机在世界坐标系下的初始位置
+        self.vel = vel0                             # 无人机在世界坐标系下的初始速度
+        self.angle = angle0                         # 无人机在世界坐标系下的初始角度
+        self.omega_inertial = omega0_inertial       # 无人机在世界坐标系下的初始角速度
+        self.omega_body = omega0_body               # 无人机在机体坐标系下的初始角速度
 
         self.power_allocation_mat = \
             np.array([[CT, CT, CT, CT],
                       [CT * d / math.sqrt(2), -CT * d / math.sqrt(2), -CT * d / math.sqrt(2), CT * d / math.sqrt(2)],
-					  [-CT * d / math.sqrt(2), -CT * d / math.sqrt(2), CT * d / math.sqrt(2), CT * d / math.sqrt(2)],
-					  [-CM, CM, -CM, CM]])  # 这个矩阵满秩
+                      [-CT * d / math.sqrt(2), -CT * d / math.sqrt(2), CT * d / math.sqrt(2), CT * d / math.sqrt(2)],
+                      [-CM, CM, -CM, CM]])  # 这个矩阵满秩
 
         self.dt = 0.01  # 控制频率，100Hz
         self.time = 0.  # 当前时间
-        self.tmax = 40  # 每回合最大时间
-        self.staticGain = 4
+        self.tmax = 20  # 每回合最大时间
 
-        self.control_state = np.array([self.x, self.y, self.z,
-                                       self.vx, self.vy, self.vz,
-                                       self.phi, self.theta, self.psi,
-                                       self.dphi, self.dtheta, self.dpsi])  # 控制系统的状态，不是强化学习的状态
+        self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
 
         'state limitation'
-        self.xmax, self.ymax, self.zmax = 10, 10, 10
-        self.xmin, self.ymin, self.zmin = -10, -10, -10
+        self.pos_min = np.array([-10, -10, -10])
+        self.pos_max = np.array([10, 10, 10])
+        self.vel_min = np.array([-10, -10, -10])
+        self.vel_max = np.array([10, 10, 10])
+        self.angle_min = np.array([-deg2rad(80), -deg2rad(80), -deg2rad(180)])
+        self.angle_max = np.array([deg2rad(80), deg2rad(80), deg2rad(180)])
+        self.dangle_min = np.array([-deg2rad(360 * 3), -deg2rad(360 * 3), -deg2rad(360 * 2)])
+        self.dangle_max = np.array([deg2rad(360 * 3), deg2rad(360 * 3), deg2rad(360 * 2)])
+        # self.xmax, self.ymax, self.zmax = 10, 10, 10
+        # self.xmin, self.ymin, self.zmin = -10, -10, -10
         # self.vxmax, self.vymax, self.vzmax = 10, 10, 10
         # self.vxmin, self.vymin, self.vzmin = -10, -10, -10
 
-        self.phimax, self.thetamax, self.psimax = deg2rad(80), deg2rad(80), deg2rad(180)
-        self.phimin, self.thetamin, self.psimin = -deg2rad(80), -deg2rad(80), -deg2rad(180)
-
+        # self.phimax, self.thetamax, self.psimax = deg2rad(80), deg2rad(80), deg2rad(180)
+        # self.phimin, self.thetamin, self.psimin = -deg2rad(80), -deg2rad(80), -deg2rad(180)
+        #
         # self.dphimax, self.dthetamax, self.dpsimax = deg2rad(360 * 3), deg2rad(360 * 3), deg2rad(360 * 2)
         # self.dphimin, self.dthetamin, self.dpsimin = -deg2rad(360 * 3), -deg2rad(360 * 3), -deg2rad(360 * 2)
         'state limitation'
@@ -96,49 +100,32 @@ class UAV:
         这里直接使用力作为输入，范围小，方便学习。
         解算微分方程时，直接利用升力系数将力换算成电机角速度即可
         '''
-        self.f1 = 0
-        self.f2 = 0
-        self.f3 = 0
-        self.f4 = 0
+        # self.f1 = 0
+        # self.f2 = 0
+        # self.f3 = 0
+        # self.f4 = 0
+        self.force = np.array([0, 0, 0, 0])
         self.fmin = 0
         self.fmax = 10
-        self.w1 = math.sqrt(self.f1 / self.CT)
-        self.w2 = math.sqrt(self.f2 / self.CT)
-        self.w3 = math.sqrt(self.f3 / self.CT)
-        self.w4 = math.sqrt(self.f4 / self.CT)
+        # self.w1 = math.sqrt(self.f1 / self.CT)
+        # self.w2 = math.sqrt(self.f2 / self.CT)
+        # self.w3 = math.sqrt(self.f3 / self.CT)
+        # self.w4 = math.sqrt(self.f4 / self.CT)
+        self.w_rotor = np.sqrt(self.force/self.CT)
         'control'
 
         '''physical parameters'''
-
+        self.is_terminal = False
         self.terminal_flag = 0
 
         '''datasave'''
-        self.save_x = [self.x]
-        self.save_y = [self.y]
-        self.save_z = [self.z]
-
-        self.save_vx = [self.vx]
-        self.save_vy = [self.vy]
-        self.save_vz = [self.vz]
-
-        self.save_phi = [self.phi]
-        self.save_theta = [self.theta]
-        self.save_psi = [self.psi]
-
-        self.save_dphi = [self.dphi]
-        self.save_dtheta = [self.dtheta]
-        self.save_dpsi = [self.dpsi]
-
-        self.save_p = [self.p]
-        self.save_q = [self.q]
-        self.save_r = [self.r]
-
-        self.save_f1 = [self.f1]
-        self.save_f2 = [self.f2]
-        self.save_f3 = [self.f3]
-        self.save_f4 = [self.f4]
-
-        self.save_t = [self.time]
+        self.save_pos = np.atleast_2d(self.pos)
+        self.save_vel = np.atleast_2d(self.vel)
+        self.save_angle = np.atleast_2d(self.angle)
+        self.save_omega_inertial = np.atleast_2d(self.omega_inertial)
+        self.save_omega_body = np.atleast_2d(self.omega_body)
+        self.save_f = np.atleast_2d(self.force)
+        self.save_t = np.array([self.time])
         '''datasave'''
 
     def set_position_limitation2inf(self):
@@ -146,12 +133,8 @@ class UAV:
         :func:      将无人机的位置限制设置为infinity，该函数仅在设计位置控制器时应用
         :return:
         """
-        self.xmin = -math.inf
-        self.ymin = -math.inf
-        self.zmin = -math.inf
-        self.xmax = math.inf
-        self.ymax = math.inf
-        self.zmax = math.inf
+        self.pos_max = np.array([np.inf, np.inf, np.inf])
+        self.pos_min = np.array([-np.inf, -np.inf, -np.inf])
 
     def is_out(self):
         """
@@ -164,10 +147,7 @@ class UAV:
         #     print('Omega out...')
         #     return True
 
-        is_ang_out = (self.phi > self.phimax + 1e-2) or (self.phi < self.phimin - 1e-2) or \
-                     (self.theta > self.thetamax + 1e-2) or (self.theta < self.thetamin - 1e-2) or \
-                     (self.psi > self.psimax + 1e-2) or (self.psi < self.psimin - 1e-2)
-        if is_ang_out:
+        if np.sum(self.angle > self.angle_max + deg2rad(2)) + np.sum(self.angle < self.angle_min - deg2rad(2)) > 0:
             print('Attitude out...')
             return True
 
@@ -178,10 +158,7 @@ class UAV:
         #     print('Velocity out...')
         #     return True
 
-        is_pos_out = (self.x > self.xmax + 1e-2) or (self.x < self.xmin - 1e-2) or \
-                     (self.y > self.ymax + 1e-2) or (self.y < self.ymin - 1e-2) or \
-                     (self.z > self.zmax + 1e-2) or (self.z < self.zmin - 1e-2)
-        if is_pos_out:
+        if np.sum(self.pos > self.pos_max + 1e-2) + np.sum(self.pos < self.pos_min - 1e-2) > 0:
             print('Position out...')
             return True
 
@@ -192,20 +169,20 @@ class UAV:
         if self.time > self.tmax:
             print('Time out...')
             self.terminal_flag = 2
+            self.is_terminal = True
             return True
 
         if self.is_out():
             print('Out...')
             self.terminal_flag = 1
+            self.is_terminal = True
             return True
 
+        self.is_terminal = False
         return False
 
     def f2omega(self):
-        self.w1 = math.sqrt(self.f1 / self.CT)
-        self.w2 = math.sqrt(self.f2 / self.CT)
-        self.w3 = math.sqrt(self.f3 / self.CT)
-        self.w4 = math.sqrt(self.f4 / self.CT)
+        self.w_rotor = np.sqrt(self.force/self.CT)
 
     def f(self, xx: np.ndarray):
         """
@@ -230,20 +207,17 @@ class UAV:
         # dx = v
         # dv = g*e3_i + f/m*
         '''
-        [_x, _y, _z] = xx[0:3]
-        [_vx, _vy, _vz] = xx[3:6]
-        [_phi, _theta, _psi] = xx[6:9]
-        [_p, _q, _r] = xx[9:12]
+        [_x, _y, _z, _vx, _vy, _vz, _phi, _theta, _psi, _p, _q, _r] = xx[0:12]
         self.f2omega()  # 根据力，计算出四个电机的转速
-        f = self.f1 + self.f2 + self.f3 + self.f4  # 总推力
-        square_w = np.array([self.w1 ** 2, self.w2 ** 2, self.w3 ** 2, self.w4 ** 2])
+        _f = np.sum(self.force)     # 总推力
+        square_w = self.w_rotor ** 2
         '''1. 无人机绕机体系旋转的角速度p q r 的微分方程'''
         dp = (self.CT * self.d / math.sqrt(2) * np.dot(square_w, [1, -1, -1, 1]) +
               (self.Jyy - self.Jzz) * _q * _r -
-              self.J0 * _q * (self.w1 - self.w2 + self.w3 - self.w4)) / self.Jxx
+              self.J0 * _q * (self.w_rotor[0] - self.w_rotor[1] + self.w_rotor[2] - self.w_rotor[3])) / self.Jxx
         dq = (self.CT * self.d / math.sqrt(2) * np.dot(square_w, [-1, -1, 1, 1]) +
               (self.Jzz - self.Jxx) * _p * _r -
-              self.J0 * _p * (-self.w1 + self.w2 - self.w3 + self.w4)) / self.Jyy
+              self.J0 * _p * (-self.w_rotor[0] + self.w_rotor[1] - self.w_rotor[2] + self.w_rotor[3])) / self.Jyy
         dr = (self.CM * np.dot(square_w, [-1, 1, -1, 1]) + (self.Jxx - self.Jyy) * _p * _q) / self.Jzz
         '''1. 无人机绕机体系旋转的角速度 p q r 的微分方程'''
 
@@ -256,149 +230,108 @@ class UAV:
 
         '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
         [dx, dy, dz] = [_vx, _vy, _vz]
-        dvx = f / self.m * (math.cos(_psi) * math.sin(_theta) * math.cos(_phi) + math.sin(_psi) * math.sin(_phi))
-        dvy = f / self.m * (math.sin(_psi) * math.sin(_theta) * math.cos(_phi) - math.cos(_psi) * math.sin(_phi))
-        dvz = -self.g + f / self.m * math.cos(_phi) * math.cos(_theta)
+        dvx = _f / self.m * (math.cos(_psi) * math.sin(_theta) * math.cos(_phi) + math.sin(_psi) * math.sin(_phi))
+        dvy = _f / self.m * (math.sin(_psi) * math.sin(_theta) * math.cos(_phi) - math.cos(_psi) * math.sin(_phi))
+        dvz = -self.g + _f / self.m * math.cos(_phi) * math.cos(_theta)
         '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
         # dvx, dvy, dvz = 0, 0, 0     # 将速度强行限制
         return np.array([dx, dy, dz, dvx, dvy, dvz, dphi, dtheta, dpsi, dp, dq, dr])
 
     def rk44(self, action: np.ndarray):
-        [self.f1, self.f2, self.f3, self.f4] = action
+        self.force = action
         h = self.dt / 1  # RK-44 解算步长
         tt = self.time + self.dt
         while self.time < tt:
-            xx_old = np.array([self.x, self.y, self.z,
-                               self.vx, self.vy, self.vz,
-                               self.phi, self.theta, self.psi,
-                               self.p, self.q, self.r])
+            xx_old = np.concatenate((self.pos, self.vel, self.angle, self.omega_body))
+            # xx_old = np.array([self.x, self.y, self.z,
+            #                    self.vx, self.vy, self.vz,
+            #                    self.phi, self.theta, self.psi,
+            #                    self.p, self.q, self.r])
             K1 = h * self.f(xx_old)
             K2 = h * self.f(xx_old + K1 / 2)
             K3 = h * self.f(xx_old + K2 / 2)
             K4 = h * self.f(xx_old + K3)
             xx_new = xx_old + (K1 + 2 * K2 + 2 * K3 + K4) / 6
-            xx_new = xx_new.tolist()
-            [self.x, self.y, self.z, self.vx, self.vy, self.vz, self.phi, self.theta, self.psi, self.p, self.q, self.r] = xx_new.copy()
+            xx_temp = xx_new.copy()
+            self.pos = xx_temp[0:3]
+            self.vel = xx_temp[3:6]
+            self.angle = xx_temp[6:9]
+            self.omega_body = xx_temp[9:12]
+            # [self.x, self.y, self.z, self.vx, self.vy, self.vz, self.phi, self.theta, self.psi, self.p, self.q, self.r] = xx_new.copy()
             self.time += h
-        R_pqr2diner = np.array([[1, math.tan(self.theta) * math.sin(self.phi), math.tan(self.theta) * math.cos(self.phi)],
-                                [0, math.cos(self.phi), -math.sin(self.phi)],
-                                [0, math.sin(self.phi) / math.cos(self.theta), math.cos(self.phi) / math.cos(self.theta)]])
-        [self.dphi, self.dtheta, self.dpsi] = np.dot(R_pqr2diner, [self.p, self.q, self.r]).tolist()
+        R_pqr2diner = np.array([[1, math.tan(self.angle[1]) * math.sin(self.angle[0]), math.tan(self.angle[1]) * math.cos(self.angle[0])],
+                                [0, math.cos(self.angle[0]), -math.sin(self.angle[0])],
+                                [0, math.sin(self.angle[0]) / math.cos(self.angle[1]), math.cos(self.angle[0]) / math.cos(self.angle[1])]])
+        self.omega_inertial = np.dot(R_pqr2diner, self.omega_body)
 
-    def saveData(self, is2file=False, filename='UGV_Forward_Continuous.csv', filepath=''):
+    def saveData(self, is2file=False, filename='uav.csv', filepath=''):
         if is2file:
             data = pd.DataFrame({
-                'x:': self.save_x,
-                'y': self.save_y,
-                'z': self.save_z,
-                'vx': self.save_vx,
-                'vy': self.save_vy,
-                'xz': self.save_vz,
-                'phi': self.save_phi,
-                'theta': self.save_theta,
-                'psi': self.save_psi,
-                'dphi': self.save_dphi,
-                'dtheta': self.save_dtheta,
-                'dpsi': self.save_dpsi,
-                'p': self.save_p,
-                'q': self.save_q,
-                'r': self.save_r,
-                'f1': self.save_f1,
-                'f2': self.save_f2,
-                'f3': self.save_f3,
-                'f4': self.save_f4,
+                'x:': self.save_pos[:, 0],
+                'y': self.save_pos[:, 1],
+                'z': self.save_pos[:, 2],
+                'vx': self.save_vel[:, 0],
+                'vy': self.save_vel[:, 1],
+                'xz': self.save_vel[:, 2],
+                'phi': self.save_angle[:, 0],
+                'theta': self.save_angle[:, 1],
+                'psi': self.save_angle[:, 2],
+                'dphi': self.save_omega_inertial[:, 0],
+                'dtheta': self.save_omega_inertial[:, 1],
+                'dpsi': self.save_omega_inertial[:, 2],
+                'p': self.save_omega_body[:, 0],
+                'q': self.save_omega_body[:, 1],
+                'r': self.save_omega_body[:, 2],
+                'f1': self.save_f[:, 0],
+                'f2': self.save_f[:, 1],
+                'f3': self.save_f[:, 2],
+                'f4': self.save_f[:, 3],
                 'time': self.save_t
             })
             data.to_csv(filepath + filename, index=False, sep=',')
         else:
-            self.save_x.append(self.x)
-            self.save_y.append(self.y)
-            self.save_z.append(self.z)
-
-            self.save_vx.append(self.vx)
-            self.save_vy.append(self.vy)
-            self.save_vz.append(self.vz)
-
-            self.save_phi.append(self.phi)
-            self.save_theta.append(self.theta)
-            self.save_psi.append(self.psi)
-
-            self.save_dphi.append(self.dphi)
-            self.save_dtheta.append(self.dtheta)
-            self.save_dpsi.append(self.dpsi)
-
-            self.save_p.append(self.p)
-            self.save_q.append(self.q)
-            self.save_r.append(self.r)
-
-            self.save_f1.append(self.f1)
-            self.save_f2.append(self.f2)
-            self.save_f3.append(self.f3)
-            self.save_f4.append(self.f4)
-
-            self.save_t.append(self.time)
+            self.save_pos = np.vstack((self.save_pos, self.pos))
+            self.save_vel = np.vstack((self.save_vel, self.vel))
+            self.save_angle = np.vstack((self.save_angle, self.angle))
+            self.save_omega_inertial = np.vstack((self.save_omega_inertial, self.omega_inertial))
+            self.save_omega_body = np.vstack((self.save_omega_body, self.omega_body))
+            self.save_f = np.vstack((self.save_f, self.force))
+            self.save_t = np.array((self.save_t, self.time))
 
     def show_uav_linear_state(self, with_time=True):
+        np.set_printoptions(precision=3, suppress=True)
         if with_time:
-            s = 'Time: %.3fs  Pos: [%.3f, %.3f, %.3f]m  Vel: [%.3f, %.3f, %.3f]m/s' % (self.time, self.x, self.y, self.z, self.vx, self.vy, self.vz)
+            s = 'Time: %.3fs  Pos: {}m  Vel: {}m/s'.format(self.pos, self.vel) % self.time
         else:
-            s = 'Pos: [%.3f, %.3f, %.3f]m  Vel: [%.3f, %.3f, %.3f]m/s' % (self.x, self.y, self.z, self.vx, self.vy, self.vz)
+            s = 'Pos: {}m  Vel: {}m/s'.format(self.pos, self.vel)
         print(s)
 
     def show_uav_angular_state(self, with_time=True):
+        np.set_printoptions(precision=3, suppress=True)
         if with_time:
-            s = 'Time: %.3fs  Ang: [%.3f, %.3f, %.3f]rad  dAng: [%.3f, %.3f, %.3f]rad/s  Omg: [%.3f, %.3f, %.3f]rad/s' %\
-                (self.time, self.phi, self.theta, self.psi, self.dphi, self.dtheta, self.dpsi, self.p, self.q, self.r)
+            s = 'Time: %.3fs  Ang: {}rad  dAng: {}rad/s  Omg: {}rad/s'.format(self.angle, self.omega_inertial, self.omega_body) % self.time
         else:
-            s = 'Ang: [%.3f, %.3f, %.3f]rad  dAng: [%.3f, %.3f, %.3f]rad/s  Omg: [%.3f, %.3f, %.3f]rad/s' % \
-                (self.phi, self.theta, self.psi, self.dphi, self.dtheta, self.dpsi, self.p, self.q, self.r)
+            s = 'Ang: {}rad  dAng: {}rad/s  Omg: {}rad/s'.format(self.angle, self.omega_inertial, self.omega_body)
         print(s)
 
-    def reset(self, pos0, vel0, angle0, omega0_inertial, omega0_body):
-        [self.x, self.y, self.z] = pos0
-        [self.vx, self.vy, self.vz] = vel0
-        [self.phi, self.theta, self.psi] = angle0
-        [self.dphi, self.dtheta, self.dpsi] = omega0_inertial
-        [self.p, self.q, self.r] = omega0_body
+    def reset(self, pos0: np.array, vel0: np.array, angle0: np.array, omega0_inertial: np.array, omega0_body: np.array):
+        self.pos = pos0
+        self.vel = vel0
+        self.angle = angle0
+        self.omega_inertial = omega0_inertial
+        self.omega_body = omega0_body
         self.time = 0
-        self.control_state = np.array([self.x, self.y, self.z,
-                                       self.vx, self.vy, self.vz,
-                                       self.phi, self.theta, self.psi,
-                                       self.dphi, self.dtheta, self.dpsi])
-        self.f1 = 0
-        self.f2 = 0
-        self.f3 = 0
-        self.f4 = 0
-        self.w1 = math.sqrt(self.f1 / self.CT)
-        self.w2 = math.sqrt(self.f2 / self.CT)
-        self.w3 = math.sqrt(self.f3 / self.CT)
-        self.w4 = math.sqrt(self.f4 / self.CT)
+        self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
+        self.force = np.array([0, 0, 0, 0])
+        self.w_rotor = np.sqrt(self.force / self.CT)
+        self.is_terminal = False
 
         '''datasave'''
-        self.save_x = [self.x]
-        self.save_y = [self.y]
-        self.save_z = [self.z]
-
-        self.save_vx = [self.vx]
-        self.save_vy = [self.vy]
-        self.save_vz = [self.vz]
-
-        self.save_phi = [self.phi]
-        self.save_theta = [self.theta]
-        self.save_psi = [self.psi]
-
-        self.save_dphi = [self.dphi]
-        self.save_dtheta = [self.dtheta]
-        self.save_dpsi = [self.dpsi]
-
-        self.save_p = [self.p]
-        self.save_q = [self.q]
-        self.save_r = [self.r]
-
-        self.save_f1 = [self.f1]
-        self.save_f2 = [self.f2]
-        self.save_f3 = [self.f3]
-        self.save_f4 = [self.f4]
-
-        self.save_t = [self.time]
+        self.save_pos = np.atleast_2d(self.pos)
+        self.save_vel = np.atleast_2d(self.vel)
+        self.save_angle = np.atleast_2d(self.angle)
+        self.save_omega_inertial = np.atleast_2d(self.omega_inertial)
+        self.save_omega_body = np.atleast_2d(self.omega_body)
+        self.save_f = np.atleast_2d(self.force)
+        self.save_t = np.array([self.time])
         '''datasave'''

@@ -19,7 +19,7 @@ class Double_DQN(DQN):
                  modelFileXML):
         super(Double_DQN, self).__init__(gamma, epsilon, learning_rate, memory_capacity, batch_size, target_replace_iter, modelFileXML)
 
-    def nn_training(self, saveNNPath=None):
+    def nn_training(self, saveNNPath=None, is_reward_ascent=False):
         """
         :brief:             train the neural network
         :param saveNNPath:  path of the pkl file
