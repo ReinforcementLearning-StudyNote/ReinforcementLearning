@@ -10,15 +10,6 @@ import pandas as pd
 
 class UAV_Hover(rl_base, UAV):
     def __init__(self,
-                 m: float = 0.8,
-                 g: float = 9.8,
-                 Jxx: float = 4.212e-3,
-                 Jyy: float = 4.212e-3,
-                 Jzz: float = 8.255e-3,
-                 d: float = 0.12,
-                 CT: float = 2.168e-6,
-                 CM: float = 2.136e-8,
-                 J0: float = 1.01e-5,
                  pos0=None,
                  vel0=None,
                  angle0=None,
@@ -26,20 +17,26 @@ class UAV_Hover(rl_base, UAV):
                  omega0_body=None,
                  target_pos=None,
                  save_cfg=True):
-        super(UAV_Hover, self).__init__(m=m, g=g, Jxx=Jxx, Jyy=Jyy, Jzz=Jzz, d=d, CT=CT, CM=CM, J0=J0,
-                                        pos0=pos0, vel0=vel0, angle0=angle0, omega0_inertial=omega0_inertial, omega0_body=omega0_body)
+        UAV.__init__(self)
 
-        self.init_pos = np.array(pos0)  # initial position
-        self.init_vel = np.array(vel0)  # initial velocity
-        self.init_angle = np.array(angle0)  # initial attitude
-        self.init_omega0_inertial = np.array(omega0_inertial)  # initial omega in S_i
-        self.init_omega0_body = np.array(omega0_body)  # initial omega in S_b
-        self.target_pos = np.array(target_pos) if target_pos else self.init_pos
+        self.init_pos = np.array([0, 0, 0]) if pos0 is None else np.array(pos0)
+        self.init_vel = np.array([0, 0, 0]) if pos0 is None else np.array(vel0)
+        self.init_angle = np.array([0, 0, 0]) if pos0 is None else np.array(angle0)
+        self.init_omega0_inertial = np.array([0, 0, 0]) if pos0 is None else np.array(omega0_inertial)
+        self.init_omega0_body = np.array([0, 0, 0]) if pos0 is None else np.array(omega0_body)
+        self.target_pos = np.array(target_pos) if target_pos else self.init_pos.copy()
+
+        self.pos = self.init_pos.copy()
+        self.vel = self.init_vel.copy()
+        self.angle = self.init_angle.copy()
+        self.omega_inertial = self.init_omega0_inertial.copy()
+        self.omega_body = self.init_omega0_body.copy()
+
         self.error_pos = self.target_pos - self.pos  # 位置跟踪误差
         self.staticGain = 2
 
         '''rl_base'''
-        self.state_dim = 19  # ex ey ez x y z vx vy vz phi theta psi dphi dtheta dpsi f1 f2 f3 f4
+        self.state_dim = 3 + 3 + 3 + 3 + 3 + 4  # ex ey ez x y z vx vy vz phi theta psi dphi dtheta dpsi f1 f2 f3 f4
         self.state_num = [math.inf for _ in range(self.state_dim)]
         self.state_step = [None for _ in range(self.state_dim)]
         self.state_space = [None for _ in range(self.state_dim)]
@@ -70,7 +67,8 @@ class UAV_Hover(rl_base, UAV):
         self.uav_vis = UAV_Visualization(xbound=np.array([self.pos_min[0], self.pos_max[0]]),
                                          ybound=np.array([self.pos_min[1], self.pos_max[1]]),
                                          zbound=np.array([self.pos_min[2], self.pos_max[2]]),
-                                         origin=self.init_pos)  # visualization
+                                         origin=self.init_pos,
+                                         target=self.target_pos)  # visualization
         '''visualization_opencv'''
 
         '''datasave'''
@@ -107,7 +105,7 @@ class UAV_Hover(rl_base, UAV):
         np_cur_state = np.array(self.current_state)
         _s = np.array([])
         if error_flag:
-            _s =  np.concatenate((_s, np_cur_state[0:3] / self.staticGain * (self.pos_max - self.pos_min)))
+            _s = np.concatenate((_s, np_cur_state[0:3] / self.staticGain * (self.pos_max - self.pos_min)))
         if pos_flag:
             _s = np.concatenate((_s, (np_cur_state[3:6] / self.staticGain * (self.pos_max - self.pos_min) + self.pos_max + self.pos_min) / 2))
         if vel_flag:
@@ -234,9 +232,14 @@ class UAV_Hover(rl_base, UAV):
             self.save_omega_inertial = np.vstack((self.save_omega_inertial, self.omega_inertial))
             self.save_omega_body = np.vstack((self.save_omega_body, self.omega_body))
             self.save_f = np.vstack((self.save_f, self.force))
-            self.save_t = np.array((self.save_t, self.time))
+            self.save_t = np.vstack((self.save_t, self.time))
 
     def get_reward(self, param=None):
+        """
+        @note:              reward function
+        @param param:       extra parameters
+        @return:            None, but update the reward
+        """
         ss = self.inverse_state_norm(error_flag=True, pos_flag=False, vel_flag=False, angle_flag=False, dangle_flag=False, f_flag=True)
         '''
         这个函数是把归一化的状态还原，其实这个操作是不必要的。因为所有状态本身是已知的，确实多此一举，如此操作只是为了形式上的统一
@@ -255,7 +258,7 @@ class UAV_Hover(rl_base, UAV):
 
         '''控制奖励'''
         _lambda = self.fmax
-        if np.min(np.fabs(_lambda - _force)) < 1e-2:      # 说明至少一个饱和输出
+        if np.min(np.fabs(_lambda - _force)) < 1e-2:      # 说明至少一个力饱和输出
             u_reward = -np.dot((_lambda + _force) * np.log(_lambda + _force)
                                - 2 * _lambda * np.log(_lambda), self.R)
         else:
@@ -267,15 +270,36 @@ class UAV_Hover(rl_base, UAV):
 
         self.reward = r_reward + u_reward
 
+    def is_success(self):
+        """
+        @note:      to judge if a uav has arrived to the target successfully
+        @return:    yes or no
+        """
+        if np.linalg.norm(self.error_pos) < 10e-2:   # 位置到终点
+            if np.linalg.norm(self.vel) < 3e-2:     # 并且不能有速度
+                return True
+        return False
+
     def is_Terminal(self, param=None):
+        if self.is_success():
+            print('Very good!!!')
+            self.terminal_flag = 3
+            self.is_terminal = True
+            return True
         return self.is_episode_Terminal()
 
     def step_update(self, action: list):
+        """
+        @note:          state update, both state in RL and model
+        @param action:  action (control input, command)
+        @return:        current_state, action, reward, next_state, is_terminal (all in RL)
+        """
         self.current_action = action.copy()
         self.current_state = self.state_norm()      # 当前状态
 
         '''rk44'''
         self.rk44(action=np.array(action))
+        self.error_pos = self.target_pos - self.pos  # 非常关键, sun of a bitch, 我给忘了
         '''rk44'''
 
         self.is_terminal = self.is_Terminal()
@@ -289,10 +313,11 @@ class UAV_Hover(rl_base, UAV):
         self.saveData()
 
         return self.current_state, action, self.reward, self.next_state, self.is_terminal
-    
+
     def set_random_pos(self):
         """
-
+        @note:      set the initial position randomly
+        @return:    initial position
         """
         # 必须保证初始化的位置与边界至少保证一个无人机的空隙
         if np.min(self.pos_max - self.pos_min) < 6 * self.d:
@@ -300,12 +325,37 @@ class UAV_Hover(rl_base, UAV):
             return self.init_pos
         pr = self.pos_max - 3 * self.d
         pl = self.pos_min + 3 * self.d
-        return np.array([np.random.uniform(pl[0], pr[0], 1),
-                         np.random.uniform(pl[1], pr[1], 1),
-                         np.random.uniform(pl[2], pr[2], 1)])
+        return np.array([random.uniform(pl[0], pr[0]),
+                         random.uniform(pl[1], pr[1]),
+                         random.uniform(pl[2], pr[2])])
+
+    def set_random_target_pos(self):
+        """
+        @note:      set target randomly
+        @return:    target position
+        """
+        # 必须保证初始化的位置与边界至少保证一个无人机的空隙
+        if np.min(self.pos_max - self.pos_min) < 6 * self.d:
+            # 如果课活动空间本身太小，那么直接返回原来的位置
+            return self.init_pos
+        pr = self.pos_max - 3 * self.d
+        pl = self.pos_min + 3 * self.d
+        return np.array([random.uniform(pl[0], pr[0]),
+                         random.uniform(pl[1], pr[1]),
+                         random.uniform(pl[2], pr[2])])
+
+    def show_dynamic_image(self, per_show=10):
+        """
+        @note:              show image
+        @param per_show:    draw the graph every 'per_show' time steps
+        @return:            None
+        """
+        self.uav_vis.render(p=self.pos, ref_p=self.target_pos, a=self.angle, d=self.d, f=self.force, win=per_show)
 
     def reset(self):
         """
+        @note:      reset the environment
+        @return:    None
         """
         '''physical parameters'''
         self.pos = self.init_pos.copy()
@@ -318,6 +368,7 @@ class UAV_Hover(rl_base, UAV):
         self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
         self.force = np.array([0, 0, 0, 0])
         self.w_rotor = np.sqrt(self.force / self.CT)
+        self.uav_vis.reset(self.init_pos, self.target_pos)
         '''physical parameters'''
 
         '''rl_base'''
@@ -345,11 +396,13 @@ class UAV_Hover(rl_base, UAV):
 
     def reset_random(self):
         """
-        :brief:
+        @note:      reset the environment randomly (just the target and initial position)
+        @return:    None
         """
         # 这里仅仅是位置random，初始的速度都是零
         '''physical parameters'''
         self.pos = self.set_random_pos()
+        self.target_pos = self.set_random_target_pos()
         self.init_pos = self.pos.copy()
         self.vel = self.init_vel.copy()
         self.angle = self.init_angle.copy()
@@ -360,6 +413,7 @@ class UAV_Hover(rl_base, UAV):
         self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
         self.force = np.array([0, 0, 0, 0])
         self.w_rotor = np.sqrt(self.force / self.CT)
+        self.uav_vis.reset(self.init_pos, self.target_pos)
         '''physical parameters'''
 
         '''rl_base'''

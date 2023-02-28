@@ -27,9 +27,8 @@ if __name__ == '__main__':
     # b = (math.sin(psi) * math.sin(theta) * math.cos(phi) - math.cos(psi) * math.sin(phi)) ** 2
     # c = (math.cos(phi) * math.cos(theta)) ** 2
     # print(a + b + c)
-    # a = np.array([1, 2, 3])
+    a = np.array([-1.96, 2, 3])
     # b = np.diag([1, 1, 2])
     # print(np.dot(np.dot(a, b), a))
-    a = np.array([1, 2, 3, 4])
-
-    print(5-a)
+    print(np.maximum(a, 0))
+    # print(a + c.T)

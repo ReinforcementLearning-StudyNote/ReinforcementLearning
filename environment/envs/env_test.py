@@ -177,6 +177,23 @@ def test_cartpole():
         num += 1
 
 
+def test_uav_hover():
+    from UAV.uav_hover import UAV_Hover
+    import matplotlib.pyplot as plt
+    env = UAV_Hover(target_pos=[0, 0, 4])
+    env.uav_vis.arm_scale = 10      # 显示放大的尺度，自己设置即可
+    num = 0
+    plt.ion()
+    while num < 30:
+        env.reset_random()
+        while not env.is_terminal:
+            env.show_dynamic_image(per_show=1)
+            plt.pause(0.00000001)
+            f = [random.uniform(env.fmin, env.fmax) for _ in range(4)]
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=f)
+        num += 1
+    plt.ioff()
+
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
@@ -185,5 +202,6 @@ if __name__ == '__main__':
     # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
-    test_cartpole()
+    # test_cartpole()
+    test_uav_hover()
     pass

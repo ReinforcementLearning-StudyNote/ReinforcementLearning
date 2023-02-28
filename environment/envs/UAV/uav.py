@@ -31,10 +31,7 @@ class UAV:
                  angle0=None,
                  omega0_inertial=None,
                  omega0_body=None,
-                 # domega0_body=None
                  ):
-        # if domega0_body is None:
-        #     domega0_body = [0, 0, 0]
         if omega0_body is None:
             omega0_body = np.array([0, 0, 0])
         if omega0_inertial is None:
@@ -70,7 +67,7 @@ class UAV:
 
         self.dt = 0.01  # 控制频率，100Hz
         self.time = 0.  # 当前时间
-        self.tmax = 20  # 每回合最大时间
+        self.tmax = 30  # 每回合最大时间
 
         self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
 
@@ -83,16 +80,6 @@ class UAV:
         self.angle_max = np.array([deg2rad(80), deg2rad(80), deg2rad(180)])
         self.dangle_min = np.array([-deg2rad(360 * 3), -deg2rad(360 * 3), -deg2rad(360 * 2)])
         self.dangle_max = np.array([deg2rad(360 * 3), deg2rad(360 * 3), deg2rad(360 * 2)])
-        # self.xmax, self.ymax, self.zmax = 10, 10, 10
-        # self.xmin, self.ymin, self.zmin = -10, -10, -10
-        # self.vxmax, self.vymax, self.vzmax = 10, 10, 10
-        # self.vxmin, self.vymin, self.vzmin = -10, -10, -10
-
-        # self.phimax, self.thetamax, self.psimax = deg2rad(80), deg2rad(80), deg2rad(180)
-        # self.phimin, self.thetamin, self.psimin = -deg2rad(80), -deg2rad(80), -deg2rad(180)
-        #
-        # self.dphimax, self.dthetamax, self.dpsimax = deg2rad(360 * 3), deg2rad(360 * 3), deg2rad(360 * 2)
-        # self.dphimin, self.dthetamin, self.dpsimin = -deg2rad(360 * 3), -deg2rad(360 * 3), -deg2rad(360 * 2)
         'state limitation'
 
         'control'
@@ -100,17 +87,9 @@ class UAV:
         这里直接使用力作为输入，范围小，方便学习。
         解算微分方程时，直接利用升力系数将力换算成电机角速度即可
         '''
-        # self.f1 = 0
-        # self.f2 = 0
-        # self.f3 = 0
-        # self.f4 = 0
         self.force = np.array([0, 0, 0, 0])
         self.fmin = 0
         self.fmax = 10
-        # self.w1 = math.sqrt(self.f1 / self.CT)
-        # self.w2 = math.sqrt(self.f2 / self.CT)
-        # self.w3 = math.sqrt(self.f3 / self.CT)
-        # self.w4 = math.sqrt(self.f4 / self.CT)
         self.w_rotor = np.sqrt(self.force/self.CT)
         'control'
 

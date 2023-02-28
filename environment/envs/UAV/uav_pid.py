@@ -76,15 +76,16 @@ import math
 
 
 if __name__ == '__main__':
-    pos0 = [0, 4, 0]  # 给的都是惯性系 东北天
+    pos0 = [0, 0, 0]  # 给的都是惯性系 东北天
     angle0 = [deg2rad(0), deg2rad(0), deg2rad(0)]  # 给的都是惯性系 东北天
 
     quad = UAV(pos0=pos0, angle0=angle0)  # initialization of a quadrotor
-    pid_x = PID(kp=5, ki=0., kd=450)  # controller of x
-    pid_y = PID(kp=5, ki=0., kd=450)  # controller of y
-    pid_z = PID(kp=2., ki=0., kd=250)  # controller z
-    pid_phi = PID(kp=6, ki=0., kd=45)  # controller of roll along X in world
-    pid_theta = PID(kp=6, ki=0., kd=45)  # controller of pitch along Y in world
+    pid_x = PID(kp=0.5, ki=0., kd=120)  # controller of x
+    pid_y = PID(kp=0.5, ki=0., kd=120)  # controller of y
+    pid_z = PID(kp=1, ki=0., kd=160)  # controller z
+
+    pid_phi = PID(kp=1, ki=0., kd=5)  # controller of roll along X in world
+    pid_theta = PID(kp=1, ki=0., kd=5)  # controller of pitch along Y in world
     pid_psi = PID(kp=4, ki=0., kd=55)  # controller of yaw along Y in world
 
     xbound = np.array([quad.pos_min[0], quad.pos_max[0]])
@@ -92,7 +93,9 @@ if __name__ == '__main__':
     zbound = np.array([quad.pos_min[2], quad.pos_max[2]])
     origin = quad.pos
 
-    quad_vis = UAV_Visualization(xbound=xbound, ybound=ybound, zbound=zbound, origin=origin)  # 初始化显示界面
+    quad_vis = UAV_Visualization(xbound=xbound, ybound=ybound, zbound=zbound, origin=origin, target=np.array([0, 0, 0]))  # 初始化显示界面
+    quad_vis.arm_scale = 10
+    quad_vis.has_target = False
     quad_vis.has_ref = True
 
     '''visualization'''
@@ -113,18 +116,22 @@ if __name__ == '__main__':
         phase = 2 * math.pi / 10 * quad.time
         '''八字'''
         # 初值 [0, 4, 0]
-        x_ref = 6 * math.sin(phase) * math.cos(phase) / (1 + math.sin(phase) ** 2)
-        y_ref = 4 * math.cos(phase) / (1 + math.sin(phase) ** 2)
-        z_ref = 1 * math.sin(phase)
-        psi_ref = deg2rad(0) * math.sin(math.pi * quad.time)
+        # x_ref = 6 * math.sin(phase) * math.cos(phase) / (1 + math.sin(phase) ** 2)
+        # y_ref = 4 * math.cos(phase) / (1 + math.sin(phase) ** 2)
+        # z_ref = 1 * math.sin(phase)
+        # psi_ref = deg2rad(0) * math.sin(math.pi * quad.time)
 
         '''圆'''
         # # 初值 [0, 5, 0]
         # x_ref = 5 * math.sin(phase)
         # y_ref = 5 * math.cos(phase)
-        # z_ref = 1 * math.sin(phase)
+        # z_ref = 3 * math.sin(phase)
         # psi_ref = deg2rad(45) * math.sin(phase)
-        # t_ref = quad.time
+        x_ref = 0
+        y_ref = 0
+        z_ref = 4
+        psi_ref = 0
+        t_ref = quad.time
 
         '''2. 计算位置 PID 控制的输出，同时得到期望姿态角'''
         ex, ey, ez = x_ref - quad.pos[0], y_ref - quad.pos[1], z_ref - quad.pos[2]
@@ -139,7 +146,7 @@ if __name__ == '__main__':
         # phi_ref = deg2rad(30) * math.sin(2 * math.pi / 1 * quad.time)
         # theta_ref = deg2rad(30) * math.sin(2 * math.pi / 1 * quad.time)
 
-        print('期望姿态角：', phi_ref, theta_ref, psi_ref)
+        # print('期望姿态角：', phi_ref, theta_ref, psi_ref)
 
         '''3. 绘制图形 (图形必须要先画，不然的话无人机状态和参考轨迹的状态差一拍)'''
         if count < 6000:
@@ -168,7 +175,6 @@ if __name__ == '__main__':
             att_uav = np.vstack((att_uav, quad.angle))
             t = np.vstack((t, quad.time))
         count += 1
-        f = np.array([0, 0, 0, 0])
 
         plot_x = False
         plot_y = False
@@ -225,7 +231,7 @@ if __name__ == '__main__':
             quad_vis.render(p=quad.pos,
                             ref_p=np.array([x_ref, y_ref, z_ref]),
                             a=quad.angle,
-                            f=f, d=5 * quad.d, win=10)
+                            f=quad.force, d=quad.d, win=10)
 
         plt.show()
         plt.pause(0.0000000001)
@@ -238,12 +244,14 @@ if __name__ == '__main__':
         U2, U3, U4 = pid_phi.out(), pid_theta.out(), pid_psi.out()
 
         '''5. 动力分配'''
-        square_omega = np.dot(inv_coe_m, [U1, U2, U3, U4])
+        square_omega = np.maximum(np.dot(inv_coe_m, [U1, U2, U3, U4]), 0)
         f = quad.CT * square_omega
+        f = quad.fmax * np.tanh(f / quad.fmax)
         # print('PID out: U1: %.3f, U2: %.3f,U3: %.3f, U4: %.3f' % (U1, U2, U3, U4))
-        for i in range(4):
-            f[i] = max(min(quad.fmax, f[i]), quad.fmin)
-        print('Force UAV: ', f)
+        # for i in range(4):
+        #     f[i] = max(min(quad.fmax, f[i]), quad.fmin)
+        # print('Force UAV: ', f)
+        print('time', quad.time)
         quad.rk44(action=f)
 
     plt.ioff()

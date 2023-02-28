@@ -1,3 +1,5 @@
+import numpy as np
+
 from uav import UAV
 from uav_visualization import UAV_Visualization
 from common.common_func import *
@@ -11,22 +13,22 @@ if __name__ == '__main__':
 	quad = UAV(pos0=pos0, angle0=angle0)
 	# quad.set_position_limitation2inf()
 
-	xbound = np.array([quad.xmin, quad.xmax])
-	ybound = np.array([quad.ymin, quad.ymax])
-	zbound = np.array([quad.zmin, quad.zmax])
-	origin = np.array([quad.x, quad.y, quad.z])
+	xbound = np.array([quad.pos_min[0], quad.pos_max[0]])
+	ybound = np.array([quad.pos_min[1], quad.pos_max[1]])
+	zbound = np.array([quad.pos_min[2], quad.pos_max[2]])
+	origin = quad.pos
 
-	quad_vis = UAV_Visualization(xbound=xbound, ybound=ybound, zbound=zbound, origin=origin)  # 初始化显示界面
+	quad_vis = UAV_Visualization(xbound=xbound, ybound=ybound, zbound=zbound, origin=origin, target=np.array([5, 5, 5]))  # 初始化显示界面
 	index = 0
 	plt.ion()
 	while not quad.is_episode_Terminal():
-		position = np.array([quad.x, quad.y, quad.z])
-		attitude = np.array([quad.phi, quad.theta, quad.psi])
+		position = quad.pos
+		attitude = quad.angle
 		d = 4 * quad.d
 
 		'''一些常规力选择'''
 		f0 = 9.8 / 5
-		eq_f = quad.m * quad.g / math.cos(math.fabs(quad.phi)) / math.cos(math.fabs(quad.theta)) / 4
+		eq_f = quad.m * quad.g / math.cos(math.fabs(attitude[0])) / math.cos(math.fabs(attitude[1])) / 4
 		bias = 1 * math.sin(math.pi * quad.time + math.pi / 2)
 
 		f_roll = [f0 - 0.02, f0, f0, f0 - 0.02]  # 滚转X
@@ -42,7 +44,7 @@ if __name__ == '__main__':
 		'''一些常规力选择'''
 
 		'''visualization'''
-		quad_vis.render(p=position, a=attitude, d=d, f=np.array(f), win=10)
+		quad_vis.render(p=position, ref_p=np.array([0, 0, 10]), a=attitude, d=d, f=np.array(f), win=10)
 		if index % 50 == 0:
 			quad.show_uav_linear_state(with_time=True)
 			# quad.show_uav_angular_state(with_time=True)
