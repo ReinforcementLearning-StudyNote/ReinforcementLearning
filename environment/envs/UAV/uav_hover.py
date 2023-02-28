@@ -438,3 +438,47 @@ class UAV_Hover(rl_base, UAV):
         self.save_f = np.atleast_2d(self.force)
         self.save_t = np.array([self.time])
         '''datasave'''
+
+    def reset_target_random(self):
+        """
+        @note:      reset the environment randomly (just the target)
+        @return:    None
+        """
+        # 这里仅仅是位置random，初始的速度都是零
+        '''physical parameters'''
+        self.pos = self.set_random_pos()
+        self.init_pos = self.pos.copy()
+        self.vel = self.init_vel.copy()
+        self.angle = self.init_angle.copy()
+        self.omega_inertial = self.init_omega0_inertial.copy()
+        self.omega_body = self.init_omega0_body.copy()
+        self.error_pos = self.target_pos - self.pos  # 位置跟踪误差
+        self.time = 0
+        self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
+        self.force = np.array([0, 0, 0, 0])
+        self.w_rotor = np.sqrt(self.force / self.CT)
+        self.uav_vis.reset(self.init_pos, self.target_pos)
+        '''physical parameters'''
+
+        '''rl_base'''
+        self.initial_state = self.state_norm()
+        self.current_state = self.initial_state.copy()
+        self.next_state = self.initial_state.copy()
+
+        self.initial_action = [0.0 for _ in range(self.action_dim)]
+        self.current_action = self.initial_action.copy()
+
+        self.reward = 0.0
+        self.is_terminal = False
+        self.terminal_flag = 0  # 0-正常 1-出界 2-超时
+        '''rl_base'''
+
+        '''datasave'''
+        self.save_pos = np.atleast_2d(self.pos)
+        self.save_vel = np.atleast_2d(self.vel)
+        self.save_angle = np.atleast_2d(self.angle)
+        self.save_omega_inertial = np.atleast_2d(self.omega_inertial)
+        self.save_omega_body = np.atleast_2d(self.omega_body)
+        self.save_f = np.atleast_2d(self.force)
+        self.save_t = np.array([self.time])
+        '''datasave'''

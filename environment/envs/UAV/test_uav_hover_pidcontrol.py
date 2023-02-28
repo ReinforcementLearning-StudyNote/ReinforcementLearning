@@ -5,7 +5,7 @@ from environment.envs.PIDControl.pid import PID
 
 
 if __name__ == '__main__':
-    env = UAV_Hover(target_pos=[0, 0, 4], save_cfg=False)
+    env = UAV_Hover(target_pos=[-5, -5, -4], save_cfg=False)
     env.uav_vis.arm_scale = 10      # 显示放大的尺度，自己设置即可
 
     pid_x = PID(kp=0.5, ki=0., kd=120)  # controller of x
@@ -23,8 +23,9 @@ if __name__ == '__main__':
 
     plt.ion()
     while num < 10:
-        env.reset_random()
+        # env.reset_random()
         # env.reset()
+        env.reset_target_random()
         while not env.is_terminal:
             env.show_dynamic_image(per_show=10)
             plt.pause(0.00000001)
