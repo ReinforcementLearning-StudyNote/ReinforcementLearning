@@ -1,3 +1,5 @@
+import numpy as np
+
 from environment.config.xml_write import *
 from environment.envs.UAV.uav import UAV
 from environment.envs.UAV.uav_visualization import UAV_Visualization
@@ -58,6 +60,8 @@ class UAV_Hover(rl_base, UAV):
         self.current_action = self.initial_action.copy()
 
         self.reward = 0.0
+        self.Q_pos = np.diag([1, 1, 1])     # 用于位置的惩罚函数，若作为奖励，则需要 -e^T Q_pos e
+        self.R = np.array([1, 1, 1, 1])     # 用于动作的惩罚函数，若作为奖励，则需要 -U(u)
         self.is_terminal = False
         self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功 4-碰撞障碍物
         '''rl_base'''
@@ -82,6 +86,9 @@ class UAV_Hover(rl_base, UAV):
             self.saveModel2XML()
 
     def state_norm(self) -> list:
+        """
+        状态归一化
+        """
         norm_error = self.error_pos / (self.pos_max - self.pos_min) * self.staticGain
         norm_pos = (2 * self.pos - self.pos_max - self.pos_min) / (self.pos_max - self.pos_min) * self.staticGain
         norm_vel = (2 * self.vel - self.vel_max - self.vel_min) / (self.vel_max - self.vel_min) * self.staticGain
@@ -92,6 +99,27 @@ class UAV_Hover(rl_base, UAV):
         norm_state = np.concatenate((norm_error, norm_pos, norm_vel, norm_angle, norm_dangle, norm_f)).tolist()
 
         return list(norm_state)
+
+    def inverse_state_norm(self, error_flag=False, pos_flag=False, vel_flag=False, angle_flag=False, dangle_flag=False, f_flag=False):
+        """
+        状态反归一化
+        """
+        np_cur_state = np.array(self.current_state)
+        _s = np.array([])
+        if error_flag:
+            _s =  np.concatenate((_s, np_cur_state[0:3] / self.staticGain * (self.pos_max - self.pos_min)))
+        if pos_flag:
+            _s = np.concatenate((_s, (np_cur_state[3:6] / self.staticGain * (self.pos_max - self.pos_min) + self.pos_max + self.pos_min) / 2))
+        if vel_flag:
+            _s = np.concatenate((_s, (np_cur_state[6:9] / self.staticGain * (self.vel_max - self.vel_min) + self.vel_max + self.vel_min) / 2))
+        if angle_flag:
+            _s = np.concatenate((_s, (np_cur_state[9:12] / self.staticGain * (self.angle_max - self.angle_min) + self.angle_max + self.angle_min) / 2))
+        if dangle_flag:
+            _s = np.concatenate((_s, (np_cur_state[12:15] / self.staticGain * (self.dangle_max - self.dangle_min) + self.dangle_max + self.dangle_min) / 2))
+        if f_flag:
+            _s = np.concatenate((_s, (np_cur_state[15:19] / self.staticGain * (self.fmax - self.fmin) + self.fmax + self.fmin) / 2))
+
+        return _s
 
     def saveModel2XML(self, filename='uav_hover.xml', filepath='../config/'):
         rootMsg = {
@@ -118,7 +146,8 @@ class UAV_Hover(rl_base, UAV):
             'isActionContinuous': self.isActionContinuous,
             'initial_action': self.initial_action,
             'current_action': self.current_action,
-            'is_terminal': self.is_terminal
+            'is_terminal': self.is_terminal,
+            'staticGain': self.staticGain
         }
         physicalMsg = {
             'm': self.m,
@@ -149,7 +178,8 @@ class UAV_Hover(rl_base, UAV):
             'w_rotor': self.w_rotor,
             'dt': self.dt,
             'time': self.time,
-            'tmax': self.tmax
+            'tmax': self.tmax,
+            'targetpos': self.target_pos
         }
         imageMsg = {
             'figsize': [9, 9],
@@ -206,14 +236,151 @@ class UAV_Hover(rl_base, UAV):
             self.save_f = np.vstack((self.save_f, self.force))
             self.save_t = np.array((self.save_t, self.time))
 
-    def get_reward(self, param):
-        pass
+    def get_reward(self, param=None):
+        ss = self.inverse_state_norm(error_flag=True, pos_flag=False, vel_flag=False, angle_flag=False, dangle_flag=False, f_flag=True)
+        '''
+        这个函数是把归一化的状态还原，其实这个操作是不必要的。因为所有状态本身是已知的，确实多此一举，如此操作只是为了形式上的统一
+        目前奖励函数只使用了位置误差 和 输出力，所以error_flag 和 f_flag 是True，其余都是False
+        所以，ss中一共有7个数，前三个是位置误差，后四个是力
+        '''
+        _error = ss[0:3]
+        _force = ss[3:7]
+        # self.force = _force     # 四个螺旋桨的力
+        # self.f2omega()          # 得到四个电机的转速
+        # virtual_input = np.dot(self.power_allocation_mat, self.w_rotor ** 2)    # 得到实际的虚拟控制，油门 三个方向转矩
 
-    def step_update(self, action):
-        pass
+        '''位置误差奖励'''
+        r_reward = -np.dot(np.dot(_error, self.Q_pos), _error)
+        '''位置误差奖励'''
+
+        '''控制奖励'''
+        _lambda = self.fmax
+        if np.min(np.fabs(_lambda - _force)) < 1e-2:      # 说明至少一个饱和输出
+            u_reward = -np.dot((_lambda + _force) * np.log(_lambda + _force)
+                               - 2 * _lambda * np.log(_lambda), self.R)
+        else:
+            u_reward = -np.dot((_lambda + _force) * np.log(_lambda + _force)
+                               + (_lambda - _force) * np.log(_lambda - _force)
+                               - 2 * _lambda * np.log(_lambda), self.R)
+
+        '''控制奖励'''
+
+        self.reward = r_reward + u_reward
+
+    def is_Terminal(self, param=None):
+        return self.is_episode_Terminal()
+
+    def step_update(self, action: list):
+        self.current_action = action.copy()
+        self.current_state = self.state_norm()      # 当前状态
+
+        '''rk44'''
+        self.rk44(action=np.array(action))
+        '''rk44'''
+
+        self.is_terminal = self.is_Terminal()
+        self.next_state = self.state_norm()
+        self.get_reward()
+
+        '''出界处理'''
+        # 暂无
+        '''出界处理'''
+
+        self.saveData()
+
+        return self.current_state, action, self.reward, self.next_state, self.is_terminal
+    
+    def set_random_pos(self):
+        """
+
+        """
+        # 必须保证初始化的位置与边界至少保证一个无人机的空隙
+        if np.min(self.pos_max - self.pos_min) < 6 * self.d:
+            # 如果课活动空间本身太小，那么直接返回原来的位置
+            return self.init_pos
+        pr = self.pos_max - 3 * self.d
+        pl = self.pos_min + 3 * self.d
+        return np.array([np.random.uniform(pl[0], pr[0], 1),
+                         np.random.uniform(pl[1], pr[1], 1),
+                         np.random.uniform(pl[2], pr[2], 1)])
 
     def reset(self):
-        pass
+        """
+        """
+        '''physical parameters'''
+        self.pos = self.init_pos.copy()
+        self.vel = self.init_vel.copy()
+        self.angle = self.init_angle.copy()
+        self.omega_inertial = self.init_omega0_inertial.copy()
+        self.omega_body = self.init_omega0_body.copy()
+        self.error_pos = self.target_pos - self.pos  # 位置跟踪误差
+        self.time = 0
+        self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
+        self.force = np.array([0, 0, 0, 0])
+        self.w_rotor = np.sqrt(self.force / self.CT)
+        '''physical parameters'''
+
+        '''rl_base'''
+        self.initial_state = self.state_norm()
+        self.current_state = self.initial_state.copy()
+        self.next_state = self.initial_state.copy()
+
+        self.initial_action = [0.0 for _ in range(self.action_dim)]
+        self.current_action = self.initial_action.copy()
+
+        self.reward = 0.0
+        self.is_terminal = False
+        self.terminal_flag = 0  # 0-正常 1-出界 2-超时
+        '''rl_base'''
+
+        '''datasave'''
+        self.save_pos = np.atleast_2d(self.pos)
+        self.save_vel = np.atleast_2d(self.vel)
+        self.save_angle = np.atleast_2d(self.angle)
+        self.save_omega_inertial = np.atleast_2d(self.omega_inertial)
+        self.save_omega_body = np.atleast_2d(self.omega_body)
+        self.save_f = np.atleast_2d(self.force)
+        self.save_t = np.array([self.time])
+        '''datasave'''
 
     def reset_random(self):
-        pass
+        """
+        :brief:
+        """
+        # 这里仅仅是位置random，初始的速度都是零
+        '''physical parameters'''
+        self.pos = self.set_random_pos()
+        self.init_pos = self.pos.copy()
+        self.vel = self.init_vel.copy()
+        self.angle = self.init_angle.copy()
+        self.omega_inertial = self.init_omega0_inertial.copy()
+        self.omega_body = self.init_omega0_body.copy()
+        self.error_pos = self.target_pos - self.pos  # 位置跟踪误差
+        self.time = 0
+        self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
+        self.force = np.array([0, 0, 0, 0])
+        self.w_rotor = np.sqrt(self.force / self.CT)
+        '''physical parameters'''
+
+        '''rl_base'''
+        self.initial_state = self.state_norm()
+        self.current_state = self.initial_state.copy()
+        self.next_state = self.initial_state.copy()
+
+        self.initial_action = [0.0 for _ in range(self.action_dim)]
+        self.current_action = self.initial_action.copy()
+
+        self.reward = 0.0
+        self.is_terminal = False
+        self.terminal_flag = 0  # 0-正常 1-出界 2-超时
+        '''rl_base'''
+
+        '''datasave'''
+        self.save_pos = np.atleast_2d(self.pos)
+        self.save_vel = np.atleast_2d(self.vel)
+        self.save_angle = np.atleast_2d(self.angle)
+        self.save_omega_inertial = np.atleast_2d(self.omega_inertial)
+        self.save_omega_body = np.atleast_2d(self.omega_body)
+        self.save_f = np.atleast_2d(self.force)
+        self.save_t = np.array([self.time])
+        '''datasave'''

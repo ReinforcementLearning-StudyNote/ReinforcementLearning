@@ -110,16 +110,15 @@ if __name__ == '__main__':
     plt.ion()
     while not quad.is_episode_Terminal():
         '''1. 生成参考轨迹'''
-        if True:
-            phase = 2 * math.pi / 10 * quad.time
-            '''八字'''
-            # 初值 [0, 4, 0]
-            x_ref = 6 * math.sin(phase) * math.cos(phase) / (1 + math.sin(phase) ** 2)
-            y_ref = 4 * math.cos(phase) / (1 + math.sin(phase) ** 2)
-            z_ref = 1 * math.sin(phase)
-            psi_ref = deg2rad(0) * math.sin(math.pi * quad.time)
+        phase = 2 * math.pi / 10 * quad.time
+        '''八字'''
+        # 初值 [0, 4, 0]
+        x_ref = 6 * math.sin(phase) * math.cos(phase) / (1 + math.sin(phase) ** 2)
+        y_ref = 4 * math.cos(phase) / (1 + math.sin(phase) ** 2)
+        z_ref = 1 * math.sin(phase)
+        psi_ref = deg2rad(0) * math.sin(math.pi * quad.time)
 
-            '''圆'''
+        '''圆'''
         # # 初值 [0, 5, 0]
         # x_ref = 5 * math.sin(phase)
         # y_ref = 5 * math.cos(phase)
@@ -128,15 +127,14 @@ if __name__ == '__main__':
         # t_ref = quad.time
 
         '''2. 计算位置 PID 控制的输出，同时得到期望姿态角'''
-        if True:
-            ex, ey, ez = x_ref - quad.pos[0], y_ref - quad.pos[1], z_ref - quad.pos[2]
-            pid_x.set_e(ex)
-            pid_y.set_e(ey)
-            pid_z.set_e(ez)
-            ux, uy, uz = pid_x.out(), pid_y.out(), pid_z.out()
-            U1 = quad.m * math.sqrt(ux ** 2 + uy ** 2 + (uz + quad.g) ** 2)
-            phi_ref = math.asin((ux * math.sin(psi_ref) - uy * math.cos(psi_ref)) * quad.m / U1)
-            theta_ref = math.asin((ux * quad.m - U1 * math.sin(psi_ref) * math.sin(phi_ref)) / (U1 * math.cos(psi_ref) * math.cos(phi_ref)))
+        ex, ey, ez = x_ref - quad.pos[0], y_ref - quad.pos[1], z_ref - quad.pos[2]
+        pid_x.set_e(ex)
+        pid_y.set_e(ey)
+        pid_z.set_e(ez)
+        ux, uy, uz = pid_x.out(), pid_y.out(), pid_z.out()
+        U1 = quad.m * math.sqrt(ux ** 2 + uy ** 2 + (uz + quad.g) ** 2)
+        phi_ref = math.asin((ux * math.sin(psi_ref) - uy * math.cos(psi_ref)) * quad.m / U1)
+        theta_ref = math.asin((ux * quad.m - U1 * math.sin(psi_ref) * math.sin(phi_ref)) / (U1 * math.cos(psi_ref) * math.cos(phi_ref)))
 
         # phi_ref = deg2rad(30) * math.sin(2 * math.pi / 1 * quad.time)
         # theta_ref = deg2rad(30) * math.sin(2 * math.pi / 1 * quad.time)

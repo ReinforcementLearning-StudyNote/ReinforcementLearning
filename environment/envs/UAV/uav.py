@@ -184,7 +184,7 @@ class UAV:
     def f2omega(self):
         self.w_rotor = np.sqrt(self.force/self.CT)
 
-    def f(self, xx: np.ndarray):
+    def ode(self, xx: np.ndarray):
         """
         :param xx:      状态
         :return:        状态的导数
@@ -243,21 +243,16 @@ class UAV:
         tt = self.time + self.dt
         while self.time < tt:
             xx_old = np.concatenate((self.pos, self.vel, self.angle, self.omega_body))
-            # xx_old = np.array([self.x, self.y, self.z,
-            #                    self.vx, self.vy, self.vz,
-            #                    self.phi, self.theta, self.psi,
-            #                    self.p, self.q, self.r])
-            K1 = h * self.f(xx_old)
-            K2 = h * self.f(xx_old + K1 / 2)
-            K3 = h * self.f(xx_old + K2 / 2)
-            K4 = h * self.f(xx_old + K3)
+            K1 = h * self.ode(xx_old)
+            K2 = h * self.ode(xx_old + K1 / 2)
+            K3 = h * self.ode(xx_old + K2 / 2)
+            K4 = h * self.ode(xx_old + K3)
             xx_new = xx_old + (K1 + 2 * K2 + 2 * K3 + K4) / 6
             xx_temp = xx_new.copy()
             self.pos = xx_temp[0:3]
             self.vel = xx_temp[3:6]
             self.angle = xx_temp[6:9]
             self.omega_body = xx_temp[9:12]
-            # [self.x, self.y, self.z, self.vx, self.vy, self.vz, self.phi, self.theta, self.psi, self.p, self.q, self.r] = xx_new.copy()
             self.time += h
         R_pqr2diner = np.array([[1, math.tan(self.angle[1]) * math.sin(self.angle[0]), math.tan(self.angle[1]) * math.cos(self.angle[0])],
                                 [0, math.cos(self.angle[0]), -math.sin(self.angle[0])],
@@ -325,6 +320,7 @@ class UAV:
         self.force = np.array([0, 0, 0, 0])
         self.w_rotor = np.sqrt(self.force / self.CT)
         self.is_terminal = False
+        self.terminal_flag = 0
 
         '''datasave'''
         self.save_pos = np.atleast_2d(self.pos)

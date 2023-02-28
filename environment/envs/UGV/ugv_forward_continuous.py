@@ -265,6 +265,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
             state = state + h * (K1 + 2 * K2 + 2 * K3 + K4) / 6
             t_sim += h
         '''RK-44'''
+
         '''动力学系统状态更新'''
         [self.x, self.y, self.phi] = list(state)
         self.dx = self.r / 2 * (self.wLeft + self.wRight) * math.cos(self.phi)
@@ -272,6 +273,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.dphi = self.r / self.rBody * (self.wRight - self.wLeft)
         self.time += self.dt
         '''动力学系统状态更新'''
+
         self.delta_phi_absolute += math.fabs(self.phi - self.current_state[4])
         '''角度处理'''
         if self.phi > math.pi:
@@ -279,6 +281,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         if self.phi < -math.pi:
             self.phi += 2 * math.pi
         '''角度处理'''
+
         self.is_terminal = self.is_Terminal()
         self.next_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
                            (self.terminal[1] - self.y) / self.y_size * self.staticGain,
