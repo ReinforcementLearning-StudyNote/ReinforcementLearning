@@ -119,7 +119,7 @@ class UAV_Hover(rl_base, UAV):
 
         return _s
 
-    def saveModel2XML(self, filename='uav_hover.xml', filepath='../config/'):
+    def saveModel2XML(self, filename='uav_hover.xml', filepath='../../environment/config/'):
         rootMsg = {
             'name': 'uav_hover',
             'author': 'Yefeng YANG',
@@ -257,6 +257,7 @@ class UAV_Hover(rl_base, UAV):
         '''位置误差奖励'''
 
         '''控制奖励'''
+        # 这里的奖励实际上是以惩罚的形式给出的，所以需要负号
         _lambda = self.fmax
         if np.min(np.fabs(_lambda - _force)) < 1e-2:      # 说明至少一个力饱和输出
             u_reward = -np.dot((_lambda + _force) * np.log(_lambda + _force)
