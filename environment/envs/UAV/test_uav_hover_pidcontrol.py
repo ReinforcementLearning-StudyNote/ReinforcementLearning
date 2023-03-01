@@ -1,3 +1,5 @@
+import math
+
 from common.common_func import *
 from uav_hover import UAV_Hover
 import matplotlib.pyplot as plt
@@ -5,7 +7,7 @@ from environment.envs.PIDControl.pid import PID
 
 
 if __name__ == '__main__':
-    env = UAV_Hover(target_pos=[1, 1, -9], save_cfg=False)
+    env = UAV_Hover(target_pos=[5, 5, 0], save_cfg=False)
     env.uav_vis.arm_scale = 10      # 显示放大的尺度，自己设置即可
 
     pid_x = PID(kp=0.5, ki=0., kd=120)  # controller of x
@@ -13,13 +15,12 @@ if __name__ == '__main__':
     pid_z = PID(kp=0.7, ki=0., kd=200)  # controller z
 
     pid_phi = PID(kp=0.5, ki=0., kd=20)  # controller of roll along X in world
-    pid_theta = PID(kp=1, ki=0., kd=20)  # controller of pitch along Y in world
-    pid_psi = PID(kp=4, ki=0., kd=55)  # controller of yaw along Y in world
+    pid_theta = PID(kp=0.5, ki=0., kd=20)  # controller of pitch along Y in world
+    pid_psi = PID(kp=0.1, ki=0., kd=10)  # controller of yaw along Y in world
 
     num = 0
 
     inv_coe_m = np.linalg.inv(env.power_allocation_mat)  # 动力分配矩阵的逆
-    psi_ref = 0
 
     plt.ion()
     while num < 10:
@@ -39,8 +40,9 @@ if __name__ == '__main__':
 
             '''计算期望姿态'''
             U1 = env.m * math.sqrt(ux ** 2 + uy ** 2 + (uz + env.g) ** 2)
-            phi_ref = math.asin((ux * math.sin(psi_ref) - uy * math.cos(psi_ref)) * env.m / U1)
-            theta_ref = math.asin((ux * env.m - U1 * math.sin(psi_ref) * math.sin(phi_ref)) / (U1 * math.cos(psi_ref) * math.cos(phi_ref)))
+            psi_ref = deg2rad(1)
+            phi_ref = np.arcsin(env.m * (ux * np.sin(psi_ref) - uy * np.cos(psi_ref)) / U1)
+            theta_ref = np.arcsin(env.m * (ux * np.cos(psi_ref) + uy * np.sin(psi_ref)) / (U1 * np.cos(phi_ref)))
             '''计算期望姿态'''
 
             '''姿态PID输出'''

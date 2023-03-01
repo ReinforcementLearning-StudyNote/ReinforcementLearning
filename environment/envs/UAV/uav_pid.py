@@ -76,17 +76,10 @@ import math
 
 
 if __name__ == '__main__':
-    pos0 = np.array([0, 0, 0])  # 给的都是惯性系 东北天
+    pos0 = np.array([9, 9, 9])  # 给的都是惯性系 东北天
     angle0 = np.array([deg2rad(0), deg2rad(0), deg2rad(0)])  # 给的都是惯性系 东北天
 
     quad = UAV(pos0=pos0, angle0=angle0)  # initialization of a quadrotor
-    pid_x = PID(kp=0.5, ki=0., kd=120)  # controller of x
-    pid_y = PID(kp=0.5, ki=0., kd=120)  # controller of y
-    pid_z = PID(kp=1, ki=0., kd=160)  # controller z
-
-    pid_phi = PID(kp=1, ki=0., kd=5)  # controller of roll along X in world
-    pid_theta = PID(kp=1, ki=0., kd=5)  # controller of pitch along Y in world
-    pid_psi = PID(kp=4, ki=0., kd=55)  # controller of yaw along Y in world
 
     xbound = np.array([quad.pos_min[0], quad.pos_max[0]])
     ybound = np.array([quad.pos_min[1], quad.pos_max[1]])
@@ -95,7 +88,6 @@ if __name__ == '__main__':
 
     quad_vis = UAV_Visualization(xbound=xbound, ybound=ybound, zbound=zbound, origin=origin, target=np.array([0, 0, 0]))  # 初始化显示界面
     quad_vis.arm_scale = 10
-
 
     '''visualization'''
     traj_ref = np.atleast_2d([[]])
@@ -108,6 +100,14 @@ if __name__ == '__main__':
     '''visualization'''
 
     inv_coe_m = np.linalg.inv(quad.power_allocation_mat)  # 动力分配矩阵的逆
+
+    pid_x = PID(kp=0.5, ki=0., kd=120)  # controller of x
+    pid_y = PID(kp=0.5, ki=0., kd=120)  # controller of y
+    pid_z = PID(kp=0.5, ki=0., kd=160)  # controller z
+
+    pid_phi = PID(kp=0.5, ki=0., kd=20)  # controller of roll along X in world
+    pid_theta = PID(kp=0.5, ki=0., kd=20)  # controller of pitch along Y in world
+    pid_psi = PID(kp=0.1, ki=0., kd=10)  # controller of yaw along Y in world
 
     plt.ion()
     while not quad.is_episode_Terminal():
@@ -126,10 +126,10 @@ if __name__ == '__main__':
         # y_ref = 5 * math.cos(phase)
         # z_ref = 3 * math.sin(phase)
         # psi_ref = deg2rad(45) * math.sin(phase)
-        x_ref = 5
-        y_ref = 5
-        z_ref = 4
-        psi_ref = 0
+        x_ref = -9
+        y_ref = -9
+        z_ref = -9
+
         t_ref = quad.time
         quad_vis.target = np.array([x_ref, y_ref, z_ref])
         quad_vis.has_target = True
@@ -142,8 +142,12 @@ if __name__ == '__main__':
         pid_z.set_e(ez)
         ux, uy, uz = pid_x.out(), pid_y.out(), pid_z.out()
         U1 = quad.m * math.sqrt(ux ** 2 + uy ** 2 + (uz + quad.g) ** 2)
-        phi_ref = math.asin((ux * math.sin(psi_ref) - uy * math.cos(psi_ref)) * quad.m / U1)
-        theta_ref = math.asin((ux * quad.m - U1 * math.sin(psi_ref) * math.sin(phi_ref)) / (U1 * math.cos(psi_ref) * math.cos(phi_ref)))
+
+        psi_ref = deg2rad(90)
+        # phi_ref = math.asin((ux * math.sin(psi_ref) - uy * math.cos(psi_ref)) * quad.m / U1)
+        # theta_ref = math.asin((ux * quad.m - U1 * math.sin(psi_ref) * math.sin(phi_ref)) / (U1 * math.cos(psi_ref) * math.cos(phi_ref)))
+        phi_ref = np.arcsin(quad.m * (ux * np.sin(psi_ref) - uy * np.cos(psi_ref)) / U1)
+        theta_ref = np.arcsin(quad.m * (ux * np.cos(psi_ref) + uy * np.sin(psi_ref)) / (U1 * np.cos(phi_ref)))
 
         # phi_ref = deg2rad(30) * math.sin(2 * math.pi / 1 * quad.time)
         # theta_ref = deg2rad(30) * math.sin(2 * math.pi / 1 * quad.time)
