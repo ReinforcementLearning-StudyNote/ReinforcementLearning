@@ -5,15 +5,15 @@ from environment.envs.PIDControl.pid import PID
 
 
 if __name__ == '__main__':
-    env = UAV_Hover(target_pos=[-5, -5, -4], save_cfg=False)
+    env = UAV_Hover(target_pos=[1, 1, -9], save_cfg=False)
     env.uav_vis.arm_scale = 10      # 显示放大的尺度，自己设置即可
 
     pid_x = PID(kp=0.5, ki=0., kd=120)  # controller of x
     pid_y = PID(kp=0.5, ki=0., kd=120)  # controller of y
-    pid_z = PID(kp=1, ki=0., kd=160)  # controller z
+    pid_z = PID(kp=0.7, ki=0., kd=200)  # controller z
 
-    pid_phi = PID(kp=1, ki=0., kd=5)  # controller of roll along X in world
-    pid_theta = PID(kp=1, ki=0., kd=5)  # controller of pitch along Y in world
+    pid_phi = PID(kp=0.5, ki=0., kd=20)  # controller of roll along X in world
+    pid_theta = PID(kp=1, ki=0., kd=20)  # controller of pitch along Y in world
     pid_psi = PID(kp=4, ki=0., kd=55)  # controller of yaw along Y in world
 
     num = 0
@@ -23,9 +23,9 @@ if __name__ == '__main__':
 
     plt.ion()
     while num < 10:
-        # env.reset_random()
+        env.reset_random()
         # env.reset()
-        env.reset_target_random()
+        # env.reset_target_random()
         while not env.is_terminal:
             env.show_dynamic_image(per_show=10)
             plt.pause(0.00000001)
@@ -59,6 +59,6 @@ if __name__ == '__main__':
             '''control'''
             # f = [random.uniform(env.fmin, env.fmax) for _ in range(4)]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=f)
-            print(env.time)
+            print('Pos_e: {}'.format(env.error_pos))
         num += 1
     plt.ioff()

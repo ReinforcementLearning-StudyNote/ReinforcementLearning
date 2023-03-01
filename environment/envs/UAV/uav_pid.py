@@ -76,8 +76,8 @@ import math
 
 
 if __name__ == '__main__':
-    pos0 = [0, 0, 0]  # 给的都是惯性系 东北天
-    angle0 = [deg2rad(0), deg2rad(0), deg2rad(0)]  # 给的都是惯性系 东北天
+    pos0 = np.array([0, 0, 0])  # 给的都是惯性系 东北天
+    angle0 = np.array([deg2rad(0), deg2rad(0), deg2rad(0)])  # 给的都是惯性系 东北天
 
     quad = UAV(pos0=pos0, angle0=angle0)  # initialization of a quadrotor
     pid_x = PID(kp=0.5, ki=0., kd=120)  # controller of x
@@ -95,8 +95,7 @@ if __name__ == '__main__':
 
     quad_vis = UAV_Visualization(xbound=xbound, ybound=ybound, zbound=zbound, origin=origin, target=np.array([0, 0, 0]))  # 初始化显示界面
     quad_vis.arm_scale = 10
-    quad_vis.has_target = False
-    quad_vis.has_ref = True
+
 
     '''visualization'''
     traj_ref = np.atleast_2d([[]])
@@ -127,11 +126,14 @@ if __name__ == '__main__':
         # y_ref = 5 * math.cos(phase)
         # z_ref = 3 * math.sin(phase)
         # psi_ref = deg2rad(45) * math.sin(phase)
-        x_ref = 0
-        y_ref = 0
+        x_ref = 5
+        y_ref = 5
         z_ref = 4
         psi_ref = 0
         t_ref = quad.time
+        quad_vis.target = np.array([x_ref, y_ref, z_ref])
+        quad_vis.has_target = True
+        quad_vis.has_ref = False
 
         '''2. 计算位置 PID 控制的输出，同时得到期望姿态角'''
         ex, ey, ez = x_ref - quad.pos[0], y_ref - quad.pos[1], z_ref - quad.pos[2]
@@ -230,7 +232,9 @@ if __name__ == '__main__':
         if plot_3D:
             quad_vis.render(p=quad.pos,
                             ref_p=np.array([x_ref, y_ref, z_ref]),
+                            v=quad.vel,
                             a=quad.angle,
+                            ra=quad.omega_inertial,
                             f=quad.force, d=quad.d, win=10)
 
         plt.show()
@@ -251,7 +255,7 @@ if __name__ == '__main__':
         # for i in range(4):
         #     f[i] = max(min(quad.fmax, f[i]), quad.fmin)
         # print('Force UAV: ', f)
-        print('time', quad.time)
+        # print('time', quad.time)
         quad.rk44(action=f)
 
     plt.ioff()

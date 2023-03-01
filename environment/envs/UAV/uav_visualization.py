@@ -59,9 +59,14 @@ class UAV_Visualization:
         self.head_bar, = self.ax.plot([], [], [], color='green', markersize=6, antialiased=False)                   # 飞机正方向
         self.traj, = self.ax.plot([], [], [], color='red', linewidth=1.5)
         self.traj_ref, = self.ax.plot([], [], [], color='blue', linewidth=1.5)
-        self.XOY_proj = self.ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)[0]
-        self.ZOX_proj = self.ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)[0]
-        self.YOZ_proj = self.ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)[0]
+        self.X_proj = self.ax.plot([], [], [], marker='o', color='red', markersize=6, antialiased=False)[0]
+        self.Y_proj = self.ax.plot([], [], [], marker='o', color='red', markersize=6, antialiased=False)[0]
+        self.Z_proj = self.ax.plot([], [], [], marker='o', color='red', markersize=6, antialiased=False)[0]
+        self.text_e = self.ax.text2D(0.02, 0.92 - 0.00, 'Pos_e: {} m'.format([0, 0, 0]), transform=self.ax.transAxes, fontsize='11')
+        self.text_pos = self.ax.text2D(0.02, 0.92 - 0.03, 'Pos: {} m'.format([0, 0, 0]), transform=self.ax.transAxes, fontsize='11')
+        self.text_vel = self.ax.text2D(0.02, 0.92 - 0.06, 'Pos: {} m/s'.format([0, 0, 0]), transform=self.ax.transAxes, fontsize='11')
+        self.text_att = self.ax.text2D(0.02, 0.92 - 0.09, 'Pos: {} deg'.format([0, 0, 0]), transform=self.ax.transAxes, fontsize='11')
+        self.text_att_rate = self.ax.text2D(0.02, 0.92 - 0.12, 'Pos: {} deg/s'.format([0, 0, 0]), transform=self.ax.transAxes, fontsize='11')
 
         self.label = [self.ax.text(self.o[0], self.o[1], self.o[2], str(i + 1), fontsize='11') for i in range(4)]
         self.grav = self.ax.quiver(self.o[0], self.o[1], self.o[2], 0, 0, -1, length=0.8*9.8*self.length_per_n, color='red')
@@ -78,17 +83,15 @@ class UAV_Visualization:
             'traj': self.traj,
             'traj_ref': self.traj_ref,
             'bar_ball': self.bar_ball,
-            'XOY_proj': self.XOY_proj,
-            'ZOX_proj': self.ZOX_proj,
-            'YOZ_proj': self.YOZ_proj
+            'X_proj': self.X_proj,
+            'Y_proj': self.Y_proj,
+            'Z_proj': self.Z_proj,
+            'text_e': self.text_e,
+            'text_pos': self.text_pos,
+            'text_vel': self.text_vel,
+            'text_att': self.text_att,
+            'text_att_rate': self.text_att_rate
         }
-        # cx = np.mean(self.xbound)
-        # cy = np.mean(self.ybound)
-        # cz = np.mean(self.zbound)
-        # self.ax.scatter3D([cx, self.xbound[0], self.xbound[1], cx, cx, cx, cx],
-        #                   [cy, cy, cy, self.ybound[0], self.ybound[1], cy, cy],
-        #                   [cz, cz, cz, cz, cz, self.zbound[0], self.zbound[1]],
-        #                   s=30, c='red')
         '''UAV相关部件'''
 
         self.figure = self.ax.plot([], [])
@@ -129,7 +132,15 @@ class UAV_Visualization:
         _R_b_i = _R_i_b.T  # 从机体系到惯性系的转换矩阵
         return _R_b_i
 
-    def render(self, p: np.ndarray, ref_p: np.ndarray, a: np.ndarray, f: np.ndarray, d: float, win: int):
+    def render(self,
+               p: np.ndarray,
+               ref_p: np.ndarray,
+               v:np.ndarray,
+               a: np.ndarray,
+               ra: np.ndarray,
+               f: np.ndarray,
+               d: float,
+               win: int):
         """
         @note:          show
         :param p:       无人机在 观察系 下的位置
@@ -176,6 +187,15 @@ class UAV_Visualization:
             self.quadGui['origin_point'].set_3d_properties([self.o[2], self.o[2]])
             '''初始位置'''
 
+            '''文字'''
+            np.set_printoptions(precision=3)
+            self.quadGui['text_e'].set_text('Pos_e: {} m'.format(self.target - p))
+            self.quadGui['text_pos'].set_text('Pos: {} m'.format(p))
+            self.quadGui['text_vel'].set_text('Vel: {} m/s'.format(v))
+            self.quadGui['text_att'].set_text('Att: {} deg'.format(a * 180 / np.pi))
+            self.quadGui['text_att_rate'].set_text('ARate: {} deg/s'.format(ra * 180 / np.pi))
+            '''文字'''
+
             '''目标位置 (如果有)'''
             if self.has_target:
                 self.quadGui['target_point'].set_data([self.target[0], self.target[0]], [self.target[1], self.target[1]])
@@ -188,12 +208,12 @@ class UAV_Visualization:
             '''无人机中心位置'''
 
             '''无人机位置在三轴投影'''
-            self.quadGui['XOY_proj'].set_data([p[0], p[0]], [p[1], p[1]])
-            self.quadGui['XOY_proj'].set_3d_properties([self.zbound[0]], [self.zbound[0]])
-            self.quadGui['ZOX_proj'].set_data([p[0], p[0]], [self.ybound[1], self.ybound[1]])
-            self.quadGui['ZOX_proj'].set_3d_properties([p[2], p[2]])
-            self.quadGui['YOZ_proj'].set_data([self.xbound[1], self.xbound[1]], [p[1], p[1]])
-            self.quadGui['YOZ_proj'].set_3d_properties([p[2], p[2]])
+            self.quadGui['X_proj'].set_data([p[0], p[0]], [self.ybound[0], self.ybound[0]])
+            self.quadGui['X_proj'].set_3d_properties([self.zbound[0]], [self.zbound[0]])
+            self.quadGui['Y_proj'].set_data([self.xbound[1], self.xbound[1]], [p[1], p[1]])
+            self.quadGui['Y_proj'].set_3d_properties([self.zbound[0]], [self.zbound[0]])
+            self.quadGui['Z_proj'].set_data([self.xbound[1], self.xbound[1]], [self.ybound[1], self.ybound[1]])
+            self.quadGui['Z_proj'].set_3d_properties([p[2], p[2]])
             '''无人机位置在三轴投影'''
 
             '''画标签'''

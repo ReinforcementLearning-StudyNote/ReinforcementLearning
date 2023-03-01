@@ -275,7 +275,7 @@ class UAV_Hover(rl_base, UAV):
         @note:      to judge if a uav has arrived to the target successfully
         @return:    yes or no
         """
-        if np.linalg.norm(self.error_pos) < 10e-2:   # 位置到终点
+        if np.linalg.norm(self.error_pos) < 20e-2:   # 位置到终点
             if np.linalg.norm(self.vel) < 3e-2:     # 并且不能有速度
                 return True
         return False
@@ -350,7 +350,7 @@ class UAV_Hover(rl_base, UAV):
         @param per_show:    draw the graph every 'per_show' time steps
         @return:            None
         """
-        self.uav_vis.render(p=self.pos, ref_p=self.target_pos, a=self.angle, d=self.d, f=self.force, win=per_show)
+        self.uav_vis.render(p=self.pos, ref_p=self.target_pos, v=self.vel, a=self.angle, ra=self.omega_inertial, d=self.d, f=self.force, win=per_show)
 
     def reset(self):
         """
@@ -446,8 +446,9 @@ class UAV_Hover(rl_base, UAV):
         """
         # 这里仅仅是位置random，初始的速度都是零
         '''physical parameters'''
-        self.pos = self.set_random_pos()
-        self.init_pos = self.pos.copy()
+        # self.pos = self.set_random_pos()
+        self.target_pos = self.set_random_target_pos()
+        self.pos = self.init_pos.copy()
         self.vel = self.init_vel.copy()
         self.angle = self.init_angle.copy()
         self.omega_inertial = self.init_omega0_inertial.copy()

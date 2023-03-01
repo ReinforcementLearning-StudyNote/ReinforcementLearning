@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
-	pos0 = [0, 0, 0]  # 给的都是惯性系 东北天
-	angle0 = [deg2rad(0), deg2rad(0), deg2rad(0)]  # 给的都是惯性系 东北天
+	pos0 = np.array([0, 0, 0])	# 给的都是惯性系 东北天
+	angle0 = np.array([deg2rad(0), deg2rad(0), deg2rad(0)])  # 给的都是惯性系 东北天
 
 	quad = UAV(pos0=pos0, angle0=angle0)
 	# quad.set_position_limitation2inf()
@@ -22,13 +22,13 @@ if __name__ == '__main__':
 	index = 0
 	plt.ion()
 	while not quad.is_episode_Terminal():
-		position = quad.pos
-		attitude = quad.angle
+		# position = quad.pos
+		# attitude = quad.angle
 		d = 4 * quad.d
 
 		'''一些常规力选择'''
 		f0 = 9.8 / 5
-		eq_f = quad.m * quad.g / math.cos(math.fabs(attitude[0])) / math.cos(math.fabs(attitude[1])) / 4
+		eq_f = quad.m * quad.g / math.cos(math.fabs(quad.angle[0])) / math.cos(math.fabs(quad.angle[1])) / 4
 		bias = 1 * math.sin(math.pi * quad.time + math.pi / 2)
 
 		f_roll = [f0 - 0.02, f0, f0, f0 - 0.02]  # 滚转X
@@ -44,7 +44,7 @@ if __name__ == '__main__':
 		'''一些常规力选择'''
 
 		'''visualization'''
-		quad_vis.render(p=position, ref_p=np.array([0, 0, 10]), a=attitude, d=d, f=np.array(f), win=10)
+		quad_vis.render(p=quad.pos, ref_p=np.array([0, 0, 10]), v=quad.vel, a=quad.angle, ra=quad.omega_inertial, d=d, f=np.array(f), win=10)
 		if index % 50 == 0:
 			quad.show_uav_linear_state(with_time=True)
 			# quad.show_uav_angular_state(with_time=True)
