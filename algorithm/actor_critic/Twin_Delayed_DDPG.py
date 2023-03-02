@@ -39,7 +39,7 @@ class Twin_Delayed_DDPG:
         :param path:                        saving path
         """
         '''From rl_base'''
-        # DDPG 要求智能体状态必须是连续的，动作必须连续的
+        # TD3 要求智能体状态必须是连续的，动作必须连续的
         self.agentName, self.state_dim_nn, self.action_dim_nn, self.action_range = \
             self.get_RLBase_from_XML(modelFileXML)
         # agentName:            the name of the agent
@@ -122,11 +122,13 @@ class Twin_Delayed_DDPG:
         new_state = torch.tensor(new_state, dtype=torch.float).to(self.critic1.device)
         done = torch.tensor(done, dtype=torch.float).to(self.critic1.device)
 
-        state = torch.tensor(state, dtype=torch.float).to(self.critic2.device)
-        action = torch.tensor(action, dtype=torch.float).to(self.critic2.device)
-        reward = torch.tensor(reward, dtype=torch.float).to(self.critic2.device)
-        new_state = torch.tensor(new_state, dtype=torch.float).to(self.critic2.device)
-        done = torch.tensor(done, dtype=torch.float).to(self.critic2.device)
+        '''这里TD3的不同Critic网络，默认在同一块GPU上，当然......我就有一块GPU'''
+        # state = torch.tensor(state, dtype=torch.float).to(self.critic2.device)
+        # action = torch.tensor(action, dtype=torch.float).to(self.critic2.device)
+        # reward = torch.tensor(reward, dtype=torch.float).to(self.critic2.device)
+        # new_state = torch.tensor(new_state, dtype=torch.float).to(self.critic2.device)
+        # done = torch.tensor(done, dtype=torch.float).to(self.critic2.device)
+        '''这里TD3的不同Critic网络，默认在同一块GPU上，当然......我就有一块GPU'''
 
         self.target_actor.eval()            # PI'
         self.target_critic1.eval()          # Q1'
@@ -158,18 +160,15 @@ class Twin_Delayed_DDPG:
             critic_value2_:       torch.Size([batch, 1])
                 done:             torch.Size([batch])
                target:            torch.Size([batch])
-          .view之前的target1,2:    torch.Size([batch])
-          .view之后的target1,2:    torch.Size([batch, 1])
+          .view之前的target:    torch.Size([batch])
+          .view之后的target:    torch.Size([batch, 1])
         经验：数据处理，千万不要使用list，用numpy或者tensor都行。
         '''
         '''取较小的Q'''
-        target = reward + self.gamma * torch.minimum(critic_value1_.squeeze(), critic_value2_.squeeze()) * done
+        target = torch.tensor(reward + self.gamma * torch.minimum(critic_value1_.squeeze(), critic_value2_.squeeze()) * done).to(self.critic1.device)
 
-        target1 = torch.tensor(target).to(self.critic1.device)      # torch.Size([batch])
-        target1 = target1.view(self.memory.batch_size, 1)           # torch.Size([batch, 1])
-
-        target2 = torch.tensor(target).to(self.critic2.device)
-        target2 = target2.view(self.memory.batch_size, 1)       # target1 and target2 are identical
+        target1 = target.view(self.memory.batch_size, 1)
+        target2 = target.view(self.memory.batch_size, 1)
 
         '''critic1 training'''
         self.critic1.train()
@@ -282,7 +281,7 @@ class Twin_Delayed_DDPG:
         root = xml_cfg().XML_Load(filename)
         return xml_cfg().XML_GetTagValue(node=xml_cfg().XML_FindNode(nodename='RL_Base', root=root)), root.attrib['name']
 
-    def DDPG_info(self):
+    def TD3_info(self):
         print('agent name：', self.agentName)
         print('state_dim:', self.state_dim_nn)
         print('action_dim:', self.action_dim_nn)
