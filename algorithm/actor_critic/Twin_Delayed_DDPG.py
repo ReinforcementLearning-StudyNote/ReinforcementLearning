@@ -1,4 +1,5 @@
 import pandas as pd
+import torch
 
 from common.common_func import *
 from common.common_cls import *
@@ -110,7 +111,7 @@ class Twin_Delayed_DDPG:
         mu_prime_np = mu_prime.cpu().detach().numpy()
         return np.clip(mu_prime_np, -1, 1)  # 将数据截断在[-1, 1]之间
 
-    def learn(self, is_reward_ascent=True, critic_random=True):     # TODO
+    def learn(self, is_reward_ascent=True, critic_random=True):
         if self.memory.mem_counter < self.memory.batch_size:
             return
 
@@ -143,13 +144,28 @@ class Twin_Delayed_DDPG:
         critic_value2_ = self.target_critic2.forward(new_state, target_actions)
         critic_value2 = self.critic2.forward(state, action)
 
-        target = []
         '''取较小的Q'''
+        '''
+        这里的target变量最开始的实现是用list的方式实现，具体如下：
+        target = []
         for j in range(self.memory.batch_size):
             target.append(reward[j] + self.gamma * torch.minimum(critic_value1_[j], critic_value2_[j]) * done[j])
+        如此实现，使得learn函数中将近90%的时间被这个循环所占用。因此，将target这个变量直接用tensor的方式去构建，具体如下：
+        target = reward + self.gamma * torch.minimum(critic_value1_.squeeze(), critic_value2_.squeeze()) * done
+        为防止搞错tensor的维度，将记录的维度列在下边
+                reward:           torch.Size([batch])
+            critic_value1_:       torch.Size([batch, 1])
+            critic_value2_:       torch.Size([batch, 1])
+                done:             torch.Size([batch])
+               target:            torch.Size([batch])
+          .view之前的target1,2:    torch.Size([batch])
+          .view之后的target1,2:    torch.Size([batch, 1])
+        '''
+        target = reward + self.gamma * torch.minimum(critic_value1_.squeeze(), critic_value2_.squeeze()) * done
+        # print(temp.shape)
 
-        target1 = torch.tensor(target).to(self.critic1.device)
-        target1 = target1.view(self.memory.batch_size, 1)
+        target1 = torch.tensor(target).to(self.critic1.device)      # torch.Size([batch])
+        target1 = target1.view(self.memory.batch_size, 1)           # torch.Size([batch, 1])
 
         target2 = torch.tensor(target).to(self.critic2.device)
         target2 = target2.view(self.memory.batch_size, 1)       # target1 and target2 are identical

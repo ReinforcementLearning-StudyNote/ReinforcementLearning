@@ -19,7 +19,7 @@ cfgPath = '../../environment/config/'
 cfgFile = 'uav_hover.xml'
 optPath = '../../datasave/network/'
 show_per = 10
-
+timestep = 0
 
 class CriticNetWork(nn.Module):
     def __init__(self, beta, state_dim, action_dim, name, chkpt_dir):
@@ -300,7 +300,8 @@ if __name__ == '__main__':
             new_state_.clear()
             new_done.clear()
 
-            while not env.is_terminal:
+            while not env.is_terminal:      # 每个回合
+                timestep += 1
                 env.current_state = env.next_state.copy()
                 epsilon = random.uniform(0, 1)
                 if epsilon < 0.15:
@@ -308,7 +309,6 @@ if __name__ == '__main__':
                 else:
                     action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 4)  # 剩下的是神经网络加噪声
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                # action = [1.5, 1.5, 1.5, 1.5]
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
                 agent.saveData_Step_Reward(step=step, reward=env.reward, is2file=False, filename='StepReward.csv')
                 step += 1
@@ -324,8 +324,11 @@ if __name__ == '__main__':
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+
                 agent.learn(is_reward_ascent=False)
+
             print('Cumulative reward:', round(sumr, 3))
+            print('TimeStep:', timestep)
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
