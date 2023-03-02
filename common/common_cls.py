@@ -10,7 +10,7 @@ import torch
 
 
 class ReplayBuffer:
-    def __init__(self, max_size, batch_size, state_dim, action_dim):
+    def __init__(self, max_size: int, batch_size: int, state_dim: int, action_dim: int):
         # print(state_dim, action_dim)
         self.mem_size = max_size
         self.mem_counter = 0
@@ -23,7 +23,7 @@ class ReplayBuffer:
         self.sorted_index = []
         self.resort_count = 0
 
-    def store_transition(self, state, action, reward, state_, done):
+    def store_transition(self, state: np.ndarray, action: np.ndarray, reward: np.ndarray, state_: np.ndarray, done: float):
         index = self.mem_counter % self.mem_size
         self.s_mem[index] = state
         self.a_mem[index] = action
@@ -45,7 +45,7 @@ class ReplayBuffer:
         for i in range(num):
             self.store_transition(states[i], actions[i], rewards[i], states_[i], dones[i])
 
-    def sample_buffer(self, is_reward_ascent=True):
+    def sample_buffer(self, is_reward_ascent: bool = True):
         max_mem = min(self.mem_counter, self.mem_size)
         if is_reward_ascent:
             batchNum = min(int(0.25 * max_mem), self.batch_size)

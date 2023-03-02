@@ -262,7 +262,7 @@ if __name__ == '__main__':
         agent.target_critic2 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
 
-        agent.DDPG_info()
+        agent.TD3_info()
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0

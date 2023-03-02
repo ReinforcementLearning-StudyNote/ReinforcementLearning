@@ -209,20 +209,23 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
 
         new_theta = self.next_state[1]
 
-        if current_error > next_error:      # 如果误差变小
-            r1 = 1
-        elif current_error < next_error:
-            r1 = -1
-        else:
-            if next_error > deg2rad(0.5):       # 如果当前误差大于0.5度
-                r1 = -1
-            else:
-                r1 = 2
+        # if current_error > next_error:      # 如果误差变小
+        #     r1 = 1
+        # elif current_error < next_error:
+        #     r1 = -1
+        # else:
+        #     if next_error > deg2rad(0.5):       # 如果当前误差大于0.5度
+        #         r1 = -1
+        #     else:
+        #         r1 = 2
+        #
+        # if new_theta > self.maxTheta or new_theta < self.minTheta:
+        #     r2 = -2
+        # else:
+        #     r2 = 0
 
-        if new_theta > self.maxTheta or new_theta < self.minTheta:
-            r2 = -2
-        else:
-            r2 = 0
+        r1 = -(next_error ** 2)     # 使用 x'Qx 的形式，试试好不好使
+        r2 = -0
 
         self.reward = r1 + r2
 

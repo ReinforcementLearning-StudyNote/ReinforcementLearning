@@ -15,6 +15,7 @@ cfgPath = '../../environment/config/'
 cfgFile = 'Flight_Attitude_Simulator_Continuous.xml'
 optPath = '../../datasave/network/'
 show_per = 1
+timestep = 0
 
 
 class CriticNetWork(nn.Module):
@@ -184,7 +185,11 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                 _new_state_.append(env.next_state)
                 _new_done.append(1.0 if env.is_terminal else 0.0)
             else:
-                agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+                agent.memory.store_transition(np.array(env.current_state),
+                                              np.array(env.current_action),
+                                              np.array(env.reward),
+                                              np.array(env.next_state),
+                                              1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3:
                 print('Update Replay Memory......')
@@ -211,7 +216,11 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
             # env.show_dynamic_image(isWait=False)
             # if env.reward > 0:
-            agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+            agent.memory.store_transition(np.array(env.current_state),
+                                          np.array(env.current_action),
+                                          np.array(env.reward),
+                                          np.array(env.next_state),
+                                          1 if env.is_terminal else 0)
 
 
 if __name__ == '__main__':
@@ -231,23 +240,17 @@ if __name__ == '__main__':
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
                     actor_soft_update=1e-2,
-                    memory_capacity=20000,
+                    memory_capacity=20000,  # 20000
                     batch_size=512,  # 1024
                     modelFileXML=cfgPath + cfgFile,
                     path=simulationPath)
-        '''
-            gamma = 0.99, noise_clip = 1 / 2, noise_policy = 1 / 4, policy_delay = 3,
-            critic1_soft_update = 1e-2,
-            critic2_soft_update = 1e-2,
-            actor_soft_update = 1e-2,
-            memory_capacity = 5000,  # 100000
-            batch_size = 512,  # 1024
-        '''
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
         agent.target_actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
+        agent.critic1 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
+        agent.target_critic1 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
+        agent.critic2 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
+        agent.target_critic2 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.TD3_info()
         # cv.waitKey(0)
@@ -303,7 +306,11 @@ if __name__ == '__main__':
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
                     # if env.reward > 0:
-                    agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+                    agent.memory.store_transition(np.array(env.current_state),
+                                                  np.array(env.current_action),
+                                                  np.array(env.reward),
+                                                  np.array(env.next_state),
+                                                  1 if env.is_terminal else 0)
                 agent.learn(is_reward_ascent=False)
             '''跳出循环代表回合结束'''
             if is_storage_only_success:
@@ -328,7 +335,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        optPath = '../../datasave/network/DDPG-Flight-Attitude-Simulator/parameters/'
+        optPath = '../../datasave/network/TD3-Flight-Attitude-Simulator/parameters/'
         agent = TD3(modelFileXML=cfgPath + cfgFile)
         '''重新加载actor网络结构，这是必须的操作'''
         agent.actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
