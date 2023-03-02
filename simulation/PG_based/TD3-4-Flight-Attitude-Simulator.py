@@ -6,14 +6,17 @@ import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
-from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous as flight_sim_con
+from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous2 import Flight_Attitude_Simulator_Continuous2 as flight_sim_con
 from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common_func import *
 from common.common_cls import *
 
 cfgPath = '../../environment/config/'
-cfgFile = 'Flight_Attitude_Simulator_Continuous.xml'
-optPath = '../../datasave/network/'
+cfgFile = 'Flight_Attitude_Simulator_Continuous2.xml'
+# optPath = '../../datasave/network/'
+optPath = 'temp/'
+ALGORITHM = 'TD3'
+ENV = 'FlightAttitudeSimulator2'
 show_per = 1
 timestep = 0
 
@@ -174,10 +177,10 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
             if agent.memory.mem_counter % 100 == 0:
                 print('replay_count = ', agent.memory.mem_counter)
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = agent.choose_action(env.current_state, is_optimal=True)
+            _action_from_actor = agent.choose_action(env.current_state, is_optimal=False)
             _action = agent.action_linear_trans(_action_from_actor)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
-            env.show_dynamic_image(isWait=False)
+            # env.show_dynamic_image(isWait=False)
             if is_only_success:
                 _new_state.append(env.current_state)
                 _new_action.append(env.current_action)
@@ -224,7 +227,8 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-FlightAttitudeSimulator/'
+    cur_time = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S')
+    simulationPath = '../../datasave/log/' + cur_time + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
@@ -235,7 +239,7 @@ if __name__ == '__main__':
     env = flight_sim_con(initTheta=-60.0, setTheta=0.0, save_cfg=False)
 
     if TRAIN:
-        agent = TD3(gamma=0.9,
+        agent = TD3(gamma=0.99,
                     noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
@@ -259,13 +263,15 @@ if __name__ == '__main__':
             print('Retraining')
             fullFillReplayMemory_with_Optimal(randomEnv=True,
                                               fullFillRatio=0.5,
-                                              is_only_success=True)
+                                              is_only_success=False)
             # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
             '''生成初始数据之后要再次初始化网络'''
-            # ddpg.actor.initialization()
-            # ddpg.target_actor.initialization()
-            # ddpg.critic.initialization()
-            # ddpg.target_critic.initialization()
+            agent.actor.initialization()
+            agent.target_actor.initialization()
+            agent.critic1.initialization()
+            agent.target_critic1.initialization()
+            agent.critic2.initialization()
+            agent.target_critic2.initialization()
             '''生成初始数据之后要再次初始化网络'''
         else:
             '''fullFillReplayMemory_Random'''

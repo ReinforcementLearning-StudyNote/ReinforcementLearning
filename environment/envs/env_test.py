@@ -31,16 +31,31 @@ def test_flight_attitude_simulator_continuous():
     env = Flight_Attitude_Simulator_Continuous(initTheta=-60.0, setTheta=0., save_cfg=True)
     test_num = 1
     for _ in range(test_num):
-        env.reset_random()
-        env.theta=0
+        # env.reset_random()
+        env.reset()
+        # env.theta=0
         while not env.is_terminal:
             env.show_dynamic_image(isWait=False)
             # action = random.choice(env.action_space)
-            action = [0.8]
+            action = [3]
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
-            print(env.reward)
+            print(env.theta, env.dTheta)
     # env.saveData(is2file=True, filepath='../../datasave/')
 
+def test_flight_attitude_simulator_continuous2():
+    from FlightAttitudeSimulator.flight_attitude_simulator_continuous2 import Flight_Attitude_Simulator_Continuous2
+    env = Flight_Attitude_Simulator_Continuous2(initTheta=60.0, setTheta=0., save_cfg=True)
+    test_num = 1
+    for _ in range(test_num):
+        # env.reset_random()
+        env.reset()
+        while not env.is_terminal:
+            env.show_dynamic_image(isWait=False)
+            # action = random.choice(env.action_space)
+            action = np.array([0])
+            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            # print(env.reward)
+    # env.saveData(is2file=True, filepath='../../datasave/')
 
 # UGV Bidirectional Continuous Test
 def test_ugv_bidirectional_continuous():
@@ -137,7 +152,7 @@ def test_ugv_forward_discrete():
 def test_ugv_forward_obstacles_discrete():
     from UGV.ugv_forward_obstacle_discrete import UGV_Forward_Obstacle_Discrete
     env = UGV_Forward_Obstacle_Discrete(initPhi=deg2rad(0), save_cfg=True, x_size=11, y_size=11, start=[2.5, 2.5], terminal=[4.0, 2.5],
-                                          dataBasePath='./pathplanning/11X11-AllCircle1/')
+                                        dataBasePath='./pathplanning/11X11-AllCircle1/')
     num = 0
     while num < 30:
         # cap = cv.VideoWriter('test' +str(num)+'.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 120.0, (env.width, env.height))
@@ -194,14 +209,16 @@ def test_uav_hover():
         num += 1
     plt.ioff()
 
+
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
-    # test_flight_attitude_simulator_continuous()
+    test_flight_attitude_simulator_continuous()
+    # test_flight_attitude_simulator_continuous2()
     # test_ugv_bidirectional_continuous()
     # test_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
     # test_cartpole()
-    test_uav_hover()
+    # test_uav_hover()
     pass

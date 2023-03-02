@@ -1,45 +1,66 @@
+import numpy as np
+
 from common.common_func import *
 from environment.envs import *
 
 
-class Flight_Attitude_Simulator_Continuous(rl_base):
+class Flight_Attitude_Simulator_Continuous2(rl_base):
     def __init__(self, initTheta: float, setTheta: float, save_cfg: bool):
         """
-        :brief:                 initialization
-        :param initTheta:       initial theta
-        :param setTheta:        set Theta
+        @note:                  initialization
+        @param initTheta:       initial theta
+        @param setTheta:        target theta=0
+        @param save_cfg:        save model description file?
         """
-        super(Flight_Attitude_Simulator_Continuous, self).__init__()
+        super(Flight_Attitude_Simulator_Continuous2, self).__init__()
         '''physical parameters'''
+        self.name = 'Flight_Attitude_Simulator_Continuous2'
         self.initTheta = deg2rad(initTheta)
         self.setTheta = deg2rad(setTheta)
-        self.f_max = 1.8
-        self.f_min = -1.0
+        self.force = 0
+        self.f_max = 3.5
+        self.f_min = -1.5
+
         self.minTheta = deg2rad(-60.0)
         self.maxTheta = deg2rad(60.0)
-        self.theta = max(self.initTheta, self.minTheta)
-        self.theta = min(self.initTheta, self.maxTheta)
-        self.dTheta = 0.0
-        self.freq = 50  # control frequency
-        self.T = 1 / self.freq  # control period
-        self.time = 0.0
+
+        self.min_omega = deg2rad(-90)
+        self.max_omega = deg2rad(90)
+
+        self.min_theta_e = self.setTheta - self.maxTheta
+        self.max_theta_e = self.setTheta - self.minTheta
+
+        self.theta = min(max(self.initTheta, self.minTheta), self.maxTheta)
         self.thetaError = self.setTheta - self.theta
+        self.dTheta = 0.0
+
+        self.dt = 0.02  # control period
+        self.time = 0.0
+
         self.sum_thetaError = 0.0
-        self.timeMax = 5.0
+        self.timeMax = 15
+
+        self.Lw = 0.02  # 杆宽度
+        self.L = 0.362  # 杆半长
+        self.J = 0.082  # 转动惯量
+        self.k = 0.09  # 摩擦系数
+        self.m = 0.3  # 配重重量
+        self.dis = 0.3  # 铜块中心距中心距离0.059
+        self.copperl = 0.06  # 铜块长度
+        self.copperw = 0.03  # 铜块宽度
+        self.g = 9.8  # 重力加速度
         '''physical parameters'''
 
         '''RL_BASE'''
         # 这个状态与控制系统的状态不一样
+        self.staticGain = 2
         self.state_dim = 4  # initTheta, Theta, dTheta, error
-        self.state_num = [math.inf, math.inf, math.inf, math.inf]
-        self.state_step = [None, None, None, None]
-        self.state_space = [None, None, None, None]
-        self.state_range = [[self.minTheta, self.maxTheta],
-                            [self.minTheta, self.maxTheta],
-                            [-math.inf, math.inf],
-                            [self.minTheta - self.maxTheta, self.maxTheta - self.minTheta]]
-        self.isStateContinuous = [True, True, True, True]
-        self.initial_state = [self.initTheta, self.theta, self.dTheta, self.thetaError]
+        self.state_num = [math.inf for _ in range(self.state_dim)]
+        self.state_step = [None for _ in range(self.state_dim)]
+        self.state_space = [None for _ in range(self.state_dim)]
+        self.state_range = [[-self.staticGain, self.staticGain] for _ in range(self.state_dim)]
+        self.isStateContinuous = [True for _ in range(self.state_dim)]
+        self.initial_state = self.state_norm()
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
 
@@ -49,10 +70,14 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         self.action_num = [math.inf]
         self.action_space = [None]
         self.isActionContinuous = True
-        self.initial_action = [0.0]
+        self.initial_action = np.array([0.0])
         self.current_action = self.initial_action.copy()
 
         self.reward = 0.0
+        self.Q = 1
+        self.Qv = 0.
+        self.R = 0.1
+        self.terminal_flag = 0  # 0-正常 1-上边界出界 2-下边界出界 3-超时
         self.is_terminal = False
         '''RL_BASE'''
 
@@ -71,20 +96,8 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         self.base_ver_w = 0.02
         self.base_ver_h = 0.8
 
-        self.Lw = 0.02  # 杆宽度
-        self.L = 0.362  # 杆半长
-        self.J = 0.082  # 转动惯量
-        self.k = 0.09  # 摩擦系数
-        self.m = 0.3  # 配重重量
-        self.dis = 0.3  # 铜块中心距中心距离0.059
-        self.copperl = 0.06  # 铜块长度
-        self.copperw = 0.03  # 铜块宽度
-        self.g = 9.8  # 重力加速度
-
         self.show = self.image.copy()
         self.save = self.image.copy()
-
-        self.terminal_flag = 0  # 0-正常 1-上边界出界 2-下边界出界 3-超时
 
         self.draw_base()
         self.draw_pendulum()
@@ -177,6 +190,39 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         self.save = self.show.copy()
         self.show = self.image.copy()
 
+    def state_norm(self) -> np.ndarray:
+        """
+        状态归一化
+        """
+        # # initTheta, Theta, dTheta, error
+        #
+        _initTheta = (2 * self.initTheta - self.maxTheta - self.minTheta) / (self.maxTheta - self.minTheta) * self.staticGain
+        _Theta = (2 * self.theta - self.maxTheta - self.minTheta) / (self.maxTheta - self.minTheta) * self.staticGain
+        _dTheta = (2 * self.dTheta - self.max_omega - self.min_omega) / (self.max_omega - self.min_omega) * self.staticGain
+        _error = (2 * self.thetaError - self.max_theta_e - self.min_theta_e) / (self.max_theta_e - self.min_theta_e) * self.staticGain
+        # norm_state = np.array([_Theta, _dTheta, _error])
+
+        norm_state = np.array([self.initTheta, self.theta, self.dTheta, self.thetaError])
+        # norm_state = np.array([self.theta, self.dTheta, self.thetaError])
+
+        return norm_state
+
+    def inverse_state_norm(self, s: np.ndarray) -> np.ndarray:
+        _initTheta = (s[0] / self.staticGain * (self.maxTheta - self.minTheta) + self.maxTheta + self.minTheta) / 2
+        _Theta = (s[1] / self.staticGain * (self.maxTheta - self.minTheta) + self.maxTheta + self.minTheta) / 2
+        _dTheta = (s[2] / self.staticGain * (self.max_omega - self.min_omega) + self.max_omega + self.min_omega) / 2
+        _error = (s[3] / self.staticGain * (self.max_theta_e - self.min_theta_e) + self.max_theta_e + self.min_theta_e) / 2
+
+        inv_norm_state = np.array([self.initTheta, self.theta, self.dTheta, self.thetaError])
+
+        return inv_norm_state
+
+    def is_success(self):
+        if np.fabs(self.thetaError) < deg2rad(1):       # 角度误差小于1度
+            if np.fabs(self.dTheta) < deg2rad(1):       # 速度也很小
+                return True
+        return False
+
     def is_Terminal(self, param=None):
         """
         :brief:     判断回合是否结束
@@ -184,82 +230,92 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         """
         if self.theta > self.maxTheta + deg2rad(1):
             self.terminal_flag = 1
-            print('超出最大角度')
+            # print('超出最大角度')
             return True
         if self.theta < self.minTheta - deg2rad(1):
             self.terminal_flag = 2
-            print('超出最小角度')
+            # print('超出最小角度')
             return True
         if self.time > self.timeMax:
             self.terminal_flag = 3
-            print('超时')
+            print('Timeout')
+            return True
+        if self.is_success():
+            self.terminal_flag = 4
+            print('Success')
             return True
         self.terminal_flag = 0
         return False
 
-    def action_saturation(self, action: list):
-        for i in range(self.action_dim):
-            action[i] = max(min(action[i], self.action_range[i][1]), self.action_range[i][0])
-        self.current_action = action.copy()
-        return action
-
     def get_reward(self, param=None):
-        current_error = math.fabs(self.current_state[3])
-        next_error = math.fabs(self.next_state[3])
+        s = self.inverse_state_norm(self.current_state)
+        ss = self.inverse_state_norm(self.next_state)
+        current_error = math.fabs(s[3])
+        next_error = math.fabs(ss[3])
 
-        new_theta = self.next_state[1]
+        new_theta = ss[1]
+        new_dtheta = ss[2]
 
-        # if current_error > next_error:      # 如果误差变小
-        #     r1 = 1
-        # elif current_error < next_error:
-        #     r1 = -1
-        # else:
-        #     if next_error > deg2rad(0.5):       # 如果当前误差大于0.5度
-        #         r1 = -1
-        #     else:
-        #         r1 = 2
-        #
-        # if new_theta > self.maxTheta or new_theta < self.minTheta:
-        #     r2 = -2
-        # else:
-        #     r2 = 0
+        if current_error > next_error:  # 如果误差变小
+            r1 = 3  # + (current_error - next_error) * 20
+        elif current_error < next_error:
+            r1 = -3  # + (current_error - next_error) * 20
+        else:
+            if next_error > deg2rad(0.5):  # 如果当前误差大于0.5度
+                r1 = -3
+            else:
+                r1 = 5
 
-        r1 = -(next_error ** 2)     # 使用 x'Qx 的形式，试试好不好使
-        r2 = -0
+        if self.terminal_flag == 2 or self.terminal_flag == 3:
+            r2 = -5
+        elif self.terminal_flag == 4:
+            r2 = 10
+        else:
+            r2 = 0
 
-        self.reward = r1 + r2
+        if new_theta * new_dtheta < 0:
+            r3 = 5
+        else:
+            r3 = -5
 
-    def step_update(self, action: list):
-        action = self.action_saturation(action)         # 动作饱和处理
-        _action = action[0]     # this action is physical action rather than action number
+        # r1 = -(next_error ** 2)     # 使用 x'Qx 的形式，试试好不好使
+        # r2 = -0
 
-        def f(angle, dangle):
-            a2 = -self.k / (self.J + self.m * self.dis ** 2)
-            a1 = -self.m * self.g * self.dis / (self.dis + self.m * self.dis ** 2)
-            a0 = self.L * _action / (self.J + self.m * self.dis ** 2)
-            return a2 * dangle + a1 * np.cos(angle) + a0
+        self.reward = r1 + r2 + r3
 
-        h = self.T / 100
-        t_sim = 0.0
-        self.thetaError = self.setTheta - self.theta
-        self.current_state = [self.initTheta, self.theta, self.dTheta, self.thetaError]
+    def ode(self, xx: np.ndarray):
+        _dtheta = xx[1]
+        _ddtheta = (self.force * self.L - self.m * self.g * self.dis - self.k * xx[1]) / (self.J + self.m * self.dis ** 2)
+        return np.array([_dtheta, _ddtheta])
 
-        while t_sim <= self.T:
-            K1 = self.dTheta
-            L1 = f(self.theta, self.dTheta)
-            K2 = self.dTheta + h * L1 / 2
-            L2 = f(self.theta + h * K1 / 2, self.dTheta + h * L1 / 2)
-            K3 = self.dTheta + h * L2 / 2
-            L3 = f(self.theta + h * K2 / 2, self.dTheta + h * L2 / 2)
-            K4 = self.dTheta + h * L3
-            L4 = f(self.theta + h * K3, self.dTheta + h * L3)
-            self.theta = self.theta + h * (K1 + 2 * K2 + 2 * K3 + K4) / 6
-            self.dTheta = self.dTheta + h * (L1 + 2 * L2 + 2 * L3 + L4) / 6
-            t_sim = t_sim + h
-        self.time = self.time + self.T
+    def rk44(self, action: float):
+        self.force = action
+        h = self.dt / 10  # RK-44 解算步长
+        tt = self.time + self.dt
+        while self.time < tt:
+            xx_old = np.array([self.theta, self.dTheta])
+            K1 = h * self.ode(xx_old)
+            K2 = h * self.ode(xx_old + K1 / 2)
+            K3 = h * self.ode(xx_old + K2 / 2)
+            K4 = h * self.ode(xx_old + K3)
+            xx_new = xx_old + (K1 + 2 * K2 + 2 * K3 + K4) / 6
+            xx_temp = xx_new.copy()
+            self.theta = xx_temp[0]
+            self.dTheta = xx_temp[1]
+            self.time += h
+
+    def step_update(self, action: np.ndarray):
+        self.current_action = action.copy()
+        self.current_state = self.state_norm()  # 当前状态
+
+        '''rk44'''
+        self.rk44(action=action[0])
+        # print('角速度',rad2deg(self.dTheta))
+        '''rk44'''
+
         self.is_terminal = self.is_Terminal()
         self.thetaError = self.setTheta - self.theta
-        self.next_state = [self.initTheta, self.theta, self.dTheta, self.thetaError]
+        self.next_state = self.state_norm()  # 下一时刻
 
         self.get_reward()
 
@@ -287,10 +343,13 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         self.time = 0.0
         self.thetaError = self.setTheta - self.theta
         self.sum_thetaError = 0.0
+        self.draw_base()
+        self.draw_pendulum()
+        self.draw_copper()
         '''physical parameters'''
 
         '''RL_BASE'''
-        self.current_state = self.initial_state.copy()
+        self.current_state = self.state_norm()
         self.next_state = self.initial_state.copy()
         self.current_action = self.initial_action.copy()
         self.reward = 0.0
@@ -320,11 +379,15 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         self.time = 0.0
         self.thetaError = self.setTheta - self.theta
         self.sum_thetaError = 0.0
+        self.draw_base()
+        self.draw_pendulum()
+        self.draw_copper()
+        # self.show_initial_image(isWait=True)
         '''physical parameters'''
 
         '''RL_BASE'''
         # 这个状态与控制系统的状态不一样
-        self.initial_state = [self.initTheta, self.theta, self.dTheta, self.thetaError]
+        self.initial_state = self.state_norm()
         self.current_state = self.initial_state.copy()
         self.next_state = self.initial_state.copy()
         self.current_action = self.initial_action.copy()
@@ -340,12 +403,12 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         self.save_F = [self.initial_action[0]]
         '''data_save'''
 
-    def saveModel2XML(self, filename='Flight_Attitude_Simulator_Continuous.xml', filepath='../config/'):
+    def saveModel2XML(self, filename='Flight_Attitude_Simulator_Continuous2.xml', filepath='../config/'):
         rootMsg = {
-            'name': 'Flight_Attitude_Simulator_Continuous',
+            'name': 'Flight_Attitude_Simulator_Continuous2',
             'author': 'Yefeng YANG',
-            'date': '2022.01.03',
-            'E-mail': 'yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn'
+            'date': '2023.03.02',
+            'E-mail': 'yefeng.yang@connect.polyu.hk'
         }
         rl_baseMsg = {
             'state_dim': self.state_dim,
@@ -365,19 +428,25 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
             'isActionContinuous': self.isActionContinuous,
             'initial_action': self.initial_action,
             'current_action': self.current_action,
+            'Q': self.Q,
+            'R': self.R,
             'is_terminal': self.is_terminal
         }
         physicalMsg = {
             'initTheta': self.initTheta,
             'setTheta': self.setTheta,
+            'force': self.force,
             'f_max': self.f_max,
             'f_min': self.f_min,
             'minTheta': self.minTheta,
             'maxTheta': self.maxTheta,
+            'min_omega': self.min_omega,
+            'max_omega': self.max_omega,
+            'min_theta_e': self.min_theta_e,
+            'max_theta_e': self.max_theta_e,
             'theta': self.theta,
             'dTheta': self.dTheta,
-            'freq': self.freq,
-            'T': self.T,
+            'dt': self.dt,
             'Lw': self.Lw,
             'L': self.L,
             'J': self.J,
@@ -413,7 +482,7 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
                                  nodemsg=imageMsg)
         xml_cfg().XML_Pretty_All(filepath + filename)
 
-    def saveData(self, is2file=False, filename='Flight_Attitude_Simulator.csv', filepath=''):
+    def saveData(self, is2file=False, filename='Flight_Attitude_Simulator2.csv', filepath=''):
         self.save_Time.append(self.time)
         self.save_Theta.append(self.theta)
         self.save_dTheta.append(self.dTheta)
