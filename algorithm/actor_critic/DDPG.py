@@ -118,10 +118,14 @@ class DDPG:
         critic_value = self.critic.forward(state, action)                           # Q(s, a)
         '''第三步骤：得到action和Q-Value'''
 
-        target = []
-        for j in range(self.memory.batch_size):
-            target.append(reward[j] + self.gamma * critic_value_[j] * done[j])
-        target = torch.tensor(target).to(self.critic.device)
+        # target = []
+        # for j in range(self.memory.batch_size):
+        #     target.append(reward[j] + self.gamma * critic_value_[j] * done[j])
+        # target = torch.tensor(target).to(self.critic.device)
+        # target = target.view(self.memory.batch_size, 1)
+
+        target = reward + self.gamma * critic_value_.squeeze() * done
+        target = target.to(self.critic.device)
         target = target.view(self.memory.batch_size, 1)
 
         self.critic.train()

@@ -144,8 +144,8 @@ class Twin_Delayed_DDPG:
         critic_value2_ = self.target_critic2.forward(new_state, target_actions)
         critic_value2 = self.critic2.forward(state, action)
 
-        '''取较小的Q'''
         '''
+        Attention please!
         这里的target变量最开始的实现是用list的方式实现，具体如下：
         target = []
         for j in range(self.memory.batch_size):
@@ -160,9 +160,10 @@ class Twin_Delayed_DDPG:
                target:            torch.Size([batch])
           .view之前的target1,2:    torch.Size([batch])
           .view之后的target1,2:    torch.Size([batch, 1])
+        经验：数据处理，千万不要使用list，用numpy或者tensor都行。
         '''
+        '''取较小的Q'''
         target = reward + self.gamma * torch.minimum(critic_value1_.squeeze(), critic_value2_.squeeze()) * done
-        # print(temp.shape)
 
         target1 = torch.tensor(target).to(self.critic1.device)      # torch.Size([batch])
         target1 = target1.view(self.memory.batch_size, 1)           # torch.Size([batch, 1])
