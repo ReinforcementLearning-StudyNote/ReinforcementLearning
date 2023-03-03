@@ -36,7 +36,7 @@ class UAV_Hover(rl_base, UAV):
         self.staticGain = 2
 
         '''rl_base'''
-        self.state_dim = 3 + 3 + 3 + 3 + 3 + 4  # ex ey ez x y z vx vy vz phi theta psi dphi dtheta dpsi f1 f2 f3 f4
+        self.state_dim = 3 + 3 + 3 + 3 + 3  # ex ey ez x y z vx vy vz phi theta psi dphi dtheta dpsi
         self.state_num = [math.inf for _ in range(self.state_dim)]
         self.state_step = [None for _ in range(self.state_dim)]
         self.state_space = [None for _ in range(self.state_dim)]
@@ -83,7 +83,7 @@ class UAV_Hover(rl_base, UAV):
         if save_cfg:
             self.saveModel2XML()
 
-    def state_norm(self) -> list:
+    def state_norm(self) -> np.ndarray:
         """
         状态归一化
         """
@@ -92,13 +92,14 @@ class UAV_Hover(rl_base, UAV):
         norm_vel = (2 * self.vel - self.vel_max - self.vel_min) / (self.vel_max - self.vel_min) * self.staticGain
         norm_angle = (2 * self.angle - self.angle_max - self.angle_min) / (self.angle_max - self.angle_min) * self.staticGain
         norm_dangle = (2 * self.omega_inertial - self.dangle_max - self.dangle_min) / (self.dangle_max - self.dangle_min) * self.staticGain
-        norm_f = (2 * self.force - self.fmax - self.fmin) / (self.fmax - self.fmin) * self.staticGain
+        # norm_f = (2 * self.force - self.fmax - self.fmin) / (self.fmax - self.fmin) * self.staticGain
 
-        norm_state = np.concatenate((norm_error, norm_pos, norm_vel, norm_angle, norm_dangle, norm_f)).tolist()
+        # norm_state = np.concatenate((norm_error, norm_pos, norm_vel, norm_angle, norm_dangle, norm_f)).tolist()
+        norm_state = np.concatenate((norm_error, norm_pos, norm_vel, norm_angle, norm_dangle))
 
-        return list(norm_state)
+        return norm_state
 
-    def inverse_state_norm(self, error_flag=False, pos_flag=False, vel_flag=False, angle_flag=False, dangle_flag=False, f_flag=False):
+    def inverse_state_norm(self, error_flag=False, pos_flag=False, vel_flag=False, angle_flag=False, dangle_flag=False):
         """
         状态反归一化
         """
@@ -114,8 +115,8 @@ class UAV_Hover(rl_base, UAV):
             _s = np.concatenate((_s, (np_cur_state[9:12] / self.staticGain * (self.angle_max - self.angle_min) + self.angle_max + self.angle_min) / 2))
         if dangle_flag:
             _s = np.concatenate((_s, (np_cur_state[12:15] / self.staticGain * (self.dangle_max - self.dangle_min) + self.dangle_max + self.dangle_min) / 2))
-        if f_flag:
-            _s = np.concatenate((_s, (np_cur_state[15:19] / self.staticGain * (self.fmax - self.fmin) + self.fmax + self.fmin) / 2))
+        # if f_flag:
+        #     _s = np.concatenate((_s, (np_cur_state[15:19] / self.staticGain * (self.fmax - self.fmin) + self.fmax + self.fmin) / 2))
 
         return _s
 
@@ -240,14 +241,14 @@ class UAV_Hover(rl_base, UAV):
         @param param:       extra parameters
         @return:            None, but update the reward
         """
-        ss = self.inverse_state_norm(error_flag=True, pos_flag=False, vel_flag=False, angle_flag=False, dangle_flag=False, f_flag=True)
+        ss = self.inverse_state_norm(error_flag=True, pos_flag=False, vel_flag=False, angle_flag=False, dangle_flag=False)
         '''
         这个函数是把归一化的状态还原，其实这个操作是不必要的。因为所有状态本身是已知的，确实多此一举，如此操作只是为了形式上的统一
         目前奖励函数只使用了位置误差 和 输出力，所以error_flag 和 f_flag 是True，其余都是False
         所以，ss中一共有7个数，前三个是位置误差，后四个是力
         '''
         _error = ss[0:3]
-        _force = ss[3:7]
+        _force = self.force
         # self.force = _force     # 四个螺旋桨的力
         # self.f2omega()          # 得到四个电机的转速
         # virtual_input = np.dot(self.power_allocation_mat, self.w_rotor ** 2)    # 得到实际的虚拟控制，油门 三个方向转矩

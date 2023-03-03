@@ -27,8 +27,8 @@ def test_flight_attitude_simulator():
 
 # Flight Attitude Simulator Continuous Test
 def test_flight_attitude_simulator_continuous():
-    from FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous
-    env = Flight_Attitude_Simulator_Continuous(initTheta=-60.0, setTheta=0., save_cfg=True)
+    from FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous2
+    env = Flight_Attitude_Simulator_Continuous2(initTheta=-60.0, setTheta=0., save_cfg=True)
     test_num = 1
     for _ in range(test_num):
         # env.reset_random()
@@ -37,25 +37,11 @@ def test_flight_attitude_simulator_continuous():
         while not env.is_terminal:
             env.show_dynamic_image(isWait=False)
             # action = random.choice(env.action_space)
-            action = [3]
+            action = np.array([3])
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
             print(env.theta, env.dTheta)
     # env.saveData(is2file=True, filepath='../../datasave/')
 
-def test_flight_attitude_simulator_continuous2():
-    from FlightAttitudeSimulator.flight_attitude_simulator_continuous2 import Flight_Attitude_Simulator_Continuous2
-    env = Flight_Attitude_Simulator_Continuous2(initTheta=60.0, setTheta=0., save_cfg=True)
-    test_num = 1
-    for _ in range(test_num):
-        # env.reset_random()
-        env.reset()
-        while not env.is_terminal:
-            env.show_dynamic_image(isWait=False)
-            # action = random.choice(env.action_space)
-            action = np.array([0])
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
-            # print(env.reward)
-    # env.saveData(is2file=True, filepath='../../datasave/')
 
 # UGV Bidirectional Continuous Test
 def test_ugv_bidirectional_continuous():
@@ -212,13 +198,12 @@ def test_uav_hover():
 
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
-    test_flight_attitude_simulator_continuous()
-    # test_flight_attitude_simulator_continuous2()
+    # test_flight_attitude_simulator_continuous()
     # test_ugv_bidirectional_continuous()
     # test_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
     # test_cartpole()
-    # test_uav_hover()
+    test_uav_hover()
     pass
