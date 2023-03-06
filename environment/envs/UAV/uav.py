@@ -1,3 +1,5 @@
+import numpy as np
+
 from common.common_func import *
 from environment.envs import *
 import math
@@ -237,6 +239,10 @@ class UAV:
                                 [0, math.cos(self.angle[0]), -math.sin(self.angle[0])],
                                 [0, math.sin(self.angle[0]) / math.cos(self.angle[1]), math.cos(self.angle[0]) / math.cos(self.angle[1])]])
         self.omega_inertial = np.dot(R_pqr2diner, self.omega_body)
+        if self.angle[2] > np.pi:       # 如果角度超过180度
+            self.angle[2] -= 2 * np.pi
+        if self.angle[2] < -np.pi:      # 如果角度小于-180度
+            self.angle[2] += 2 * np.pi
 
     def saveData(self, is2file=False, filename='uav.csv', filepath=''):
         if is2file:

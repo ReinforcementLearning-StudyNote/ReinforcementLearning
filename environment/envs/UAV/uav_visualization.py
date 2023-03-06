@@ -4,6 +4,8 @@ from matplotlib.pyplot import MultipleLocator
 # from matplotlib.axes import Axes
 import numpy as np
 import math
+import matplotlib.animation as animation
+
 
 
 class UAV_Visualization:
@@ -15,6 +17,7 @@ class UAV_Visualization:
         :param origin:      观察系的
         """
         self.fig = plt.figure(figsize=(9, 9))
+        # self.ims = []
         self.xbound = xbound
         self.ybound = ybound
         self.zbound = zbound
@@ -260,7 +263,6 @@ class UAV_Visualization:
                                                     dir_f[0], dir_f[1], dir_f[2],
                                                     length=f[i]*self.length_per_n, color=self.color[i])
             '''升力'''
-
         self.sim_index += 1
 
     def reset(self, origin: np.ndarray, target: np.ndarray):

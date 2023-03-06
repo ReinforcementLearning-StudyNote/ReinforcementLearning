@@ -242,6 +242,7 @@ if __name__ == '__main__':
     is_storage_only_success = False
 
     env = UAV_Hover(target_pos=[0, 0, 4])   # 所有初始值都是0，设定点为[0 0 4]，合理
+    env.uav_vis.arm_scale = 10
 
     if TRAIN:
         agent = TD3(gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,

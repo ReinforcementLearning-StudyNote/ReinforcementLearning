@@ -8,6 +8,9 @@ from matplotlib.pyplot import MultipleLocator
 from uav_visualization import UAV_Visualization
 import math
 
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+import matplotlib.animation as animation
+
 '''位置画图相关变量'''
 # fig, ax = plt.subplots(figsize=(30, 7), ncols=3, nrows=2)
 # '''X'''
@@ -76,7 +79,7 @@ import math
 
 
 if __name__ == '__main__':
-    pos0 = np.array([9, 9, 9])  # 给的都是惯性系 东北天
+    pos0 = np.array([0, 4, 0])  # 给的都是惯性系 东北天
     angle0 = np.array([deg2rad(0), deg2rad(0), deg2rad(0)])  # 给的都是惯性系 东北天
 
     quad = UAV(pos0=pos0, angle0=angle0)  # initialization of a quadrotor
@@ -115,10 +118,10 @@ if __name__ == '__main__':
         phase = 2 * math.pi / 10 * quad.time
         '''八字'''
         # 初值 [0, 4, 0]
-        # x_ref = 6 * math.sin(phase) * math.cos(phase) / (1 + math.sin(phase) ** 2)
-        # y_ref = 4 * math.cos(phase) / (1 + math.sin(phase) ** 2)
-        # z_ref = 1 * math.sin(phase)
-        # psi_ref = deg2rad(0) * math.sin(math.pi * quad.time)
+        x_ref = 6 * math.sin(phase) * math.cos(phase) / (1 + math.sin(phase) ** 2)
+        y_ref = 4 * math.cos(phase) / (1 + math.sin(phase) ** 2)
+        z_ref = 1 * math.sin(phase)
+        psi_ref = deg2rad(0) * math.sin(math.pi * quad.time)
 
         '''圆'''
         # # 初值 [0, 5, 0]
@@ -126,9 +129,9 @@ if __name__ == '__main__':
         # y_ref = 5 * math.cos(phase)
         # z_ref = 3 * math.sin(phase)
         # psi_ref = deg2rad(45) * math.sin(phase)
-        x_ref = -9
-        y_ref = -9
-        z_ref = -9
+        # x_ref = 0
+        # y_ref = 0
+        # z_ref = 0
 
         t_ref = quad.time
         quad_vis.target = np.array([x_ref, y_ref, z_ref])
@@ -143,7 +146,11 @@ if __name__ == '__main__':
         ux, uy, uz = pid_x.out(), pid_y.out(), pid_z.out()
         U1 = quad.m * math.sqrt(ux ** 2 + uy ** 2 + (uz + quad.g) ** 2)
 
-        psi_ref = deg2rad(90)
+        psi_ref = deg2rad(0)*quad.time
+        if psi_ref > 2*np.pi:
+            psi_ref -= (int)(psi_ref / 2 / np.pi) * 2 * np.pi
+        if psi_ref < -2*np.pi:
+            psi_ref += (int)(psi_ref / 2 / np.pi) * 2 * np.pi
         # phi_ref = math.asin((ux * math.sin(psi_ref) - uy * math.cos(psi_ref)) * quad.m / U1)
         # theta_ref = math.asin((ux * quad.m - U1 * math.sin(psi_ref) * math.sin(phi_ref)) / (U1 * math.cos(psi_ref) * math.cos(phi_ref)))
         phi_ref = np.arcsin(quad.m * (ux * np.sin(psi_ref) - uy * np.cos(psi_ref)) / U1)
@@ -242,10 +249,19 @@ if __name__ == '__main__':
                             f=quad.force, d=quad.d, win=10)
 
         plt.show()
+        # canvas = FigureCanvasAgg(plt.gcf())
+
         plt.pause(0.0000000001)
 
         '''4. 计算姿态 PID 的控制输出'''
         e_phi, e_theta, e_psi = phi_ref - quad.angle[0], theta_ref - quad.angle[1], psi_ref - quad.angle[2]
+        e_psi1 = psi_ref - 2 * np.pi - quad.angle[2]    # 一定为负
+        e_psi2 = psi_ref + 2 * np.pi - quad.angle[2]    # 一定为正
+        v = np.array([e_psi, e_psi1, e_psi2])
+        s = np.sign(v)  # 三个变量的符号
+        index = np.argmin(np.fabs(v))
+        e_psi = v[index]
+
         pid_phi.set_e(e_phi)
         pid_theta.set_e(e_theta)
         pid_psi.set_e(e_psi)
