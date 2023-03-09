@@ -1,3 +1,4 @@
+import math
 import os
 import random
 import sys
@@ -164,17 +165,21 @@ def test_ugv_forward_obstacles_discrete():
 
 def test_cartpole():
     from cartpole.cartpole import CartPole
-    env = CartPole(initTheta=deg2rad(0), initX=0)
+    env = CartPole(initTheta=deg2rad(0), initX=0.0, save_cfg=True)
     num = 0
-    while num < 1:
+    while num < 10:
         env.reset()
         while not env.is_terminal:
             if cv.waitKey(1) == 27:
                 return
             env.image = env.show.copy()
-            env.show_dynamic_image(isWait=False)
-            f = random.uniform(-env.fm, env.fm)
+            env.show_dynamic_image(isWait=True)
+            f = 0
+            # f = random.uniform(-env.fm, env.fm)
+            # f = -1 * math.sin(2 * math.pi * env.time)
+            # print(env.x, env.dx, env.theta, env.dtheta)
             env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=[f])
+            print(env.time)
         num += 1
 
 
@@ -204,6 +209,6 @@ if __name__ == '__main__':
     # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
-    # test_cartpole()
-    test_uav_hover()
+    test_cartpole()
+    # test_uav_hover()
     pass

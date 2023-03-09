@@ -144,11 +144,9 @@ class DualCritic(nn.Module):
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
         self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
 
-        self.optimizer1 = torch.optim.Adam(self.parameters(), lr=beta)  # optimizer for the first Q
-        self.optimizer2 = torch.optim.Adam(self.parameters(), lr=beta)  # optimizer for the second Q
-
         self.l11 = nn.Linear(state_dim + action_dim, 1)  # layer for the first Q
         self.l21 = nn.Linear(state_dim + action_dim, 1)  # layer for the second Q
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=beta)  # optimizer for Q
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.to(self.device)
