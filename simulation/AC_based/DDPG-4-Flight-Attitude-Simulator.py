@@ -1,12 +1,12 @@
 import os
 import sys
 import datetime
-import copy
+# import copy
 import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
-from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous as flight_sim_con
+from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous2 as flight_sim_con
 from algorithm.actor_critic.DDPG import DDPG
 from common.common_func import *
 from common.common_cls import *
@@ -17,9 +17,9 @@ optPath = '../../datasave/network/'
 show_per = 1
 
 
-class CriticNetWork(nn.Module):
+class Critic(nn.Module):
     def __init__(self, beta, state_dim, action_dim, name, chkpt_dir):
-        super(CriticNetWork, self).__init__()
+        super(Critic, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
@@ -86,9 +86,9 @@ class CriticNetWork(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-class ActorNetwork(nn.Module):
+class Actor(nn.Module):
     def __init__(self, alpha, state_dim, action_dim, name, chkpt_dir):
-        super(ActorNetwork, self).__init__()
+        super(Actor, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
@@ -234,10 +234,10 @@ if __name__ == '__main__':
                      modelFileXML=cfgPath + cfgFile,
                      path=simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
+        agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
+        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent.critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
+        agent.target_critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.DDPG_info()
         # cv.waitKey(0)
@@ -307,7 +307,7 @@ if __name__ == '__main__':
                 'Cumulative reward:', round(sumr, 3),
                 '==========END=========')
             print()
-            agent.saveData_EpisodeReward(agent.episode, sumr)
+            agent.saveData_EpisodeReward(agent.episode, env.time, sumr, sumr/env.time, -1)
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
@@ -315,7 +315,7 @@ if __name__ == '__main__':
                 print('Over......')
                 break
         '''dataSave'''
-        agent.saveData_EpisodeReward(0.0, 0.0, True, 'EpisodeReward.csv')
+        agent.saveData_EpisodeReward(0.0, 0.0, 0., 0., 0., True, 'EpisodeReward.csv')
         agent.saveData_Step_Reward(step=0, reward=0, is2file=True, filename='StepReward.csv')
         '''dataSave'''
 
@@ -323,16 +323,12 @@ if __name__ == '__main__':
         print('TESTing...')
         optPath = '../../datasave/network/DDPG-Flight-Attitude-Simulator/parameters/'
         agent = DDPG(modelFileXML=cfgPath + cfgFile)
+
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
-        agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
+        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
         agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
-        agent.load_critic_optimal(path=optPath, file='Critic_ddpg')
-        agent.load_target_critic_optimal(path=optPath, file='TargetCritic_ddpg')
         '''重新加载actor和critic网络结构，这是必须的操作'''
+
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
@@ -346,7 +342,7 @@ if __name__ == '__main__':
                 if cv.waitKey(1) == 27:
                     break
                 env.current_state = env.next_state.copy()
-                action_from_actor = agent.choose_action(env.current_state, True)
+                action_from_actor = agent.evaluate(env.current_state)
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
                 env.show_dynamic_image(isWait=False)

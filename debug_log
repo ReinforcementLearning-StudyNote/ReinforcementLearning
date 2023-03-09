@@ -1,0 +1,8 @@
+Log_num: 1
+Date: 2023.03.09
+Time: 13:41
+Contents:
+	1). Rename 'ActorNetwork' to 'Actor', 'CriticNetwork' to 'Critic'
+	2). Move files in ./simulation/PG_based/ to ./simulation/AC_based/
+	3). Add basic classes 'ProbActor' and 'DualCritic' in ./common/common_cls.py
+	4). Fix some bugs caused by 1), 2), and 3)

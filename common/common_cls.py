@@ -6,6 +6,9 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as func
 import torch
+from torch.distributions import Normal
+
+
 # import scipy.spatial as spt
 
 
@@ -92,17 +95,21 @@ class GaussianNoise(object):
         return np.random.normal(self.mu, sigma, self.mu.shape)
 
 
-class CriticNetWork(nn.Module):
+class Critic(nn.Module):
     def __init__(self, beta=1e-3, state_dim=1, action_dim=1, name='CriticNetWork', chkpt_dir=''):
-        super(CriticNetWork, self).__init__()
+        super(Critic, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.beta = beta
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
         self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
+        self.layer = nn.Linear(state_dim + action_dim, 1)  # layer for the first Q
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=beta)
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
 
     def forward(self, state, action):
-        state_action_value = func.relu(torch.add(state, action))
+        state_action_value = self.layer(torch.cat([state, action], 1))
 
         return state_action_value
 
@@ -128,14 +135,63 @@ class CriticNetWork(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-class ActorNetwork(nn.Module):
+class DualCritic(nn.Module):
+    def __init__(self, beta=1e-3, state_dim=1, action_dim=1, name='DualCritic', chkpt_dir=''):
+        super(DualCritic, self).__init__()
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.beta = beta
+        self.checkpoint_file = chkpt_dir + name + '_ddpg'
+        self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
+
+        self.optimizer1 = torch.optim.Adam(self.parameters(), lr=beta)  # optimizer for the first Q
+        self.optimizer2 = torch.optim.Adam(self.parameters(), lr=beta)  # optimizer for the second Q
+
+        self.l11 = nn.Linear(state_dim + action_dim, 1)  # layer for the first Q
+        self.l21 = nn.Linear(state_dim + action_dim, 1)  # layer for the second Q
+
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, state, action):
+        state_action_value1 = self.l11(torch.cat([state, action], 1))
+        state_action_value2 = self.l21(torch.cat([state, action], 1))
+
+        return state_action_value1, state_action_value2
+
+    def initialization(self):
+        pass
+
+    def save_checkpoint(self, name=None, path='', num=None):
+        print('...saving checkpoint...')
+        if name is None:
+            torch.save(self.state_dict(), self.checkpoint_file)
+        else:
+            if num is None:
+                torch.save(self.state_dict(), path + name)
+            else:
+                torch.save(self.state_dict(), path + name + str(num))
+
+    def save_all_net(self):
+        print('...saving all net...')
+        torch.save(self, self.checkpoint_file_whole_net)
+
+    def load_checkpoint(self):
+        print('...loading checkpoint...')
+        self.load_state_dict(torch.load(self.checkpoint_file))
+
+
+class Actor(nn.Module):
     def __init__(self, alpha=1e-4, state_dim=1, action_dim=1, name='ActorNetwork', chkpt_dir=''):
-        super(ActorNetwork, self).__init__()
+        super(Actor, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.alpha = alpha
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
         self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=alpha)
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
 
     def initialization(self):
         pass
@@ -164,65 +220,61 @@ class ActorNetwork(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-class Quaternion:
-    def __init__(self):
+class ProbActor(nn.Module):
+    def __init__(self, alpha=1e-4, state_dim=1, action_dim=1, name='ProbActor', chkpt_dir=''):
+        super(ProbActor, self).__init__()
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.alpha = alpha
+        self.checkpoint_file = chkpt_dir + name + '_ddpg'
+        self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
+
+        self.l1 = nn.Linear(state_dim, 64)  # The layer for mean output
+        self.mean_layer = nn.Linear(64, action_dim)  # The layer for mean output
+        self.log_std_layer = nn.Linear(64, action_dim)  # THe layer for log-std output
+
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=alpha)
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def initialization(self):
         pass
 
-    @staticmethod
-    def q_add(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
-        """
-        :func:          计算两个四元数相加
-        :param q1:      q1
-        :param q2:      q2
-        :return:        new q
-        """
-        return q1 + q2
+    def forward(self, state, deterministic=False):
+        x = func.relu(self.l1(state))
+        mean = self.mean_layer(x)
+        log_std = self.log_std_layer(x)
+        log_std = torch.clamp(log_std, -20, 20)
+        std = torch.exp(log_std)
 
-    # def q_im_anti_sym(self) -> np.ndarray:
-    #     """
-    #     :func:          计算四元数方向部分对应的反对称矩阵
-    #     :return:        反对称矩阵
-    #     """
-    #     m = np.array([[0, -self.q[3], self.q[2]],
-    #                   [self.q[3], 0, -self.q[1]],
-    #                   [-self.q[2], self.q[1], 0]])
-    #     return m
+        gaussian_dist = Normal(mean, std)
 
-    @staticmethod
-    def q_im_cross(q1_im: np.ndarray, q2_im: np.ndarray) -> np.ndarray:
-        """
-        :func:          四元数虚部叉乘
-        :param q1_im:   q1虚部
-        :param q2_im:   q2虚部
-        :return:        叉乘结果
-        """
-        return np.cross(q1_im, q2_im)
+        if deterministic:
+            act = mean
+        else:
+            act = gaussian_dist.rsample()
 
-    @staticmethod
-    def q_multiply(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
-        """
-        :func:          四元数乘法
-        :param q1:      q1
-        :param q2:      q2
-        :return:        q1 圈乘 q2
-        """
-        re1, im1 = q1[0], q1[1:4]
-        re2, im2 = q2[0], q2[1:4]
+        log_pi = gaussian_dist.log_prob(act).sum(dim=1, keepdim=True)
+        log_pi -= (2 * (np.log(2) - act - func.softplus(-2 * act))).sum(dim=1, keepdim=True)
 
-        re = re1 * re2 - np.dot(im1, im2)
-        im = np.cross(im1, im2) + re1 * im2 + re2 * im1
+        act = torch.tanh(act)  # 策略的输出必须被限制在 [-1, 1] 之间
 
-        return np.array([re, im[0], im[1], im[2]])
+        return act, log_pi
 
-    @staticmethod
-    def q_conj(q: np.ndarray) -> np.ndarray:
-        q[1:4] *= -1
-        return q
+    def save_checkpoint(self, name=None, path='', num=None):
+        print('...saving checkpoint...')
+        if name is None:
+            torch.save(self.state_dict(), self.checkpoint_file)
+        else:
+            if num is None:
+                torch.save(self.state_dict(), path + name)
+            else:
+                torch.save(self.state_dict(), path + name + str(num))
 
-    @staticmethod
-    def q_norm(q: np.ndarray) -> float:
-        return np.linalg.norm(q)
+    def save_all_net(self):
+        print('...saving all net...')
+        torch.save(self, self.checkpoint_file_whole_net)
 
-    def q_inv(self, q: np.ndarray) -> np.ndarray:
-        return self.q_conj(q) / self.q_norm(q)
-
+    def load_checkpoint(self):
+        print('...loading checkpoint...')
+        self.load_state_dict(torch.load(self.checkpoint_file))

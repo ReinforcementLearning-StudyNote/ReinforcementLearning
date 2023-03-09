@@ -4,12 +4,11 @@ import sys
 import datetime
 import time
 import cv2 as cv
-import torch
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
 from environment.envs.UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
-from algorithm.actor_critic.DDPG import DDPG
+from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common_func import *
 from common.common_cls import *
 
@@ -23,9 +22,9 @@ dataBasePath4 = '../../environment/envs/pathplanning/5X5-AllCircle4/'
 show_per = 1
 
 
-class CriticNetWork(nn.Module):
+class Critic(nn.Module):
     def __init__(self, beta, state_dim, action_dim, name, chkpt_dir):
-        super(CriticNetWork, self).__init__()
+        super(Critic, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
@@ -101,9 +100,9 @@ class CriticNetWork(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-class ActorNetwork(nn.Module):
+class Actor(nn.Module):
     def __init__(self, alpha, state_dim1, state_dim2, action_dim, name, chkpt_dir):
-        super(ActorNetwork, self).__init__()
+        super(Actor, self).__init__()
         self.state_dim1 = state_dim1
         self.state_dim2 = state_dim2
         self.action_dim = action_dim
@@ -208,9 +207,7 @@ class ActorNetwork(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-def fullFillReplayMemory_with_Optimal(randomEnv: bool,
-                                      fullFillRatio: float,
-                                      is_only_success: bool):
+def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
     agent.load_models(path='./500_0.716_save-第四次/')
@@ -303,7 +300,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward-Obstacle/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-UGV-Forward-Obstacle/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -319,20 +316,23 @@ if __name__ == '__main__':
                                           terminal=[4.5, 4.5],
                                           dataBasePath=dataBasePath1)
     if TRAIN:
-        agent = DDPG(gamma=0.99,
-                     actor_soft_update=1e-2,
-                     critic_soft_update=1e-2,
-                     memory_capacity=60000,  # 100000
-                     batch_size=512,  # 1024
-                     modelFileXML=cfgPath + cfgFile,
-                     path=simulationPath)
+        agent = TD3(gamma=0., noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
+                    critic1_soft_update=1e-2,
+                    critic2_soft_update=1e-2,
+                    actor_soft_update=1e-2,
+                    memory_capacity=60000,  # 100000
+                    batch_size=512,  # 1024
+                    modelFileXML=cfgPath + cfgFile,
+                    path=simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
+        agent.actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
+        agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
+        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
+        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
+        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.DDPG_info()
+        agent.TD3_info()
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
@@ -431,8 +431,10 @@ if __name__ == '__main__':
                 time.sleep(0.01)
                 agent.actor.save_checkpoint(name='Actor_ddpg', path=temp, num=None)
                 agent.target_actor.save_checkpoint(name='TargetActor_ddpg', path=temp, num=None)
-                agent.critic.save_checkpoint(name='Critic_ddpg', path=temp, num=None)
-                agent.target_critic.save_checkpoint(name='TargetCritic_ddpg', path=temp, num=None)
+                agent.critic1.save_checkpoint(name='Critic1_ddpg', path=temp, num=None)
+                agent.target_critic1.save_checkpoint(name='TargetCritic1_ddpg', path=temp, num=None)
+                agent.critic2.save_checkpoint(name='Critic2_ddpg', path=temp, num=None)
+                agent.target_critic2.save_checkpoint(name='TargetCritic2_ddpg', path=temp, num=None)
             if c == 27:
                 print('Over......')
                 break
@@ -443,27 +445,32 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        RECORD = True
-        optPath = '../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
-        agent = DDPG(modelFileXML=cfgPath + cfgFile, path=simulationPath)
+        RECORD = False
+        optPath = '../../datasave/network/TD3-UGV-Obstacle-Avoidance/parameters/'
+        agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
         '''重新加载actor网络结构，这是必须的操作'''
-        agent.actor = ActorNetwork(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.load_actor_optimal(path=optPath, file='Actor_ddpg')
+        agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
         '''重新加载actor网络结构，这是必须的操作'''
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height)) if RECORD else None
-        simulation_num = 5
+        simulation_num = 50
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
         for i in range(simulation_num):
             print('==========START' + str(i) + '==========')
-            env.reset_random_with_database()
+            # env.reset_random_with_database()
+            # env.pre_fill_bound_with_rectangles()
+            env.reset_random()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
                     break
                 env.current_state = env.next_state.copy()
-                action_from_actor = agent.choose_action(env.current_state, True)
-                action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
+                if dis_two_points([env.x, env.y], env.terminal) <= 0.8:
+                    action = env.towards_target_PID(threshold=0.8, kp=100, ki=0, kd=0)
+                else:
+                    action_from_actor = agent.evaluate(env.current_state)
+                    action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
                 env.show_dynamic_imagewithobs(isWait=False)
                 cap.write(env.save) if RECORD else None
@@ -473,6 +480,7 @@ if __name__ == '__main__':
                 print('timeout')
             if env.terminal_flag == 3:
                 successCounter += 1
+                cv.imwrite(str(i) + '.png', env.save)
                 print('success')
             if env.terminal_flag == 4:
                 collisionCounter += 1

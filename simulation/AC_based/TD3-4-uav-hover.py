@@ -21,9 +21,9 @@ optPath = '../../datasave/network/'
 show_per = 10
 timestep = 0
 
-class CriticNetWork(nn.Module):
+class Critic(nn.Module):
     def __init__(self, beta, state_dim, action_dim, name, chkpt_dir):
-        super(CriticNetWork, self).__init__()
+        super(Critic, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.checkpoint_file = chkpt_dir + name + '_td3'
@@ -99,9 +99,9 @@ class CriticNetWork(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-class ActorNetwork(nn.Module):
+class Actor(nn.Module):
     def __init__(self, alpha, state_dim, action_dim, name, chkpt_dir):
-        super(ActorNetwork, self).__init__()
+        super(Actor, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.checkpoint_file = chkpt_dir + name + '_td3'
@@ -255,12 +255,12 @@ if __name__ == '__main__':
                     path=simulationPath)
 
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = ActorNetwork(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic1 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
-        agent.target_critic1 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
-        agent.critic2 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
-        agent.target_critic2 = CriticNetWork(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
+        agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
+        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
+        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
+        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
+        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
 
         agent.TD3_info()

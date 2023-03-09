@@ -52,10 +52,10 @@ class DDPG:
         '''DDPG'''
 
         '''network'''
-        self.actor = ActorNetwork(1e-4, self.state_dim_nn, self.action_dim_nn, name='Actor', chkpt_dir=self.path)
-        self.target_actor = ActorNetwork(1e-4, self.state_dim_nn, self.action_dim_nn, name='TargetActor', chkpt_dir=self.path)
-        self.critic = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic', chkpt_dir=self.path)
-        self.target_critic = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic', chkpt_dir=self.path)
+        self.actor = Actor(1e-4, self.state_dim_nn, self.action_dim_nn, name='Actor', chkpt_dir=self.path)
+        self.target_actor = Actor(1e-4, self.state_dim_nn, self.action_dim_nn, name='TargetActor', chkpt_dir=self.path)
+        self.critic = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic', chkpt_dir=self.path)
+        self.target_critic = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic', chkpt_dir=self.path)
         '''network'''
 
         self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))
@@ -92,6 +92,12 @@ class DDPG:
         self.actor.train()  # 切换回训练模式
         mu_prime_np = mu_prime.cpu().detach().numpy()
         return np.clip(mu_prime_np, -1, 1)  # 将数据截断在[-1, 1]之间
+
+    def evaluate(self, state):
+        self.target_actor.eval()
+        t_state = torch.tensor(state, dtype=torch.float).to(self.actor.device)  # get the tensor of the state
+        act = self.target_actor(t_state).to(self.target_actor.device)
+        return act.cpu().detach().numpy()
 
     def learn(self, is_reward_ascent=True):
         if self.memory.mem_counter < self.memory.batch_size:
@@ -181,6 +187,10 @@ class DDPG:
     def load_actor_optimal(self, path, file):
         print('...loading optimal...')
         self.actor.load_state_dict(torch.load(path + file))
+
+    def load_target_actor_optimal(self, path, file):
+        print('...loading optimal...')
+        self.target_actor.load_state_dict(torch.load(path + file))
 
     def get_RLBase_from_XML(self, filename):
         rl_base, agentName = self.load_rl_basefromXML(filename=filename)

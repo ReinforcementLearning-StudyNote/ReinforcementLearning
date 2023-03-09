@@ -65,14 +65,14 @@ class Twin_Delayed_DDPG:
         '''Twin-Delay-DDPG'''
 
         '''network'''
-        self.actor = ActorNetwork(1e-4, self.state_dim_nn, self.action_dim_nn, name='Actor', chkpt_dir=self.path)
-        self.target_actor = ActorNetwork(1e-4, self.state_dim_nn, self.action_dim_nn, name='TargetActor', chkpt_dir=self.path)
+        self.actor = Actor(1e-4, self.state_dim_nn, self.action_dim_nn, name='Actor', chkpt_dir=self.path)
+        self.target_actor = Actor(1e-4, self.state_dim_nn, self.action_dim_nn, name='TargetActor', chkpt_dir=self.path)
 
-        self.critic1 = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic1', chkpt_dir=self.path)
-        self.target_critic1 = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic1', chkpt_dir=self.path)
+        self.critic1 = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic1', chkpt_dir=self.path)
+        self.target_critic1 = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic1', chkpt_dir=self.path)
 
-        self.critic2 = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic2', chkpt_dir=self.path)
-        self.target_critic2 = CriticNetWork(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic2', chkpt_dir=self.path)
+        self.critic2 = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic2', chkpt_dir=self.path)
+        self.target_critic2 = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic2', chkpt_dir=self.path)
         self.actor_replace_iter = 0
         '''network'''
 
@@ -110,6 +110,12 @@ class Twin_Delayed_DDPG:
         self.actor.train()  # 切换回训练模式
         mu_prime_np = mu_prime.cpu().detach().numpy()
         return np.clip(mu_prime_np, -1, 1)  # 将数据截断在[-1, 1]之间
+
+    def evaluate(self, state):
+        self.target_actor.eval()
+        t_state = torch.tensor(state, dtype=torch.float).to(self.target_actor.device)  # get the tensor of the state
+        act = self.target_actor(t_state).to(self.target_actor.device)  # choose action
+        return act.cpu().detach().numpy()
 
     def learn(self, is_reward_ascent=True, critic_random=True):
         if self.memory.mem_counter < self.memory.batch_size:
@@ -263,6 +269,10 @@ class Twin_Delayed_DDPG:
     def load_actor_optimal(self, path, file):
         print('...loading optimal...')
         self.actor.load_state_dict(torch.load(path + file))
+
+    def load_target_actor_optimal(self, path, file):
+        print('...loading optimal...')
+        self.target_actor.load_state_dict(torch.load(path + file))
 
     def get_RLBase_from_XML(self, filename):
         rl_base, agentName = self.load_rl_basefromXML(filename=filename)
