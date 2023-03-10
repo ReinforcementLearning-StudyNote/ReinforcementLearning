@@ -4,8 +4,6 @@ from matplotlib.pyplot import MultipleLocator
 # from matplotlib.axes import Axes
 import numpy as np
 import math
-import matplotlib.animation as animation
-
 
 
 class UAV_Visualization:
@@ -53,15 +51,15 @@ class UAV_Visualization:
         self.has_target = True      # 默认有一个目标点
 
         '''UAV相关部件'''
-        self.origin_point, = self.ax.plot([], [], [], marker='o', color='black', markersize=6, antialiased=False)   # 画原点
-        self.target_point, = self.ax.plot([], [], [], marker='o', color='red', markersize=10, antialiased=False)    # 画终点
-        self.center, = self.ax.plot([], [], [], marker='o', color='blue', markersize=6, antialiased=False)          # 中心
+        self.origin_point = self.ax.plot([], [], [], marker='o', color='black', markersize=6, antialiased=False)[0]   # 画原点
+        self.target_point = self.ax.plot([], [], [], marker='o', color='red', markersize=10, antialiased=False)[0]    # 画终点
+        self.center = self.ax.plot([], [], [], marker='o', color='blue', markersize=6, antialiased=False)[0]          # 中心
         self.bar = [self.ax.plot([], [], [], color=self.color[i], linewidth=2.5, antialiased=False)[0] for i in range(4)]
         self.bar_ball = [self.ax.plot([], [], [], marker='o', color=self.color[i], markersize=6, antialiased=False)[0] for i in range(4)]
-        self.head, = self.ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)           # 机头点
-        self.head_bar, = self.ax.plot([], [], [], color='green', markersize=6, antialiased=False)                   # 飞机正方向
-        self.traj, = self.ax.plot([], [], [], color='red', linewidth=1.5)
-        self.traj_ref, = self.ax.plot([], [], [], color='blue', linewidth=1.5)
+        self.head = self.ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)[0]           # 机头点
+        self.head_bar = self.ax.plot([], [], [], color='green', markersize=6, antialiased=False)[0]                   # 飞机正方向
+        self.traj = self.ax.plot([], [], [], color='red', linewidth=1.5)[0]
+        self.traj_ref = self.ax.plot([], [], [], color='blue', linewidth=1.5)[0]
         self.X_proj = self.ax.plot([], [], [], marker='o', color='red', markersize=6, antialiased=False)[0]
         self.Y_proj = self.ax.plot([], [], [], marker='o', color='red', markersize=6, antialiased=False)[0]
         self.Z_proj = self.ax.plot([], [], [], marker='o', color='red', markersize=6, antialiased=False)[0]
@@ -138,7 +136,7 @@ class UAV_Visualization:
     def render(self,
                p: np.ndarray,
                ref_p: np.ndarray,
-               v:np.ndarray,
+               v: np.ndarray,
                a: np.ndarray,
                ra: np.ndarray,
                f: np.ndarray,
@@ -146,13 +144,15 @@ class UAV_Visualization:
                win: int):
         """
         @note:          show
-        :param p:       无人机在 观察系 下的位置
-        :param ref_p:   reference position (target)
-        :param a:       无人机在 观察系 下的姿态
-        :param f:       无人机螺旋桨的升力
-        :param d:       无人机机臂长度
-        :param win:     时间窗口长度
-        :return:        None
+        @param p:       无人机在 观察系 下的位置
+        @param ref_p:   reference position (target)
+        @param v:       无人机速度
+        @param a:       无人机在 观察系 下的姿态
+        @param ra:      无人机姿态角速度
+        @param f:       无人机螺旋桨的升力
+        @param d:       无人机机臂长度
+        @param win:     时间窗口长度
+        @return:        NOne
         """
         '''轨迹数据存储'''
         if self.sim_index < self.traj_count:
@@ -211,10 +211,13 @@ class UAV_Visualization:
             '''无人机中心位置'''
 
             '''无人机位置在三轴投影'''
+            print('x', self.xbound)
+            print('y', self.ybound)
+            print('z', self.zbound)
             self.quadGui['X_proj'].set_data([p[0], p[0]], [self.ybound[0], self.ybound[0]])
-            self.quadGui['X_proj'].set_3d_properties([self.zbound[0]], [self.zbound[0]])
+            self.quadGui['X_proj'].set_3d_properties([self.zbound[0], self.zbound[0]])
             self.quadGui['Y_proj'].set_data([self.xbound[1], self.xbound[1]], [p[1], p[1]])
-            self.quadGui['Y_proj'].set_3d_properties([self.zbound[0]], [self.zbound[0]])
+            self.quadGui['Y_proj'].set_3d_properties([self.zbound[0], self.zbound[0]])
             self.quadGui['Z_proj'].set_data([self.xbound[1], self.xbound[1]], [self.ybound[1], self.ybound[1]])
             self.quadGui['Z_proj'].set_3d_properties([p[2], p[2]])
             '''无人机位置在三轴投影'''
@@ -259,9 +262,9 @@ class UAV_Visualization:
             '''升力'''
             for i in range(4):
                 self.rotor_force[i].remove()
-                self.rotor_force[i] =self.ax.quiver(bar[:, i][0], bar[:, i][1], bar[:, i][2],
-                                                    dir_f[0], dir_f[1], dir_f[2],
-                                                    length=f[i]*self.length_per_n, color=self.color[i])
+                self.rotor_force[i] = self.ax.quiver(bar[:, i][0], bar[:, i][1], bar[:, i][2],
+                                                     dir_f[0], dir_f[1], dir_f[2],
+                                                     length=f[i]*self.length_per_n, color=self.color[i])
             '''升力'''
         self.sim_index += 1
 

@@ -89,3 +89,9 @@ In 'DDPG-4-UGV-Forward.py', set:
 <div align=center>
     <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Forward1.gif" width="400px"><img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Forward2.gif" width="400px">
 </div>
+
+# TODO
+- [ ] Add A2C.
+- [ ] Add A3C.
+- [ ] Add PPO.
+- [ ] Train controllers for CartPole.

@@ -211,7 +211,7 @@ def test_uav_hover():
     env.uav_vis.arm_scale = 10      # 显示放大的尺度，自己设置即可
     num = 0
     plt.ion()
-    while num < 30:
+    while num < 2:
         env.reset_random()
         while not env.is_terminal:
             env.show_dynamic_image(per_show=1)
