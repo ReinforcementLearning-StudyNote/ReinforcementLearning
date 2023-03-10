@@ -76,6 +76,8 @@ class Soft_Actor_Critic:
         self.critic = DualCritic(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic', chkpt_dir=self.path)
         # This critic contains double Q-net structure. No difference, just merge the two nets.
         self.target_critic = DualCritic(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic', chkpt_dir=self.path)
+        for p in self.target_critic.parameters():   # target 网络不训练
+            p.requires_grad = False
         '''network'''
 
         self.episode = 0
@@ -134,15 +136,7 @@ class Soft_Actor_Critic:
             '''
             target critic里面出来的是targetQ，critic里面出来的是Q
             '''
-            # print('new_state:', new_state.device)
-            # print('action_:', action_.device)
-            # print('log_pi_:', log_pi_.device)
-            # print('target_q1:', target_q1.device)
-            # print('target_q2:', target_q2.device)
-            # print('done:', done.device)
-            # print('reward:', reward.device)
             target_q = reward + self.gamma * (1 - done) * (torch.min(target_q1, target_q2) - self.alpha * log_pi_)
-            # target_q = target_q.to(self.critic.device)
 
         '''current Q'''
         # self.critic.eval()

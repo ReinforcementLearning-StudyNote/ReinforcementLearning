@@ -187,6 +187,7 @@ class Actor(nn.Module):
         self.alpha = alpha
         self.checkpoint_file = chkpt_dir + name + '_ddpg'
         self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
+        self.layer = nn.Linear(state_dim, action_dim)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=alpha)
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.to(self.device)

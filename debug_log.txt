@@ -1,3 +1,4 @@
+====================嗨嗨嗨我又来了啊====================
 Log_num: 1
 Date: 2023.03.09
 Time: 13:41
@@ -6,11 +7,33 @@ Contents:
 	2). Move files in ./simulation/PG_based/ to ./simulation/AC_based/
 	3). Add basic classes 'ProbActor' and 'DualCritic' in ./common/common_cls.py
 	4). Fix some bugs caused by 1), 2), and 3)
+=================奥利给兄弟们干他就完了=================
 	
 
+====================嗨嗨嗨我又来了啊====================
 Log_num: 2
 Date: 2023.03.10
 Time: 00: 17
 Contents:
 	1). Add SAC
 	2). Add SAC-4-CartPole.py in /simulation/AC_based/
+=================奥利给兄弟们干他就完了=================
+	
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 3
+Date: 2023.03.11
+Time: 19:24
+Contents:
+	1). Add a new environment: CartPoleAngleOnly. 
+		This new environment only takes angular information as the states of RL.
+		We don't care the positional state of the cartpole.
+	2). Add SAC-4-CartPoleAngleOnly.py in /simulation/AC_based/
+	3). Add TD3-4-CartPoleAngleOnly.py in /simulation/AC_based/
+	4). Add a well-trained controller for CartPoleAngleOnly using TD3 in /datasave/networks/TD3-CartPoleAngleOnly/parameters
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+
+	
