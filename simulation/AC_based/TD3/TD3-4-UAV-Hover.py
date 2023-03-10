@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 
 cfgPath = '../../environment/config/'
-cfgFile = 'uav_hover.xml'
+cfgFile = 'UAV_Hover.xml'
 optPath = '../../datasave/network/'
 show_per = 10
 timestep = 0
@@ -233,7 +233,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-uav-hover/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-UAV-Hover/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
@@ -338,12 +338,12 @@ if __name__ == '__main__':
                 temp = simulationPath + str(agent.episode) + '_' + str(successCounter / agent.episode) + '_save/'
                 os.mkdir(temp)
                 time.sleep(0.01)
-                agent.actor.save_checkpoint(name='Actor_ddpg', path=temp, num=None)
-                agent.target_actor.save_checkpoint(name='TargetActor_ddpg', path=temp, num=None)
-                agent.critic1.save_checkpoint(name='Critic1_ddpg', path=temp, num=None)
-                agent.target_critic1.save_checkpoint(name='TargetCritic1_ddpg', path=temp, num=None)
-                agent.critic2.save_checkpoint(name='Critic2_ddpg', path=temp, num=None)
-                agent.target_critic2.save_checkpoint(name='TargetCritic2_ddpg', path=temp, num=None)
+                agent.actor.save_checkpoint(name='Actor_td3', path=temp, num=None)
+                agent.target_actor.save_checkpoint(name='TargetActor_td3', path=temp, num=None)
+                agent.critic1.save_checkpoint(name='Critic1_td3', path=temp, num=None)
+                agent.target_critic1.save_checkpoint(name='TargetCritic1_td3', path=temp, num=None)
+                agent.critic2.save_checkpoint(name='Critic2_td3', path=temp, num=None)
+                agent.target_critic2.save_checkpoint(name='TargetCritic2_td3', path=temp, num=None)
         plt.ioff()
 
     if TEST:

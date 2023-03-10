@@ -14,7 +14,8 @@ Currently, this repository consists of algorithm, common, datasave, environment,
 
 Algorithm includes some commonly used reinforcement learning algorithms, DQN (Double, Dueling-), DDPG, TD3, for example.
 
-Common includes common_func.py and common_cls.py which contain some basic functions. common_func.py contains some commonly used functions, and common_cls.py contains some commonly used classes.
+Common includes common_func.py and common_cls.py containing some basic functions.
+Common_func.py contains some commonly used functions, and common_cls.py contains some commonly defined classes.
 
 Datasave saves networks trained by RL algorithms, and some data files.
 
@@ -25,14 +26,16 @@ THe 'envs' directory covers the ODE of the physical environments.
 Simulation is the place where we implement our simulation experiments, which means, using different algorithms in different environments.
 
 ## Demos
-Currently, we only six well-trained agents.
+Currently, we only eight well-trained agents.
 
-1. A DDPG controller for a flight attitude simulator.
-2. A DDPG trajectory planner for a bidirectional UGV.
-3. A DDPG trajectory planner for a forward-only UGV.
-4. A DDPG trajectory planner which can avoid obstacles for a forward-only UGV.
-5. A DQN controller for a flight attitude simulator.
-6. A TD3 trajectory planner which can avoid obstacles for a forward-only UGV.
+1. A DDPG controller for Flight_Attitude_Simulator.
+2. A DDPG trajectory planner for UGV_Bidirectional_Continuous.
+3. A DDPG trajectory planner for UGV_Forward_Continuous.
+4. A DDPG trajectory planner for UGV_Forward_Obstacle_Continuous.
+5. A DQN controller for a Flight_Attitude_Simulator.
+6. A TD3 trajectory planner for UGV_Forward_Obstacle_Continuous.
+7. A TD3 controller for CartPole_AngleOnly.
+8. A TD3 controller for Flight_Attitude_Simulator.
 
 ## Run the scripts
 All runnable scripts are in './simulation/'.

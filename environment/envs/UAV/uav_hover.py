@@ -120,7 +120,7 @@ class UAV_Hover(rl_base, UAV):
 
         return _s
 
-    def saveModel2XML(self, filename='uav_hover.xml', filepath='../../environment/config/'):
+    def saveModel2XML(self, filename='UAV_Hover.xml', filepath='../../environment/config/'):
         rootMsg = {
             'name': 'uav_hover',
             'author': 'Yefeng YANG',

@@ -470,7 +470,7 @@ class CartPole(rl_base):
 		self.saveTime = [self.time]
 		'''data_save'''
 
-	def saveModel2XML(self, filename='cartpole.xml', filepath='../config/'):
+	def saveModel2XML(self, filename='CartPole.xml', filepath='../config/'):
 		rootMsg = {
 			'name': 'cartpole',
 			'author': 'Yefeng YANG',

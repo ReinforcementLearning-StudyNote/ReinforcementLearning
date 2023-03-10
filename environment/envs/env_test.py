@@ -22,7 +22,7 @@ def test_flight_attitude_simulator():
             env.show_dynamic_image(isWait=False)
             # action = random.choice(env.action_space)
             action = [0.0]
-            env.current_state, env.current_action[0], env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            env.step_update(action=action)
     # env.saveData(is2file=True, filepath='../../datasave/')
 
 
@@ -39,7 +39,7 @@ def test_flight_attitude_simulator_continuous():
             env.show_dynamic_image(isWait=False)
             # action = random.choice(env.action_space)
             action = np.array([3])
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            env.step_update(action=action)
             print(env.theta, env.dTheta)
     # env.saveData(is2file=True, filepath='../../datasave/')
 
@@ -58,7 +58,7 @@ def test_ugv_bidirectional_continuous():
         # print(env.time)
         env.show_dynamic_image(isWait=True)
         action = [-3, 3]
-        env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+        env.step_update(action=action)
         print(env.reward)
         # print(env.current_state)
 
@@ -83,7 +83,7 @@ def test_ugv_forward_continuous():
             env.show_dynamic_image(isWait=False)
             # action = [9, 6]
             action = env.towards_target_PID(threshold=10, kp=10, ki=0, kd=0)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            env.step_update(action=action)
             # print(env.reward)
             # print(env.current_state)
 
@@ -110,7 +110,7 @@ def test_ugv_forward_obstacles_continuous():
             action = env.towards_target_PID(threshold=np.inf, kp=10, kd=0, ki=0)
             # cap.write(env.save)
             # action = [0, 1 * math.pi]
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            env.step_update(action=action)
             # print(env.current_state[0 : 4])
             # if env.terminal_flag == 4:
             #     print(env.reward)
@@ -132,7 +132,7 @@ def test_ugv_forward_discrete():
             wLeft = random.choice(env.action_space[0])
             wRight = random.choice(env.action_space[1])
             action = [wLeft, wRight]
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            env.step_update(action=action)
 
 
 # UGV Forward OBstacle Discrete Test
@@ -155,7 +155,7 @@ def test_ugv_forward_obstacles_discrete():
             wLeft = random.choice(env.action_space[0])
             wRight = random.choice(env.action_space[1])
             action = [wLeft, wRight]
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=action)
+            env.step_update(action=action)
             # print(env.current_state[0 : 4])
             if env.terminal_flag == 4:
                 print(env.reward)
@@ -178,7 +178,7 @@ def test_cartpole():
             # f = random.uniform(-env.fm, env.fm)
             # f = -1 * math.sin(2 * math.pi * env.time)
             # print(env.x, env.dx, env.theta, env.dtheta)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=[f])
+            env.step_update(action=[f])
             print(env.time)
         num += 1
 
@@ -197,7 +197,7 @@ def test_cartpoleangleonly():
             # f = [random.uniform(-env.fm, env.fm)]
             # f = -1 * math.sin(2 * math.pi * env.time)
             # print(env.x, env.dx, env.theta, env.dtheta)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=f)
+            env.step_update(action=f)
             cur_e_theta = rad2deg(env.current_state[0] / env.staticGain * env.thetaMax)
             nex_e_theta = rad2deg(env.next_state[0] / env.staticGain * env.thetaMax)
             print(cur_e_theta, nex_e_theta, env.reward)
@@ -217,7 +217,7 @@ def test_uav_hover():
             env.show_dynamic_image(per_show=1)
             plt.pause(0.00000001)
             f = [random.uniform(env.fmin, env.fmax) for _ in range(4)]
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action=f)
+            env.step_update(action=f)
         num += 1
     plt.ioff()
 
@@ -231,6 +231,6 @@ if __name__ == '__main__':
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
     # test_cartpole()
-    test_cartpoleangleonly()
-    # test_uav_hover()
+    # test_cartpoleangleonly()
+    test_uav_hover()
     pass
