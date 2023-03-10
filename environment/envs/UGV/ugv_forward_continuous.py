@@ -306,8 +306,6 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
 
         self.saveData()
 
-        return self.current_state, action, self.reward, self.next_state, self.is_terminal
-
     def towards_target_PID(self, threshold: float, kp: float, ki: float, kd: float):
         action = [0, 0]
         if dis_two_points([self.x, self.y], self.terminal) <= threshold:

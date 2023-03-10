@@ -262,8 +262,6 @@ class UGV_Bidirectional_Continuous(samplingmap, rl_base):
         self.get_reward()
         self.saveData()
 
-        return self.current_state, action, self.reward, self.next_state, self.is_terminal
-
     def reset(self):
         """
         :brief:     reset

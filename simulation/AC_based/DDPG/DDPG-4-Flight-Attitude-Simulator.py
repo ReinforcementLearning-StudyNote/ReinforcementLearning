@@ -1,24 +1,20 @@
 import os
 import sys
 import datetime
-import copy
+# import copy
 import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
 from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous2 as flight_sim_con
-from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
+from algorithm.actor_critic.DDPG import DDPG
 from common.common_func import *
 from common.common_cls import *
 
 cfgPath = '../../environment/config/'
-cfgFile = 'Flight_Attitude_Simulator_Continuous2.xml'
-# optPath = '../../datasave/network/'
-optPath = 'temp/'
-ALGORITHM = 'TD3'
-ENV = 'FlightAttitudeSimulator2'
+cfgFile = 'Flight_Attitude_Simulator_Continuous.xml'
+optPath = '../../datasave/network/'
 show_per = 1
-timestep = 0
 
 
 class Critic(nn.Module):
@@ -177,10 +173,10 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
             if agent.memory.mem_counter % 100 == 0:
                 print('replay_count = ', agent.memory.mem_counter)
             env.current_state = env.next_state.copy()  # 状态更新
-            _action_from_actor = agent.choose_action(env.current_state, is_optimal=False)
+            _action_from_actor = agent.choose_action(env.current_state, is_optimal=True)
             _action = agent.action_linear_trans(_action_from_actor)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
-            # env.show_dynamic_image(isWait=False)
+            env.step_update(_action)
+            env.show_dynamic_image(isWait=False)
             if is_only_success:
                 _new_state.append(env.current_state)
                 _new_action.append(env.current_action)
@@ -188,11 +184,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
                 _new_state_.append(env.next_state)
                 _new_done.append(1.0 if env.is_terminal else 0.0)
             else:
-                agent.memory.store_transition(np.array(env.current_state),
-                                              np.array(env.current_action),
-                                              np.array(env.reward),
-                                              np.array(env.next_state),
-                                              1 if env.is_terminal else 0)
+                agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             if env.terminal_flag == 3:
                 print('Update Replay Memory......')
@@ -216,22 +208,17 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
             env.current_state = env.next_state.copy()  # 状态更新
             _action_from_actor = agent.choose_action(env.current_state, False)
             _action = agent.action_linear_trans(_action_from_actor)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
-            # env.show_dynamic_image(isWait=False)
+            env.step_update(_action)
+            env.show_dynamic_image(isWait=False)
             # if env.reward > 0:
-            agent.memory.store_transition(np.array(env.current_state),
-                                          np.array(env.current_action),
-                                          np.array(env.reward),
-                                          np.array(env.next_state),
-                                          1 if env.is_terminal else 0)
+            agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
 
 
 if __name__ == '__main__':
-    cur_time = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S')
-    simulationPath = '../../datasave/log/' + cur_time + '-' + ALGORITHM + '-' + ENV + '/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-FlightAttitudeSimulator/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -239,43 +226,37 @@ if __name__ == '__main__':
     env = flight_sim_con(initTheta=-60.0, setTheta=0.0, save_cfg=False)
 
     if TRAIN:
-        agent = TD3(gamma=0.99,
-                    noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
-                    critic1_soft_update=1e-2,
-                    critic2_soft_update=1e-2,
-                    actor_soft_update=1e-2,
-                    memory_capacity=20000,  # 20000
-                    batch_size=512,  # 1024
-                    modelFileXML=cfgPath + cfgFile,
-                    path=simulationPath)
+        agent = DDPG(gamma=0.9,
+                     actor_soft_update=1e-2,
+                     critic_soft_update=1e-2,
+                     memory_capacity=20000,  # 10000
+                     batch_size=512,
+                     modelFileXML=cfgPath + cfgFile,
+                     path=simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
         agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
-        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
-        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
-        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
+        agent.critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
+        agent.target_critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.TD3_info()
+        agent.DDPG_info()
         # cv.waitKey(0)
         MAX_EPISODE = 1500
         if RETRAIN:
             print('Retraining')
             fullFillReplayMemory_with_Optimal(randomEnv=True,
                                               fullFillRatio=0.5,
-                                              is_only_success=False)
+                                              is_only_success=True)
             # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
             '''生成初始数据之后要再次初始化网络'''
-            agent.actor.initialization()
-            agent.target_actor.initialization()
-            agent.critic1.initialization()
-            agent.target_critic1.initialization()
-            agent.critic2.initialization()
-            agent.target_critic2.initialization()
+            # ddpg.actor.initialization()
+            # ddpg.target_actor.initialization()
+            # ddpg.critic.initialization()
+            # ddpg.target_critic.initialization()
             '''生成初始数据之后要再次初始化网络'''
         else:
             '''fullFillReplayMemory_Random'''
-            fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.8)
+            fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5)
             '''fullFillReplayMemory_Random'''
         print('Start to train...')
         new_state, new_action, new_reward, new_state_, new_done = [], [], [], [], []
@@ -292,13 +273,13 @@ if __name__ == '__main__':
             while not env.is_terminal:
                 c = cv.waitKey(1)
                 env.current_state = env.next_state.copy()
-                if random.uniform(0, 1) < 0.2:          # 有一定探索概率完全随机探索
+                if random.uniform(0, 1) < 0.2:
                     # print('...random...')
                     action_from_actor = agent.choose_action_random()  # 有一定探索概率完全随机探索
                 else:
                     action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 3)  # 剩下的是神经网络加噪声
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
+                env.step_update(action)  # 环境更新的action需要是物理的action
                 agent.saveData_Step_Reward(step=step, reward=env.reward, is2file=False, filename='StepReward.csv')
                 step += 1
                 if agent.episode % show_per == 0:
@@ -312,11 +293,7 @@ if __name__ == '__main__':
                     new_done.append(1.0 if env.is_terminal else 0.0)
                 else:
                     # if env.reward > 0:
-                    agent.memory.store_transition(np.array(env.current_state),
-                                                  np.array(env.current_action),
-                                                  np.array(env.reward),
-                                                  np.array(env.next_state),
-                                                  1 if env.is_terminal else 0)
+                    agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
                 agent.learn(is_reward_ascent=False)
             '''跳出循环代表回合结束'''
             if is_storage_only_success:
@@ -328,7 +305,9 @@ if __name__ == '__main__':
                 '=========START=========',
                 'Episode:', agent.episode,
                 'Cumulative reward:', round(sumr, 3),
-                '==========END=========\n')
+                '==========END=========')
+            print()
+            agent.saveData_EpisodeReward(agent.episode, env.time, sumr, sumr/env.time, -1)
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
@@ -336,17 +315,20 @@ if __name__ == '__main__':
                 print('Over......')
                 break
         '''dataSave'''
-        # Just for fun
+        agent.saveData_EpisodeReward(0.0, 0.0, 0., 0., 0., True, 'EpisodeReward.csv')
+        agent.saveData_Step_Reward(step=0, reward=0, is2file=True, filename='StepReward.csv')
         '''dataSave'''
 
     if TEST:
         print('TESTing...')
-        optPath = '../../datasave/network/TD3-Flight-Attitude-Simulator/parameters/'
-        agent = TD3(modelFileXML=cfgPath + cfgFile)
-        '''重新加载actor网络结构，这是必须的操作'''
+        optPath = '../../datasave/network/DDPG-Flight-Attitude-Simulator/parameters/'
+        agent = DDPG(modelFileXML=cfgPath + cfgFile)
+
+        '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.load_target_actor_optimal(path=optPath, file='TargetActor_td3')
-        '''重新加载actor网络结构，这是必须的操作'''
+        agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
+        '''重新加载actor和critic网络结构，这是必须的操作'''
+
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,
@@ -362,7 +344,7 @@ if __name__ == '__main__':
                 env.current_state = env.next_state.copy()
                 action_from_actor = agent.evaluate(env.current_state)
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
+                env.step_update(action)
                 env.show_dynamic_image(isWait=False)
                 cap.write(env.save)
                 env.saveData(is2file=False)

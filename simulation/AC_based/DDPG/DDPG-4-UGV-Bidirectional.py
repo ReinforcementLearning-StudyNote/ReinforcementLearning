@@ -170,7 +170,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_
             env.current_state = env.next_state.copy()  # 状态更新
             _action_from_actor = agent.choose_action(env.current_state, is_optimal=False, sigma=1 / 2)
             _action = agent.action_linear_trans(_action_from_actor)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
+            env.step_update(_action)
             env.show_dynamic_image(isWait=False)
             if is_only_success:
                 _new_state.append(env.current_state)
@@ -215,7 +215,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
             _action_from_actor = agent.choose_action(env.current_state, False, sigma=1.0)
             # _action_from_actor = ddpg.choose_action_random()
             _action = agent.action_linear_trans(_action_from_actor)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
+            env.step_update(_action)
             env.show_dynamic_image(isWait=False)
             if is_only_success:
                 _new_state.append(env.current_state)
@@ -308,7 +308,7 @@ if __name__ == '__main__':
                 else:
                     action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 2)  # 剩下的是神经网络加噪声
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
+                env.step_update(action)  # 环境更新的action需要是物理的action
                 agent.saveData_Step_Reward(step=step, reward=env.reward, is2file=False, filename='StepReward.csv')
                 step += 1
                 if agent.episode % show_per == 0:
@@ -388,7 +388,7 @@ if __name__ == '__main__':
                         env.current_state = env.next_state.copy()
                         action_from_actor = agent.evaluate(env.current_state)
                         action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                        env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
+                        env.step_update(action)
                         env.show_dynamic_image(isWait=False)
                         cap.write(env.save)
                         env.saveData(is2file=False)

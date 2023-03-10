@@ -330,8 +330,6 @@ class Flight_Attitude_Simulator_Continuous2(rl_base):
 
         self.saveData()
 
-        return self.current_state, action, self.reward, self.next_state, self.is_terminal
-
     def reset(self):
         """
         :brief:     reset

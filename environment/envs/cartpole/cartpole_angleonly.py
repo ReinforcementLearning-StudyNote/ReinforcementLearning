@@ -216,7 +216,7 @@ class CartPoleAngleOnly(rl_base):
 		# '''再给一个角度惩罚'''
 		# r -= 5 * cur_e_theta
 		'''二次型奖励'''
-		return r
+		self.reward = r
 
 	def ode(self, xx: np.ndarray):
 		"""
@@ -272,7 +272,7 @@ class CartPoleAngleOnly(rl_base):
 		self.next_state = np.array([self.theta / self.thetaMax * self.staticGain,
 									self.dtheta / self.norm_4_boundless_state * self.staticGain])
 		'''角度，位置误差更新'''
-		self.reward = self.get_reward()
+		self.get_reward()
 
 	def reset(self):
 		"""

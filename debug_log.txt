@@ -35,5 +35,12 @@ Contents:
 
 
 ====================嗨嗨嗨我又来了啊====================
+Log_num: 4
+Date: 2023.03.11
+Time: 19:50
+Contents:
+	1). Discard the return variables of function 'step_update(action)' in all envs.
+	2). Add different directories for different RL algorithms in /simulation/AC_based
+=================奥利给兄弟们干他就完了=================
 
 	

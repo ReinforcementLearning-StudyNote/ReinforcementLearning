@@ -8,7 +8,7 @@ import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 # import copy
-from environment.envs.UAV.uav_hover import UAV_Hover
+from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
 from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common_func import *
 from common.common_cls import *
@@ -16,9 +16,9 @@ import matplotlib.pyplot as plt
 
 
 cfgPath = '../../environment/config/'
-cfgFile = 'uav_hover.xml'
+cfgFile = 'CartPoleAngleOnly.xml'
 optPath = '../../datasave/network/'
-show_per = 10
+show_per = 1
 timestep = 0
 
 class Critic(nn.Module):
@@ -201,7 +201,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_target_random() if randomEnv else env.reset()
+        env.reset_random() if randomEnv else env.reset()
         # env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
@@ -212,8 +212,8 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
             env.current_state = env.next_state.copy()  # 状态更新
             _action_from_actor = agent.choose_action_random()
             _action = agent.action_linear_trans(_action_from_actor)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
-            env.show_dynamic_image(per_show=show_per)
+            env.step_update(_action)
+            # env.show_dynamic_image(isWait=False)
             if is_only_success:
                 _new_state.append(env.current_state)
                 _new_action.append(env.current_action)
@@ -221,9 +221,10 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 _new_state_.append(env.next_state)
                 _new_done.append(1.0 if env.is_terminal else 0.0)
             else:
-                if agent.memory.mem_counter % 100 == 0 and agent.memory.mem_counter > 0:
+                if agent.memory.mem_counter % 1000 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
-                agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+                if env.reward >= -10:
+                    agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -232,24 +233,40 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 print('replay_count = ', agent.memory.mem_counter)
 
 
+def agent_evaluate():
+    for _ in range(3):
+        env.reset_random()
+        while not env.is_terminal:
+            cv.waitKey(1)
+            env.current_state = env.next_state.copy()
+
+            t_state = torch.tensor(env.current_state, dtype=torch.float).to(agent.target_actor.device)  # get the tensor of the state
+            mu = agent.target_actor(t_state).to(agent.target_actor.device)  # choose action
+            mu = mu.cpu().detach().numpy()
+            action = agent.action_linear_trans(mu)
+            env.step_update(action)  # 环境更新的action需要是物理的action
+            if agent.episode % show_per == 0:
+                env.show_dynamic_image(isWait=False)
+    cv.destroyAllWindows()
+
+
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-uav-hover/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-CartPOleAngleOnly/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
 
-    env = UAV_Hover(target_pos=[0, 0, 4])   # 所有初始值都是0，设定点为[0 0 4]，合理
-    env.uav_vis.arm_scale = 10
+    env = CartPoleAngleOnly(initTheta=0, save_cfg=False)
 
     if TRAIN:
         agent = TD3(gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
                     actor_soft_update=1e-2,
-                    memory_capacity=5000,  # 100000
+                    memory_capacity=50000,  # 100000
                     batch_size=512,  # 1024
                     modelFileXML=cfgPath + cfgFile,
                     path=simulationPath)
@@ -282,25 +299,15 @@ if __name__ == '__main__':
             '''生成初始数据之后要再次初始化网络'''
         else:
             '''fullFillReplayMemory_Random'''
-            fullFillReplayMemory_Random(randomEnv=False, fullFillRatio=0.8, is_only_success=is_storage_only_success)
+            fullFillReplayMemory_Random(randomEnv=True, fullFillRatio=0.5, is_only_success=is_storage_only_success)
             '''fullFillReplayMemory_Random'''
         print('Start to train...')
-        new_state, new_action, new_reward, new_state_, new_done = [], [], [], [], []
         step = 0
-        plt.ion()
         while agent.episode <= MAX_EPISODE:
             print('=========START=========')
             print('Episode:', agent.episode)
-            # env.reset_random()      # 随机初始化初始位置和目标点
-            env.reset()                 # 所有信息不变
-            # env.reset_target_random() # 只初始化目标点
+            env.reset_random()
             sumr = 0
-            new_state.clear()
-            new_action.clear()
-            new_reward.clear()
-            new_state_.clear()
-            new_done.clear()
-
             while not env.is_terminal:      # 每个回合
                 timestep += 1
                 env.current_state = env.next_state.copy()
@@ -310,20 +317,11 @@ if __name__ == '__main__':
                 else:
                     action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 4)  # 剩下的是神经网络加噪声
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
-                agent.saveData_Step_Reward(step=step, reward=env.reward, is2file=False, filename='StepReward.csv')
+                env.step_update(action)  # 环境更新的action需要是物理的action
                 step += 1
-                env.show_dynamic_image(per_show=show_per)       # 画图
-                plt.pause(0.00000001)
+                env.show_dynamic_image(isWait=False)       # 画图
                 sumr = sumr + env.reward
-                if is_storage_only_success:
-                    '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
-                    new_state.append(env.current_state)
-                    new_action.append(env.current_action)
-                    new_reward.append(env.reward)
-                    new_state_.append(env.next_state)
-                    new_done.append(1.0 if env.is_terminal else 0.0)
-                else:
+                if env.reward >= -10:
                     agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
 
                 agent.learn(is_reward_ascent=False)
@@ -333,18 +331,36 @@ if __name__ == '__main__':
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
-            if agent.episode % 100 == 0:
+                agent_evaluate()
+            if timestep % 500 == 0:
                 print('check point save')
-                temp = simulationPath + str(agent.episode) + '_' + str(successCounter / agent.episode) + '_save/'
+                temp = simulationPath + 'timestep' + '_' + str(timestep) + '_save/'
                 os.mkdir(temp)
                 time.sleep(0.01)
-                agent.actor.save_checkpoint(name='Actor_ddpg', path=temp, num=None)
-                agent.target_actor.save_checkpoint(name='TargetActor_ddpg', path=temp, num=None)
-                agent.critic1.save_checkpoint(name='Critic1_ddpg', path=temp, num=None)
-                agent.target_critic1.save_checkpoint(name='TargetCritic1_ddpg', path=temp, num=None)
-                agent.critic2.save_checkpoint(name='Critic2_ddpg', path=temp, num=None)
-                agent.target_critic2.save_checkpoint(name='TargetCritic2_ddpg', path=temp, num=None)
-        plt.ioff()
+                agent.actor.save_checkpoint(name='Actor_td3', path=temp, num=timestep)
+                agent.target_actor.save_checkpoint(name='TargetActor_td3', path=temp, num=timestep)
+                agent.critic1.save_checkpoint(name='Critic1_td3', path=temp, num=timestep)
+                agent.target_critic1.save_checkpoint(name='TargetCritic1_td3', path=temp, num=timestep)
+                agent.critic2.save_checkpoint(name='Critic2_td3', path=temp, num=timestep)
+                agent.target_critic2.save_checkpoint(name='TargetCritic2_td3', path=temp, num=timestep)
 
     if TEST:
-        pass
+        agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
+
+        '''重新加载target actor网络结构，这是必须的操作'''
+        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent.load_target_actor_optimal(path=optPath, file='TD3-CartPoleAngleOnly/parameters/TargetActor_td3')
+        '''重新加载target actor网络结构，这是必须的操作'''
+
+        for _ in range(3):
+            env.reset_random()
+            while not env.is_terminal:
+                cv.waitKey(1)
+                env.current_state = env.next_state.copy()
+                t_state = torch.tensor(env.current_state, dtype=torch.float).to(agent.target_actor.device)
+                mu = agent.target_actor(t_state).to(agent.target_actor.device)
+                action = agent.action_linear_trans(mu.cpu().detach().numpy())
+                env.step_update(action)
+                if agent.episode % show_per == 0:
+                    env.show_dynamic_image(isWait=False)
+        cv.destroyAllWindows()

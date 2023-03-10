@@ -314,8 +314,6 @@ class UAV_Hover(rl_base, UAV):
 
         self.saveData()
 
-        return self.current_state, action, self.reward, self.next_state, self.is_terminal
-
     def set_random_pos(self):
         """
         @note:      set the initial position randomly

@@ -1,15 +1,13 @@
-import math
 import os
 import sys
 import datetime
 import time
 import cv2 as cv
+# import torch
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
-# import copy
 from environment.envs.UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
-from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
-from common.common_func import *
+from algorithm.actor_critic.DDPG import DDPG
 from common.common_cls import *
 
 cfgPath = '../../environment/config/'
@@ -207,7 +205,9 @@ class Actor(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_only_success: bool):
+def fullFillReplayMemory_with_Optimal(randomEnv: bool,
+                                      fullFillRatio: float,
+                                      is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
     agent.load_models(path='./500_0.716_save-第四次/')
@@ -228,7 +228,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_
             else:
                 _action_from_actor = agent.choose_action(env.current_state, is_optimal=False, sigma=1 / 3)
             _action = agent.action_linear_trans(_action_from_actor)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
+            env.step_update(_action)
             env.show_dynamic_imagewithobs(isWait=False)
             if is_only_success:
                 _new_state.append(env.current_state)
@@ -275,7 +275,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
             # _action_from_actor = agent.choose_action(env.current_state, False, sigma=1/2)
             _action_from_actor = agent.choose_action_random()
             _action = agent.action_linear_trans(_action_from_actor)
-            env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(_action)
+            env.step_update(_action)
             env.show_dynamic_imagewithobs(isWait=False)
             if is_only_success:
                 _new_state.append(env.current_state)
@@ -300,7 +300,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-UGV-Forward-Obstacle/'
+    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward-Obstacle/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -316,23 +316,20 @@ if __name__ == '__main__':
                                           terminal=[4.5, 4.5],
                                           dataBasePath=dataBasePath1)
     if TRAIN:
-        agent = TD3(gamma=0., noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
-                    critic1_soft_update=1e-2,
-                    critic2_soft_update=1e-2,
-                    actor_soft_update=1e-2,
-                    memory_capacity=60000,  # 100000
-                    batch_size=512,  # 1024
-                    modelFileXML=cfgPath + cfgFile,
-                    path=simulationPath)
+        agent = DDPG(gamma=0.99,
+                     actor_soft_update=1e-2,
+                     critic_soft_update=1e-2,
+                     memory_capacity=60000,  # 100000
+                     batch_size=512,  # 1024
+                     modelFileXML=cfgPath + cfgFile,
+                     path=simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
         agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
-        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
-        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
-        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
+        agent.critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
+        agent.target_critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.TD3_info()
+        agent.DDPG_info()
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
@@ -376,7 +373,7 @@ if __name__ == '__main__':
                 else:
                     action_from_actor = agent.choose_action(env.current_state, False, sigma=1 / 4)  # 剩下的是神经网络加噪声
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)  # 环境更新的action需要是物理的action
+                env.step_update(action)  # 环境更新的action需要是物理的action
                 agent.saveData_Step_Reward(step=step, reward=env.reward, is2file=False, filename='StepReward.csv')
                 step += 1
                 if agent.episode % show_per == 0:
@@ -431,10 +428,8 @@ if __name__ == '__main__':
                 time.sleep(0.01)
                 agent.actor.save_checkpoint(name='Actor_ddpg', path=temp, num=None)
                 agent.target_actor.save_checkpoint(name='TargetActor_ddpg', path=temp, num=None)
-                agent.critic1.save_checkpoint(name='Critic1_ddpg', path=temp, num=None)
-                agent.target_critic1.save_checkpoint(name='TargetCritic1_ddpg', path=temp, num=None)
-                agent.critic2.save_checkpoint(name='Critic2_ddpg', path=temp, num=None)
-                agent.target_critic2.save_checkpoint(name='TargetCritic2_ddpg', path=temp, num=None)
+                agent.critic.save_checkpoint(name='Critic_ddpg', path=temp, num=None)
+                agent.target_critic.save_checkpoint(name='TargetCritic_ddpg', path=temp, num=None)
             if c == 27:
                 print('Over......')
                 break
@@ -445,33 +440,28 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        RECORD = False
-        optPath = '../../datasave/network/TD3-UGV-Obstacle-Avoidance/parameters/'
-        agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
+        RECORD = True
+        optPath = '../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
+        agent = DDPG(modelFileXML=cfgPath + cfgFile, path=simulationPath)
         '''重新加载actor网络结构，这是必须的操作'''
-        agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
         agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
         '''重新加载actor网络结构，这是必须的操作'''
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height)) if RECORD else None
-        simulation_num = 50
+        simulation_num = 5
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
         for i in range(simulation_num):
             print('==========START' + str(i) + '==========')
-            # env.reset_random_with_database()
-            # env.pre_fill_bound_with_rectangles()
-            env.reset_random()
+            env.reset_random_with_database()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
                     break
                 env.current_state = env.next_state.copy()
-                if dis_two_points([env.x, env.y], env.terminal) <= 0.8:
-                    action = env.towards_target_PID(threshold=0.8, kp=100, ki=0, kd=0)
-                else:
-                    action_from_actor = agent.evaluate(env.current_state)
-                    action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
-                env.current_state, env.current_action, env.reward, env.next_state, env.is_terminal = env.step_update(action)
+                action_from_actor = agent.evaluate(env.current_state)
+                action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
+                env.step_update(action)
                 env.show_dynamic_imagewithobs(isWait=False)
                 cap.write(env.save) if RECORD else None
                 env.saveData(is2file=False)
@@ -480,7 +470,6 @@ if __name__ == '__main__':
                 print('timeout')
             if env.terminal_flag == 3:
                 successCounter += 1
-                cv.imwrite(str(i) + '.png', env.save)
                 print('success')
             if env.terminal_flag == 4:
                 collisionCounter += 1
