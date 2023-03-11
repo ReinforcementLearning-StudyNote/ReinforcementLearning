@@ -96,7 +96,7 @@ class GaussianNoise(object):
 
 
 class Critic(nn.Module):
-    def __init__(self, beta=1e-3, state_dim=1, action_dim=1, name='CriticNetWork', chkpt_dir=''):
+    def __init__(self, beta=1e-3, state_dim=1, action_dim=1, name='Critic', chkpt_dir=''):
         super(Critic, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -180,7 +180,7 @@ class DualCritic(nn.Module):
 
 
 class Actor(nn.Module):
-    def __init__(self, alpha=1e-4, state_dim=1, action_dim=1, name='ActorNetwork', chkpt_dir=''):
+    def __init__(self, alpha=1e-4, state_dim=1, action_dim=1, name='Actor', chkpt_dir=''):
         super(Actor, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -259,6 +259,46 @@ class ProbActor(nn.Module):
         act = torch.tanh(act)  # 策略的输出必须被限制在 [-1, 1] 之间
 
         return act, log_pi
+
+    def save_checkpoint(self, name=None, path='', num=None):
+        print('...saving checkpoint...')
+        if name is None:
+            torch.save(self.state_dict(), self.checkpoint_file)
+        else:
+            if num is None:
+                torch.save(self.state_dict(), path + name)
+            else:
+                torch.save(self.state_dict(), path + name + str(num))
+
+    def save_all_net(self):
+        print('...saving all net...')
+        torch.save(self, self.checkpoint_file_whole_net)
+
+    def load_checkpoint(self):
+        print('...loading checkpoint...')
+        self.load_state_dict(torch.load(self.checkpoint_file))
+
+
+class DiscreteActor(nn.Module):
+    def __init__(self, alpha=1e-4, state_dim=1, action_num=1, name='DiscreteActor', chkpt_dir=''):
+        super(DiscreteActor, self).__init__()
+        self.state_dim = state_dim
+        self.action_dim = action_num
+        self.alpha = alpha
+        self.checkpoint_file = chkpt_dir + name + '_ddpg'
+        self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
+        self.layer = nn.Linear(state_dim, action_num)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=alpha)
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def initialization(self):
+        pass
+
+    def forward(self, state):
+        x = func.relu(self.layer(state))
+        x = func.softmax(x, dim=1)
+        return x
 
     def save_checkpoint(self, name=None, path='', num=None):
         print('...saving checkpoint...')
