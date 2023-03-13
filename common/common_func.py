@@ -26,7 +26,7 @@ def rad2deg(rad: float) -> float:
 
 def str2list(string: str) -> list:
     """
-    :brief:         transfer a string to list，必须是具备特定格式的
+    :brief:         transfer a string to list，必须是具备特定格式的：内外两层都是list
     :param string:  string
     :return:        the list
     """
@@ -49,6 +49,29 @@ def str2list(string: str) -> list:
             inner.append(float(item))
         outer.append(inner.copy())
         inner.clear()
+    return outer
+
+
+def str2list2(string: str) -> list:
+    """
+    @note:          transfer a string to list，必须是具备特定格式的：外层list，内层int
+    @param string:  string
+    @return:        the list
+    """
+    res = re.split(r'[\[\]]', string.strip())
+    outer = []
+    for item in res:
+        item.strip()
+    while '' in res:
+        res.remove('')
+    while ', ' in res:
+        res.remove(', ')
+    while ',' in res:
+        res.remove(',')
+    while ' ' in res:
+        res.remove(' ')
+    for _res in res:
+        outer.append(int(_res))
     return outer
 
 

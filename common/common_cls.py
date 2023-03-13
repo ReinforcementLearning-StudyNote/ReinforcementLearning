@@ -14,7 +14,6 @@ from torch.distributions import Normal
 
 class ReplayBuffer:
     def __init__(self, max_size: int, batch_size: int, state_dim: int, action_dim: int):
-        # print(state_dim, action_dim)
         self.mem_size = max_size
         self.mem_counter = 0
         self.batch_size = batch_size
@@ -23,16 +22,19 @@ class ReplayBuffer:
         self.a_mem = np.zeros((self.mem_size, action_dim))
         self.r_mem = np.zeros(self.mem_size)
         self.end_mem = np.zeros(self.mem_size, dtype=np.float)
+        self.log_prob_mem = np.zeros(self.mem_size)
         self.sorted_index = []
         self.resort_count = 0
 
-    def store_transition(self, state: np.ndarray, action: np.ndarray, reward: np.ndarray, state_: np.ndarray, done: float):
+    def store_transition(self, state: np.ndarray, action: np.ndarray, reward: float, state_: np.ndarray, done: float, log_p: float = 0., has_log_prob: bool = False):
         index = self.mem_counter % self.mem_size
         self.s_mem[index] = state
         self.a_mem[index] = action
         self.r_mem[index] = reward
         self._s_mem[index] = state_
         self.end_mem[index] = 1 - done
+        if has_log_prob:
+            self.log_prob_mem[index] = log_p
         self.mem_counter += 1
 
     def get_reward_sort(self):
@@ -42,13 +44,13 @@ class ReplayBuffer:
         print('...sorting...')
         self.sorted_index = sorted(range(min(self.mem_counter, self.mem_size)), key=lambda k: self.r_mem[k], reverse=False)
 
-    def store_transition_per_episode(self, states, actions, rewards, states_, dones):
+    def store_transition_per_episode(self, states, actions, rewards, states_, dones, log_ps=None, has_log_prob: bool = False):
         self.resort_count += 1
         num = len(states)
         for i in range(num):
-            self.store_transition(states[i], actions[i], rewards[i], states_[i], dones[i])
+            self.store_transition(states[i], actions[i], rewards[i], states_[i], dones[i], log_ps, has_log_prob)
 
-    def sample_buffer(self, is_reward_ascent: bool = True):
+    def sample_buffer(self, is_reward_ascent: bool = True, has_log_prob: bool = False):
         max_mem = min(self.mem_counter, self.mem_size)
         if is_reward_ascent:
             batchNum = min(int(0.25 * max_mem), self.batch_size)
@@ -60,8 +62,11 @@ class ReplayBuffer:
         rewards = self.r_mem[batch]
         actions_ = self._s_mem[batch]
         terminals = self.end_mem[batch]
-
-        return states, actions, rewards, actions_, terminals
+        if has_log_prob:
+            log_probs = self.log_prob_mem[batch]
+            return states, actions, rewards, actions_, terminals, log_probs
+        else:
+            return states, actions, rewards, actions_, terminals
 
 
 class OUActionNoise(object):
@@ -279,9 +284,9 @@ class ProbActor(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-class DiscreteActor(nn.Module):
+class SofemaxActor(nn.Module):
     def __init__(self, alpha=1e-4, state_dim=1, action_num=1, name='DiscreteActor', chkpt_dir=''):
-        super(DiscreteActor, self).__init__()
+        super(SofemaxActor, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_num
         self.alpha = alpha

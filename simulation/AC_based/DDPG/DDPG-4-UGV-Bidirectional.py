@@ -3,16 +3,16 @@ import sys
 import datetime
 import cv2 as cv
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 # import copy
 from environment.envs.UGV.ugv_bidirectional_continuous import UGV_Bidirectional_Continuous
 from algorithm.actor_critic.DDPG import DDPG
 from common.common_func import *
 from common.common_cls import *
 
-cfgPath = '../../environment/config/'
+cfgPath = '../../../environment/config/'
 cfgFile = 'UGV_Bidirectional_Continuous.xml'
-optPath = '../../datasave/network/'
+optPath = '../../../datasave/network/'
 show_per = 1
 
 
@@ -234,7 +234,10 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-Two-Wheel-UGV/'
+    log_dir = '../../../datasave/log/'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-Two-Wheel-UGV/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -354,7 +357,7 @@ if __name__ == '__main__':
     if TEST:
         print('TESTing...')
         agent = DDPG(modelFileXML=cfgPath + cfgFile)
-        optPath = '../../datasave/network/DDPG-UGV-Bidirectional/parameters/'
+        optPath = '../../../datasave/network/DDPG-UGV-Bidirectional/parameters/'
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''

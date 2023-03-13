@@ -186,13 +186,13 @@ def test_cartpoleangleonly():
     from cartpole.cartpole_angleonly import CartPoleAngleOnly
     env = CartPoleAngleOnly(initTheta=deg2rad(10), save_cfg=True)
     num = 0
-    while num < 10:
+    while num < 1:
         env.reset()
         while not env.is_terminal:
             if cv.waitKey(1) == 27:
                 return
             env.image = env.show.copy()
-            env.show_dynamic_image(isWait=True)
+            env.show_dynamic_image(isWait=False)
             f = [5]
             # f = [random.uniform(-env.fm, env.fm)]
             # f = -1 * math.sin(2 * math.pi * env.time)
@@ -202,6 +202,24 @@ def test_cartpoleangleonly():
             nex_e_theta = rad2deg(env.next_state[0] / env.staticGain * env.thetaMax)
             print(cur_e_theta, nex_e_theta, env.reward)
             # print(env.time)
+        num += 1
+
+def test_cartpole_discrete_angleonly():
+    from cartpole.cartpole_discrete_angle_only import CartPoleDiscreteAngleOnly
+    env = CartPoleDiscreteAngleOnly(initTheta=deg2rad(10), save_cfg=True)
+    num = 0
+    i = 0
+    while num < 5:
+        env.reset()
+        while not env.is_terminal:
+            if cv.waitKey(1) == 27:
+                return
+            env.image = env.show.copy()
+            # f = [env.action_space[0][i % env.action_num[0]]]
+            f = [3]
+            env.step_update(action=f)
+            env.show_dynamic_image(isWait=False)
+            i += 1
         num += 1
 
 def test_uav_hover():
@@ -232,5 +250,6 @@ if __name__ == '__main__':
     # test_ugv_forward_obstacles_discrete()
     # test_cartpole()
     # test_cartpoleangleonly()
-    test_uav_hover()
+    # test_uav_hover()
+    test_cartpole_discrete_angleonly()
     pass

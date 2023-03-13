@@ -6,7 +6,7 @@ import time
 import cv2 as cv
 import numpy as np
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 # import copy
 from environment.envs.UAV.uav_hover import UAV_Hover
 from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
@@ -15,9 +15,9 @@ from common.common_cls import *
 import matplotlib.pyplot as plt
 
 
-cfgPath = '../../environment/config/'
+cfgPath = '../../../environment/config/'
 cfgFile = 'UAV_Hover.xml'
-optPath = '../../datasave/network/'
+optPath = '../../../datasave/network/'
 show_per = 10
 timestep = 0
 
@@ -233,7 +233,10 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-UAV-Hover/'
+    log_dir = '../../../datasave/log/'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-UAV-Hover/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练

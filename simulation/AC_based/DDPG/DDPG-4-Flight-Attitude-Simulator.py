@@ -4,16 +4,16 @@ import datetime
 # import copy
 import cv2 as cv
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
 from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous2 as flight_sim_con
 from algorithm.actor_critic.DDPG import DDPG
 from common.common_func import *
 from common.common_cls import *
 
-cfgPath = '../../environment/config/'
+cfgPath = '../../../environment/config/'
 cfgFile = 'Flight_Attitude_Simulator_Continuous.xml'
-optPath = '../../datasave/network/'
+optPath = '../../../datasave/network/'
 show_per = 1
 
 
@@ -215,7 +215,10 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float):
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-FlightAttitudeSimulator/'
+    log_dir = '../../../datasave/log/'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-FlightAttitudeSimulator/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -321,7 +324,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        optPath = '../../datasave/network/DDPG-Flight-Attitude-Simulator/parameters/'
+        optPath = '../../../datasave/network/DDPG-Flight-Attitude-Simulator/parameters/'
         agent = DDPG(modelFileXML=cfgPath + cfgFile)
 
         '''重新加载actor和critic网络结构，这是必须的操作'''

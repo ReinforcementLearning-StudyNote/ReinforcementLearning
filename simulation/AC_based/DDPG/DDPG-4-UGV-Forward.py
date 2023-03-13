@@ -4,7 +4,7 @@ import datetime
 import pandas as pd
 import cv2 as cv
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
 # import copy
 from environment.envs.UGV.ugv_forward_continuous import UGV_Forward_Continuous
@@ -12,7 +12,7 @@ from algorithm.actor_critic.DDPG import DDPG
 from common.common_func import *
 from common.common_cls import *
 
-cfgPath = '../../environment/config/'
+cfgPath = '../../../environment/config/'
 cfgFile = 'UGV_Forward_Continuous.xml'
 show_per = 1
 
@@ -182,7 +182,7 @@ class Actor(nn.Module):
 def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
-    agent.load_models(path='../../datasave/network/DDPG-UGV-Forward/parameters/')
+    agent.load_models(path='../../../datasave/network/DDPG-UGV-Forward/parameters/')
     fullFillCount = int(fullFillRatio * agent.memory.mem_size)
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
@@ -266,7 +266,10 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward/'
+    log_dir = '../../../datasave/log/'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -400,7 +403,7 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        optPath = '../../datasave/network/DDPG-UGV-Forward/parameters/'
+        optPath = '../../../datasave/network/DDPG-UGV-Forward/parameters/'
         agent = DDPG(modelFileXML=cfgPath + cfgFile)
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)

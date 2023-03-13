@@ -5,18 +5,18 @@ import time
 import cv2 as cv
 # import torch
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 from environment.envs.UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
 from algorithm.actor_critic.DDPG import DDPG
 from common.common_cls import *
 
-cfgPath = '../../environment/config/'
+cfgPath = '../../../environment/config/'
 cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'
-optPath = '../../datasave/network/'
-dataBasePath1 = '../../environment/envs/pathplanning/11X11-AllCircle1/'
-dataBasePath2 = '../../environment/envs/pathplanning/5X5-AllCircle2/'
-dataBasePath3 = '../../environment/envs/pathplanning/5X5-AllCircle3/'
-dataBasePath4 = '../../environment/envs/pathplanning/5X5-AllCircle4/'
+optPath = '../../../datasave/network/'
+dataBasePath1 = '../../../environment/envs/pathplanning/11X11-AllCircle1/'
+dataBasePath2 = '../../../environment/envs/pathplanning/5X5-AllCircle2/'
+dataBasePath3 = '../../../environment/envs/pathplanning/5X5-AllCircle3/'
+dataBasePath4 = '../../../environment/envs/pathplanning/5X5-AllCircle4/'
 show_per = 1
 
 
@@ -300,7 +300,10 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward-Obstacle/'
+    log_dir = '../../../datasave/log/'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-UGV-Forward-Obstacle/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -441,7 +444,7 @@ if __name__ == '__main__':
     if TEST:
         print('TESTing...')
         RECORD = True
-        optPath = '../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
+        optPath = '../../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
         agent = DDPG(modelFileXML=cfgPath + cfgFile, path=simulationPath)
         '''重新加载actor网络结构，这是必须的操作'''
         agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)

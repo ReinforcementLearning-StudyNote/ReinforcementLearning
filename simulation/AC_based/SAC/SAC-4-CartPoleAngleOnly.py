@@ -4,7 +4,7 @@ import datetime
 import cv2 as cv
 import time
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
 # import copy
 from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
@@ -13,7 +13,7 @@ from common.common_cls import *
 from common.common_func import *
 
 
-cfgPath = '../../environment/config/'
+cfgPath = '../../../environment/config/'
 cfgFile = 'CartPoleAngleOnly.xml'
 timestep = 0
 show_per = 1
@@ -186,7 +186,7 @@ class ProbActor(nn.Module):
 def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
-    agent.load_models(path='../../datasave/network/DDPG-UGV-Forward/parameters/')
+    agent.load_models(path='../../../datasave/network/DDPG-UGV-Forward/parameters/')
     fullFillCount = int(fullFillRatio * agent.memory.mem_size)
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
@@ -282,7 +282,10 @@ def agent_evaluate():
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-SAC-CartPoleAngleOnly/'
+    log_dir = '../../../datasave/log/'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-SAC-CartPoleAngleOnly/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练

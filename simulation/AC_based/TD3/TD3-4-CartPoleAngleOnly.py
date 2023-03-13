@@ -6,7 +6,7 @@ import time
 import cv2 as cv
 import numpy as np
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 # import copy
 from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
 from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
@@ -15,9 +15,9 @@ from common.common_cls import *
 import matplotlib.pyplot as plt
 
 
-cfgPath = '../../environment/config/'
+cfgPath = '../../../environment/config/'
 cfgFile = 'CartPoleAngleOnly.xml'
-optPath = '../../datasave/network/'
+optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
 
@@ -251,7 +251,10 @@ def agent_evaluate():
 
 
 if __name__ == '__main__':
-    simulationPath = '../../datasave/log/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-CartPOleAngleOnly/'
+    log_dir = '../../../datasave/log/'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-CartPOleAngleOnly/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练

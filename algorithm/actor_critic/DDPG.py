@@ -75,7 +75,7 @@ class DDPG:
 
     def choose_action_random(self):
         """
-        :brief:     因为该函数与choose_action并列，所以输出也必须是[-1, 1]之间
+        :brief:     因为该函数与choose_action并列
         :return:    random action
         """
         return np.random.uniform(low=-1, high=1, size=self.action_dim_nn)
