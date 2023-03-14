@@ -30,12 +30,12 @@ class CartPole(rl_base):
 		self.dx = 0.  # 水平向左为正
 		self.force = 0.  # 外力，水平向左为正
 
-		self.thetaMax = deg2rad(30)  # maximum angle
+		self.thetaMax = deg2rad(45)  # maximum angle
 		# self.dthetaMax = deg2rad(720)   # maximum angular rate
 		self.xMax = 1.5  # maximum distance
 		# self.dxMax = 10                 # maximum velicity
 
-		self.staticGain = 4.0
+		self.staticGain = 2.0
 		self.norm_4_boundless_state = 1
 		# 有一些变量本身在物理系统中不做限制，但是为了防止在训练时变量数值差距太大
 		# 所以将该变量除以norm_4_boundless_state，再乘以staticGain，再送入神经网络
@@ -48,7 +48,7 @@ class CartPole(rl_base):
 		self.fm = 8  # maximum force added on the cart
 
 		self.dt = 0.01  # 10ms
-		self.timeMax = 6  # maximum time of each episode
+		self.timeMax = 100  # maximum time of each episode
 		self.time = 0.
 		self.etheta = 0. - self.theta
 		self.ex = 0. - self.x
@@ -60,22 +60,10 @@ class CartPole(rl_base):
 		self.state_step = [None for _ in range(self.state_dim)]
 		self.state_space = [None for _ in range(self.state_dim)]
 		self.state_range = [[-self.staticGain, self.staticGain],
-							# [-self.staticGain, self.staticGain],
 							[-math.inf, math.inf],
-							# [-self.staticGain, self.staticGain],
 							[-self.staticGain, self.staticGain],
 							[-math.inf, math.inf]]
 		self.isStateContinuous = [True for _ in range(self.state_dim)]
-		# self.initial_state = [self.theta / self.thetaMax * self.staticGain,
-		# 					  self.etheta / self.thetaMax * self.staticGain,
-		# 					  self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 					  self.x / self.xMax * self.staticGain,
-		# 					  self.ex / self.xMax * self.staticGain,
-		# 					  self.dx / self.norm_4_boundless_state * self.staticGain]
-		# self.initial_state = [self.theta / self.thetaMax * self.staticGain,
-		# 					  self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 					  self.x / self.xMax * self.staticGain,
-		# 					  self.dx / self.norm_4_boundless_state * self.staticGain]
 		self.initial_state = np.array([self.theta,self.dtheta, self.x, self.dx])
 		self.current_state = self.initial_state.copy()
 		self.next_state = self.initial_state.copy()
@@ -90,11 +78,11 @@ class CartPole(rl_base):
 		self.current_action = self.initial_action.copy()
 
 		self.reward = 0.0
-		self.Q_x = 1.0			# cost for position error
-		self.Q_dx = 0.01		# cost for linear velocity error
-		self.Q_theta = 3.5		# cost for angular error
-		self.Q_dtheta = 0.01	# cost for angular rate error
-		self.R = 0.2			# cost for control input
+		self.Q_x = 100			# cost for position error
+		self.Q_dx = 0.2		# cost for linear velocity error
+		self.Q_theta = 200		# cost for angular error
+		self.Q_dtheta = 0.1	# cost for angular rate error
+		self.R = 0.5			# cost for control input
 		self.is_terminal = False
 		self.terminal_flag = 0
 		'''RL_BASE'''
@@ -111,12 +99,13 @@ class CartPole(rl_base):
 		self.scale = (self.width - 2 * self.xoffset) / 2 / self.xMax  # m -> pixel
 		self.cart_x_pixel = 40  # 仅仅为了显示，比例尺不一样的
 		self.cart_y_pixel = 30
+		self.pixel_per_n = 20  # 每牛顿的长度
 		self.pole_ell_pixel = 50
 
 		self.show = self.image.copy()
 		self.save = self.image.copy()
 
-		self.draw_slide()
+		# self.draw_slide()
 		# self.draw_cartpole()
 		# self.make_text()
 		'''visualization_opencv'''
@@ -152,6 +141,14 @@ class CartPole(rl_base):
 		pt2 = np.atleast_1d([int(cx + self.pole_ell_pixel * math.sin(self.theta)),
 							 int(cy - self.cart_y_pixel / 2 - self.pole_ell_pixel * math.cos(self.theta))])
 		cv.line(img=self.image, pt1=pt1, pt2=pt2, color=Color().Red, thickness=4)
+		if self.force >= 0:
+			pt1 = np.atleast_1d([int(cx - self.cart_x_pixel / 2 - np.fabs(self.force )* self.pixel_per_n), int(cy)])
+			pt2 = np.atleast_1d([int(cx - self.cart_x_pixel / 2), int(cy)])
+		else:
+			pt1 = np.atleast_1d([int(cx + self.cart_x_pixel / 2 + np.fabs(self.force) * self.pixel_per_n), int(cy)])
+			pt2 = np.atleast_1d([int(cx + self.cart_x_pixel / 2), int(cy)])
+		if np.fabs(self.force) > 1e-2:
+			cv.arrowedLine(self.image, pt1, pt2, Color().Red, 2, 8, 0, 0.5 / np.fabs(self.force))
 
 	def draw_center(self):
 		cv.circle(self.image, (int(self.xoffset + self.xMax * self.scale), int(self.height / 2)), 4, Color().Black, -1)
@@ -185,10 +182,11 @@ class CartPole(rl_base):
 			# print('Angle out...')
 			return True
 
-		if (self.x > self.xMax + 1e-2) or (self.x < -self.xMax - 1e-2):
+		if self.x > self.xMax or self.x < -self.xMax:
 			self.terminal_flag = 2
 			print('Position out...')
 			self.terminal_flag = 2
+			return True
 
 		if self.time > self.timeMax:
 			self.terminal_flag = 3
@@ -199,6 +197,7 @@ class CartPole(rl_base):
 			self.terminal_flag = 4
 			print('Success')
 			return True
+
 		self.terminal_flag = 0
 		return False
 
@@ -211,54 +210,59 @@ class CartPole(rl_base):
 		'''
 		The values of x and ex are identical in the env, and so are theta and etheta. 
 		'''
-		# self.Q_x = 1.0			# cost for position error
-		# self.Q_dx = 0.01		# cost for linear velocity error
-		# self.Q_theta = 3.5		# cost for angular error
-		# self.Q_dtheta = 0.01	# cost for angular rate error
-		# self.R = 0.2			# cost for control input
-		# r1 = -self.Q_x * self.ex ** 2
-		# r2 = -self.Q_dx * self.dx ** 2
-		# r3 = -self.Q_theta * self.etheta ** 2
-		# r4 = -self.Q_dtheta * self.dtheta ** 2
-		# r5 = -self.R * self.force ** 2
-		# # r = r1 + r2 + r3 + r4 + r5
-		# r = r3
-		'''玄学，完全是玄学, sun of a bitch'''
-		if self.x > 0:			# x+
-			if self.theta < 0:	# x+ theta-
-				if self.dx < 0:	# x+ theta- dx- 对
-					r1 = 3
-				else:			# x+ theta- dx+ 错
-					r1 = -3
-			else:				# x+ theta+
-				if self.dx < 0:	# x+ theta+ dx- 错
-					r1 = -3
-				else:			# x+ theta+ dx+ 对
-					r1 = 3
-		else:					# x-
-			if self.theta < 0:	# x- theta-
-				if self.dx < 0:	# x- theta- dx- 对
-					r1 = 3
-				else:			# x- theta- dx+ 错
-					r1 = -3
-			else:				# x- theta+
-				if self.dx < 0:	# x- theta+ dx- 错
-					r1 = -3
-				else:			# x- theta+ dx+ 对
-					r1 = 3
-		r2 = self.force ** 2 * 0.1
-		if self.terminal_flag == 1:		# angle out
-			r3 = -20
-		elif self.terminal_flag == 2:	# position out
-			r3 = -10
-		elif self.terminal_flag == 3:	# time out
-			r3 = 10
-		elif self.terminal_flag == 4:	# success
-			r3 = 100
+		r1 = -self.Q_x * self.ex ** 2			# Qx = 1
+		r2 = -self.Q_dx * self.dx ** 2			# Qdx = 0.1
+		r3 = -self.Q_theta * self.etheta ** 2	# Qtheta =200
+		r4 = -self.Q_dtheta * self.dtheta ** 2 	# Qdtheta = 0.1
+		r5 = -self.R * self.force ** 2			# QR = 0.1
+		if self.terminal_flag == 1:
+			r6 = -500
+		elif self.terminal_flag == 2:
+			r6 = -300
+		elif self.terminal_flag == 3:
+			r6 = 0
+		elif self.terminal_flag == 4:
+			r6 = 1000
 		else:
-			r3 = 0
-		r = r1 + r2 + r3
-		return r
+			r6 = 0
+		self.reward = r1 + r2 + r3 + r4 + r5 + r6
+
+		'''玄学，完全是玄学, sun of a bitch'''
+		# if self.x > 0:			# x+
+		# 	if self.theta < 0:	# x+ theta-
+		# 		if self.dx < 0:	# x+ theta- dx- 对
+		# 			r1 = 3
+		# 		else:			# x+ theta- dx+ 错
+		# 			r1 = -3
+		# 	else:				# x+ theta+
+		# 		if self.dx < 0:	# x+ theta+ dx- 错
+		# 			r1 = -3
+		# 		else:			# x+ theta+ dx+ 对
+		# 			r1 = 3
+		# else:					# x-
+		# 	if self.theta < 0:	# x- theta-
+		# 		if self.dx < 0:	# x- theta- dx- 对
+		# 			r1 = 3
+		# 		else:			# x- theta- dx+ 错
+		# 			r1 = -3
+		# 	else:				# x- theta+
+		# 		if self.dx < 0:	# x- theta+ dx- 错
+		# 			r1 = -3
+		# 		else:			# x- theta+ dx+ 对
+		# 			r1 = 3
+		# r2 = self.force ** 2 * 0.1
+		# if self.terminal_flag == 1:		# angle out
+		# 	r3 = -20
+		# elif self.terminal_flag == 2:	# position out
+		# 	r3 = -10
+		# elif self.terminal_flag == 3:	# time out
+		# 	r3 = 10
+		# elif self.terminal_flag == 4:	# success
+		# 	r3 = 100
+		# else:
+		# 	r3 = 0
+		# self.reward = r1 + r2 + r3
+
 
 	def ode(self, xx: np.ndarray):
 		"""
@@ -301,16 +305,6 @@ class CartPole(rl_base):
 		self.current_action = action.copy()
 		self.etheta = 0. - self.theta
 		self.ex = 0. - self.x
-		# self.current_state = [self.theta / self.thetaMax * self.staticGain,
-		# 					  self.etheta / self.thetaMax * self.staticGain,
-		# 					  self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 					  self.x / self.xMax * self.staticGain,
-		# 					  self.ex / self.xMax * self.staticGain,
-		# 					  self.dx / self.norm_4_boundless_state * self.staticGain]  # 强化学习的state，不是控制系统的state
-		# self.current_state = [self.theta / self.thetaMax * self.staticGain,
-		# 					  self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 					  self.x / self.xMax * self.staticGain,
-		# 					  self.dx / self.norm_4_boundless_state * self.staticGain]  # 强化学习的state，不是控制系统的state
 		self.current_state = np.array([self.theta, self.dtheta, self.x, self.dx])
 		'''RK-44'''
 		self.rk44(np.array([self.force]))
@@ -320,19 +314,9 @@ class CartPole(rl_base):
 		self.etheta = 0. - self.theta
 		self.ex = 0. - self.x
 		self.is_terminal = self.is_Terminal()
-		# self.next_state = [self.theta / self.thetaMax * self.staticGain,
-		# 				   self.etheta / self.thetaMax * self.staticGain,
-		# 				   self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 				   self.x / self.xMax * self.staticGain,
-		# 				   self.ex / self.xMax * self.staticGain,
-		# 				   self.dx / self.norm_4_boundless_state * self.staticGain]
-		# self.next_state = [self.theta / self.thetaMax * self.staticGain,
-		# 				   self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 				   self.x / self.xMax * self.staticGain,
-		# 				   self.dx / self.norm_4_boundless_state * self.staticGain]
 		self.next_state = np.array([self.theta, self.dtheta, self.x, self.dx])
 		'''角度，位置误差更新'''
-		self.reward = self.get_reward()
+		self.get_reward()
 		return self.current_state, action, self.reward, self.next_state, self.is_terminal
 
 	def reset(self):
@@ -352,16 +336,6 @@ class CartPole(rl_base):
 		'''physical parameters'''
 
 		'''RL_BASE'''
-		# self.initial_state = [self.theta / self.thetaMax * self.staticGain,
-		# 					  self.etheta / self.thetaMax * self.staticGain,
-		# 					  self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 					  self.x / self.xMax * self.staticGain,
-		# 					  self.ex / self.xMax * self.staticGain,
-		# 					  self.dx / self.norm_4_boundless_state * self.staticGain]
-		# self.initial_state = [self.theta / self.thetaMax * self.staticGain,
-		# 					  self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 					  self.x / self.xMax * self.staticGain,
-		# 					  self.dx / self.norm_4_boundless_state * self.staticGain]
 		self.initial_state = np.array([self.theta, self.dtheta, self.x, self.dx])
 		self.current_state = self.initial_state.copy()
 		self.next_state = self.initial_state.copy()
@@ -391,7 +365,7 @@ class CartPole(rl_base):
         """
 		'''physical parameters'''
 		self.initTheta = random.uniform(-self.thetaMax / 2, self.thetaMax / 2)
-		self.initX = random.uniform(-self.xMax / 3, self.xMax / 3)
+		self.initX = random.uniform(-self.xMax / 2, self.xMax / 2)
 		self.theta = self.initTheta
 		self.x = self.initX
 		self.dtheta = 0.  # 从左往右转为正
@@ -403,10 +377,6 @@ class CartPole(rl_base):
 		'''physical parameters'''
 
 		'''RL_BASE'''
-		# self.initial_state = [self.theta / self.thetaMax * self.staticGain,
-		# 					  self.dtheta / self.norm_4_boundless_state * self.staticGain,
-		# 					  self.x / self.xMax * self.staticGain,
-		# 					  self.dx / self.norm_4_boundless_state * self.staticGain]
 		self.initial_state = np.array([self.theta, self.dtheta, self.x, self.dx])
 		self.current_state = self.initial_state.copy()
 		self.next_state = self.initial_state.copy()

@@ -23,7 +23,7 @@ class CartPoleAngleOnly(rl_base):
 		self.dx = 0.  # 水平向左为正
 		self.force = 0.  # 外力，水平向左为正
 
-		self.thetaMax = deg2rad(20)  # maximum angle
+		self.thetaMax = deg2rad(45)  # maximum angle
 		# self.dthetaMax = deg2rad(720)   # maximum angular rate
 
 		self.staticGain = 2.0

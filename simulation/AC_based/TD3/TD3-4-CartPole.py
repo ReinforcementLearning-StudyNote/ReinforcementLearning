@@ -4,19 +4,17 @@ import sys
 import datetime
 import time
 import cv2 as cv
-import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 # import copy
-from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
+from environment.envs.cartpole.cartpole import CartPole
 from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common_func import *
 from common.common_cls import *
-import matplotlib.pyplot as plt
 
 
 cfgPath = '../../../environment/config/'
-cfgFile = 'CartPoleAngleOnly.xml'
+cfgFile = 'CartPole.xml'
 optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
@@ -42,6 +40,7 @@ class Critic(nn.Module):
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=beta)
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        # self.device = 'cpu'
         self.to(self.device)
 
     def forward(self, state, _action):
@@ -81,7 +80,7 @@ class Critic(nn.Module):
         nn.init.uniform_(self.q.bias.data, -f3, f3)
 
     def save_checkpoint(self, name=None, path='', num=None):
-        print('...saving checkpoint...')
+        # print('...saving checkpoint...')
         if name is None:
             torch.save(self.state_dict(), self.checkpoint_file)
         else:
@@ -123,6 +122,7 @@ class Actor(nn.Module):
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=alpha)
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        # self.device = 'cpu'
         self.to(self.device)
 
     def initialization(self):
@@ -165,7 +165,7 @@ class Actor(nn.Module):
         return x
 
     def save_checkpoint(self, name=None, path='', num=None):
-        print('...saving checkpoint...')
+        # print('...saving checkpoint...')
         if name is None:
             torch.save(self.state_dict(), self.checkpoint_file)
         else:
@@ -223,8 +223,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
             else:
                 if agent.memory.mem_counter % 1000 == 0 and agent.memory.mem_counter > 0:
                     print('replay_count = ', agent.memory.mem_counter)
-                if env.reward >= -10:
-                    agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+                agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
         if is_only_success:
             '''设置一个限制，只有满足某些条件的[s a r s' done]才可以被加进去'''
             if env.terminal_flag == 3 or env.terminal_flag == 2:
@@ -254,15 +253,15 @@ if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-CartPoleAngleOnly/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-CartPole/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
 
-    env = CartPoleAngleOnly(initTheta=0, save_cfg=False)
+    env = CartPole(initTheta=0, initX=0, save_cfg=False)
 
     if TRAIN:
         agent = TD3(gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
@@ -307,7 +306,7 @@ if __name__ == '__main__':
         print('Start to train...')
         step = 0
         while agent.episode <= MAX_EPISODE:
-            print('=========START=========')
+            # print('=========START=========')
             print('Episode:', agent.episode)
             env.reset_random()
             sumr = 0
@@ -322,37 +321,35 @@ if __name__ == '__main__':
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.step_update(action)  # 环境更新的action需要是物理的action
                 step += 1
-                env.show_dynamic_image(isWait=False)       # 画图
+                # env.show_dynamic_image(isWait=False)       # 画图
                 sumr = sumr + env.reward
-                if env.reward >= -10:
-                    agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
+                agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
 
                 agent.learn(is_reward_ascent=False)
+                if timestep % 500 == 0:
+                    # print('check point save')
+                    temp = simulationPath + 'timestep' + '_' + str(timestep) + '_save/'
+                    os.mkdir(temp)
+                    time.sleep(0.01)
+                    agent.actor.save_checkpoint(name='Actor_td3', path=temp, num=timestep)
+                    agent.target_actor.save_checkpoint(name='TargetActor_td3', path=temp, num=timestep)
+                    agent.critic1.save_checkpoint(name='Critic1_td3', path=temp, num=timestep)
+                    agent.target_critic1.save_checkpoint(name='TargetCritic1_td3', path=temp, num=timestep)
+                    agent.critic2.save_checkpoint(name='Critic2_td3', path=temp, num=timestep)
+                    agent.target_critic2.save_checkpoint(name='TargetCritic2_td3', path=temp, num=timestep)
 
-            print('Cumulative reward:', round(sumr, 3))
-            print('TimeStep:', timestep)
             agent.episode += 1
-            if agent.episode % 10 == 0:
+            if agent.episode % 50 == 0:
+                print('Episode: {}'.format(agent.episode))
                 agent.save_models()
                 agent_evaluate()
-            if timestep % 500 == 0:
-                print('check point save')
-                temp = simulationPath + 'timestep' + '_' + str(timestep) + '_save/'
-                os.mkdir(temp)
-                time.sleep(0.01)
-                agent.actor.save_checkpoint(name='Actor_td3', path=temp, num=timestep)
-                agent.target_actor.save_checkpoint(name='TargetActor_td3', path=temp, num=timestep)
-                agent.critic1.save_checkpoint(name='Critic1_td3', path=temp, num=timestep)
-                agent.target_critic1.save_checkpoint(name='TargetCritic1_td3', path=temp, num=timestep)
-                agent.critic2.save_checkpoint(name='Critic2_td3', path=temp, num=timestep)
-                agent.target_critic2.save_checkpoint(name='TargetCritic2_td3', path=temp, num=timestep)
 
     if TEST:
         agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
 
         '''重新加载target actor网络结构，这是必须的操作'''
         agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.load_target_actor_optimal(path=optPath, file='TD3-CartPoleAngleOnly/parameters/TargetActor_td3')
+        agent.load_target_actor_optimal(path=optPath, file='TD3-CartPole/parameters/TargetActor_td3')
         '''重新加载target actor网络结构，这是必须的操作'''
 
         for _ in range(3):

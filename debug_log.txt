@@ -78,3 +78,26 @@ Tips:
     On the other hand, TD3 with a continuous action space and an experience pool of around 20,000 can learn perfectly in less than a minute...
     I guess I still need to use the experience pool.
 =================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 6
+Date: 2023.03.14
+Time: 20:54
+Contents:
+	1). Add a controller for CartPole with A2C.
+Tips:
+    This environment is different the one in gym. There are two main difference.
+    First, the action of the CartPole in gym is discrete, while main is continuous.
+    Then, the training goal of the CartPole in gym is just stabilizing the Pole,
+        while main is stabilizing the Pole and maintaining the Cart at x=0 simultaneously.
+    However, the performance is worse than just stabilizing the Pole
+        because the Pole and the Cart have conflict of interest in some scenarios.
+    I insist that controlling both Cart and Pole is more meaningful and challengeable
+        and that is what DRL should do.
+    Currently, my controller can stabilize the Pole but leave the Cart keeps fluctuating around x=0.
+    目前摆能稳定住，但是小车在搁那嘎达晃晃悠悠的。(不是动力学的问题，我加了阻力，所以理论上有能量耗散，绝对可以稳住不动的)
+    If anyone happens to see my code and has any idea to improve the performance, please email me.
+        E-mail: yefeng.yang@connect.polyu.hk
+        Respect~ 瑞思拜~
+=================奥利给兄弟们干他就完了=================
