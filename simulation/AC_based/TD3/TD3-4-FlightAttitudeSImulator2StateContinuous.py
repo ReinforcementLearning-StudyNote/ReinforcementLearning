@@ -6,17 +6,17 @@ import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
-from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous as flight_sim_con
+from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_2state_continuous import Flight_Attitude_Simulator_2State_Continuous as FAS_2S
 from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common_func import *
 from common.common_cls import *
 
 cfgPath = '../../../environment/config/'
-cfgFile = 'Flight_Attitude_Simulator_Continuous2.xml'
+cfgFile = 'Flight_Attitude_Simulator_2State_Continuous.xml'
 # optPath = '../../../datasave/network/'
 optPath = 'temp/'
 ALGORITHM = 'TD3'
-ENV = 'FlightAttitudeSimulator2'
+ENV = 'Flight_Attitude_Simulator_2State_Continuous'
 show_per = 1
 timestep = 0
 
@@ -238,7 +238,7 @@ if __name__ == '__main__':
     TEST = not TRAIN
     is_storage_only_success = False
 
-    env = flight_sim_con(initTheta=-60.0, setTheta=0.0, save_cfg=False)
+    env = FAS_2S(initTheta=-60.0, setTheta=0.0, save_cfg=False)
 
     if TRAIN:
         agent = TD3(gamma=0.99,

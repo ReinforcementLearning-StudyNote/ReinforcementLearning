@@ -21,6 +21,7 @@ class Advantage_AC:
 		@param modelFileXML:
 		@param path:
 		"""
+		'''From rl_base'''
 		# A2C 要求智能体状态必须是连续的，动作必须离散的
 		self.agentName, self.state_dim_nn, self.action_dim_nn, self.action_num, self.action_space_nn, self.action_range = \
 			self.get_RLBase_from_XML(modelFileXML)

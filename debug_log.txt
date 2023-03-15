@@ -101,3 +101,16 @@ Tips:
         E-mail: yefeng.yang@connect.polyu.hk
         Respect~ 瑞思拜~
 =================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 7
+Date: 2023.03.15
+Time: 19:48
+Contents:
+	1). Add PPO.
+	2). Add a controller for CartPoleAngleOnly using PPO.
+	3). Add a controller for FlightAttitudeSimulator2StateContinuous using PPO.
+Tips:
+    The performance is pretty good.
+=================奥利给兄弟们干他就完了=================

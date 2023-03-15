@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as func
 import torch
 from torch.distributions import Normal
+from torch.distributions import MultivariateNormal
 
 
 # import scipy.spatial as spt
@@ -67,6 +68,34 @@ class ReplayBuffer:
             return states, actions, rewards, actions_, terminals, log_probs
         else:
             return states, actions, rewards, actions_, terminals
+
+
+class RolloutBuffer:
+    def __init__(self):
+        self.actions = []
+        self.states = []
+        self.logprobs = []
+        self.rewards = []
+        self.state_values = []
+        self.is_terminals = []
+
+    def clear(self):
+        del self.actions[:]
+        del self.states[:]
+        del self.logprobs[:]
+        del self.rewards[:]
+        del self.state_values[:]
+        del self.is_terminals[:]
+
+    def print_len(self):
+        print('====BUFFER====')
+        print('actions: {}'.format(len(self.actions)))
+        print('states: {}'.format(len(self.states)))
+        print('logprobs: {}'.format(len(self.logprobs)))
+        print('rewards: {}'.format(len(self.rewards)))
+        print('state_values: {}'.format(len(self.state_values)))
+        print('is_terminals: {}'.format(len(self.is_terminals)))
+        print('====BUFFER====')
 
 
 class OUActionNoise(object):
@@ -304,6 +333,85 @@ class SofemaxActor(nn.Module):
         x = func.relu(self.layer(state))
         x = func.softmax(x, dim=1)
         return x
+
+    def save_checkpoint(self, name=None, path='', num=None):
+        print('...saving checkpoint...')
+        if name is None:
+            torch.save(self.state_dict(), self.checkpoint_file)
+        else:
+            if num is None:
+                torch.save(self.state_dict(), path + name)
+            else:
+                torch.save(self.state_dict(), path + name + str(num))
+
+    def save_all_net(self):
+        print('...saving all net...')
+        torch.save(self, self.checkpoint_file_whole_net)
+
+    def load_checkpoint(self):
+        print('...loading checkpoint...')
+        self.load_state_dict(torch.load(self.checkpoint_file))
+
+
+class PPOActorCritic(nn.Module):
+    def __init__(self, _state_dim, _action_dim, _action_std_init, name='PPOActorCritic', chkpt_dir=''):
+        super(PPOActorCritic, self).__init__()
+        self.checkpoint_file = chkpt_dir + name + '_ppo'
+        self.checkpoint_file_whole_net = chkpt_dir + name + '_ppoALL'
+        self.action_dim = _action_dim
+        # 应该是初始化方差，一个动作就一个方差，两个动作就两个方差，std 是标准差
+        self.action_var = torch.full((_action_dim,), _action_std_init * _action_std_init)
+        self.actor = nn.Sequential(
+            nn.Linear(_state_dim, 64),
+            nn.Tanh(),
+            nn.Linear(64, 64),
+            nn.Tanh(),
+            nn.Linear(64, _action_dim),
+            nn.Tanh()
+        )
+        self.critic = nn.Sequential(
+            nn.Linear(_state_dim, 64),
+            nn.Tanh(),
+            nn.Linear(64, 64),
+            nn.Tanh(),
+            nn.Linear(64, 1)
+        )
+        self.device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+        # torch.cuda.empty_cache()
+        self.to(self.device)
+
+    def set_action_std(self, new_action_std):
+        self.action_var = torch.full((self.action_dim,), new_action_std * new_action_std).to(self.device)
+
+    def forward(self):
+        raise NotImplementedError
+
+    def act(self, s):
+        action_mean = self.actor(s)
+        cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
+        dist = MultivariateNormal(action_mean, cov_mat)     # 多变量高斯分布，均值，方差
+
+        _a = dist.sample()
+        action_logprob = dist.log_prob(_a)
+        state_val = self.critic(s)
+
+        return _a.detach(), action_logprob.detach(), state_val.detach()
+
+    def evaluate(self, s, a):
+        action_mean = self.actor(s)
+        action_var = self.action_var.expand_as(action_mean)
+        cov_mat = torch.diag_embed(action_var).to(self.device)
+        dist = MultivariateNormal(action_mean, cov_mat)
+
+        # For Single Action Environments.
+        if self.action_dim == 1:
+            a = a.reshape(-1, self.action_dim)
+
+        action_logprobs = dist.log_prob(a)
+        dist_entropy = dist.entropy()
+        state_values = self.critic(s)
+
+        return action_logprobs, state_values, dist_entropy
 
     def save_checkpoint(self, name=None, path='', num=None):
         print('...saving checkpoint...')

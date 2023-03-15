@@ -1,24 +1,26 @@
+import math
+
 import numpy as np
 
 from common.common_func import *
 from environment.envs import *
 
 
-class Flight_Attitude_Simulator_Continuous(rl_base):
+class Flight_Attitude_Simulator_2State_Continuous(rl_base):
     def __init__(self, initTheta: float, setTheta: float, save_cfg: bool):
         """
-        @note:                  initialization
+        @note:                  initialization, 这个环境只有两个状态，角度和角速度，默认设定点为零度，并且取消初始角度，此时角度误差默认为负角度
         @param initTheta:       initial theta
         @param setTheta:        target theta=0
         @param save_cfg:        save model description file?
         """
-        super(Flight_Attitude_Simulator_Continuous, self).__init__()
+        super(Flight_Attitude_Simulator_2State_Continuous, self).__init__()
         '''physical parameters'''
-        self.name = 'Flight_Attitude_Simulator_Continuous2'
-        self.initTheta = deg2rad(initTheta)
-        self.setTheta = deg2rad(setTheta)
+        self.name = 'Flight_Attitude_Simulator_2State_Continuous'
+        self.initTheta = initTheta
+        self.setTheta = 0
         self.force = 0
-        self.f_max = 3.5
+        self.f_max = 4
         self.f_min = -1.5
 
         self.minTheta = deg2rad(-60.0)
@@ -54,11 +56,11 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         '''RL_BASE'''
         # 这个状态与控制系统的状态不一样
         self.staticGain = 2
-        self.state_dim = 4  # initTheta, Theta, dTheta, error
+        self.state_dim = 2  # Theta, dTheta
         self.state_num = [math.inf for _ in range(self.state_dim)]
         self.state_step = [None for _ in range(self.state_dim)]
         self.state_space = [None for _ in range(self.state_dim)]
-        self.state_range = [[-self.staticGain, self.staticGain] for _ in range(self.state_dim)]
+        self.state_range = [[self.minTheta, self.maxTheta], [self.min_omega, self.max_omega]]
         self.isStateContinuous = [True for _ in range(self.state_dim)]
         self.initial_state = self.state_norm()
         self.current_state = self.initial_state.copy()
@@ -102,7 +104,7 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         self.draw_base()
         self.draw_pendulum()
         self.draw_copper()
-        self.show_initial_image(isWait=True)
+        self.show_initial_image(isWait=False)
         '''visualization_opencv'''
 
         '''data_save'''
@@ -192,29 +194,21 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
 
     def state_norm(self) -> np.ndarray:
         """
-        状态归一化
+        @return:
         """
-        # # initTheta, Theta, dTheta, error
-        #
-        _initTheta = (2 * self.initTheta - self.maxTheta - self.minTheta) / (self.maxTheta - self.minTheta) * self.staticGain
         _Theta = (2 * self.theta - self.maxTheta - self.minTheta) / (self.maxTheta - self.minTheta) * self.staticGain
         _dTheta = (2 * self.dTheta - self.max_omega - self.min_omega) / (self.max_omega - self.min_omega) * self.staticGain
-        _error = (2 * self.thetaError - self.max_theta_e - self.min_theta_e) / (self.max_theta_e - self.min_theta_e) * self.staticGain
-        # norm_state = np.array([_Theta, _dTheta, _error])
-
-        norm_state = np.array([self.initTheta, self.theta, self.dTheta, self.thetaError])
-        # norm_state = np.array([self.theta, self.dTheta, self.thetaError])
-
+        norm_state = np.array([_Theta, _dTheta])
         return norm_state
 
     def inverse_state_norm(self, s: np.ndarray) -> np.ndarray:
-        _initTheta = (s[0] / self.staticGain * (self.maxTheta - self.minTheta) + self.maxTheta + self.minTheta) / 2
-        _Theta = (s[1] / self.staticGain * (self.maxTheta - self.minTheta) + self.maxTheta + self.minTheta) / 2
-        _dTheta = (s[2] / self.staticGain * (self.max_omega - self.min_omega) + self.max_omega + self.min_omega) / 2
-        _error = (s[3] / self.staticGain * (self.max_theta_e - self.min_theta_e) + self.max_theta_e + self.min_theta_e) / 2
-
-        inv_norm_state = np.array([self.initTheta, self.theta, self.dTheta, self.thetaError])
-
+        """
+        @param s:
+        @return:
+        """
+        _Theta = (s[0] / self.staticGain * (self.maxTheta - self.minTheta) + self.maxTheta + self.minTheta) / 2
+        _dTheta = (s[1] / self.staticGain * (self.max_omega - self.min_omega) + self.max_omega + self.min_omega) / 2
+        inv_norm_state = np.array([_Theta, _dTheta])
         return inv_norm_state
 
     def is_success(self):
@@ -240,49 +234,58 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
             self.terminal_flag = 3
             print('Timeout')
             return True
-        if self.is_success():
-            self.terminal_flag = 4
-            print('Success')
-            return True
+        # if self.is_success():
+        #     self.terminal_flag = 4
+        #     print('Success')
+        #     return True
         self.terminal_flag = 0
         return False
 
     def get_reward(self, param=None):
-        s = self.inverse_state_norm(self.current_state)
-        ss = self.inverse_state_norm(self.next_state)
-        current_error = math.fabs(s[3])
-        next_error = math.fabs(ss[3])
+        c_s = self.inverse_state_norm(self.current_state)
+        n_s = self.inverse_state_norm(self.next_state)
 
-        new_theta = ss[1]
-        new_dtheta = ss[2]
+        abs_cur_t = math.fabs(c_s[0])
+        abs_nex_t = math.fabs(n_s[0])
 
-        # if current_error > next_error:  # 如果误差变小
-        #     r1 = 3  # + (current_error - next_error) * 20
-        # elif current_error < next_error:
-        #     r1 = -3  # + (current_error - next_error) * 20
-        # else:
-        #     if next_error > deg2rad(0.5):  # 如果当前误差大于0.5度
-        #         r1 = -3
-        #     else:
-        #         r1 = 5
-        #
-        # if self.terminal_flag == 2 or self.terminal_flag == 3:
-        #     r2 = -5
-        # elif self.terminal_flag == 4:
-        #     r2 = 10
-        # else:
-        #     r2 = 0
-        #
-        # if new_theta * new_dtheta < 0:
-        #     r3 = 5
-        # else:
-        #     r3 = -5
+        '''引导误差'''
+        if abs_cur_t > abs_nex_t:  # 如果误差变小
+            r1 = 2
+        elif abs_cur_t < abs_nex_t:
+            r1 = -2
+        else:
+            r1 = 0
+        '''引导误差'''
 
-        r1 = -(next_error ** 2) * 100     # 使用 x'Qx 的形式，试试好不好使
-        r2 = -(self.dTheta ** 2) * 1
-        r3 = 0
+        '''引导方向'''
+        if n_s[0] * n_s[1] < 0:
+            r2 = 1
+        else:
+            r2 = -1
+        '''引导方向'''
 
-        self.reward = r1 + r2 + r3
+        if self.terminal_flag == 1 or self.terminal_flag == 2:  # 出界
+            r3 = -100
+        elif self.terminal_flag == 3:   # 超市
+            r3 = -0
+        elif self.terminal_flag == 4:   # 成功
+            r3 = 500
+        else:
+            r3 = 0
+
+        if math.fabs(self.theta) < deg2rad(1):
+            r4 = 2
+            if math.fabs(self.dTheta) < deg2rad(5):
+                r4 += 2
+        else:
+            r4 = 0
+        # r3 = 0
+
+        # r1 = -(next_error ** 2) * 100     # 使用 x'Qx 的形式，试试好不好使
+        # r2 = -(self.dTheta ** 2) * 1
+        # r3 = 0
+
+        self.reward = r1 + r2 + r3 + r4
 
     def ode(self, xx: np.ndarray):
         _dtheta = xx[1]
@@ -307,7 +310,8 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
 
     def step_update(self, action: np.ndarray):
         self.current_action = action.copy()
-        self.current_state = self.state_norm()  # 当前状态
+        # self.current_state = np.array([self.theta, self.dTheta])
+        self.current_state = self.state_norm()
 
         '''rk44'''
         self.rk44(action=action[0])
@@ -316,7 +320,8 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
 
         self.is_terminal = self.is_Terminal()
         self.thetaError = self.setTheta - self.theta
-        self.next_state = self.state_norm()  # 下一时刻
+        # self.next_state = np.array([self.theta, self.dTheta])
+        self.next_state = self.state_norm()
 
         self.get_reward()
 
@@ -402,11 +407,11 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
         self.save_F = [self.initial_action[0]]
         '''data_save'''
 
-    def saveModel2XML(self, filename='Flight_Attitude_Simulator_Continuous2.xml', filepath='../config/'):
+    def saveModel2XML(self, filename='Flight_Attitude_Simulator_2State_Continuous.xml', filepath='../config/'):
         rootMsg = {
-            'name': 'Flight_Attitude_Simulator_Continuous2',
+            'name': 'Flight_Attitude_Simulator_2State_Continuous',
             'author': 'Yefeng YANG',
-            'date': '2023.03.02',
+            'date': '2023.03.15',
             'E-mail': 'yefeng.yang@connect.polyu.hk'
         }
         rl_baseMsg = {
@@ -481,7 +486,7 @@ class Flight_Attitude_Simulator_Continuous(rl_base):
                                  nodemsg=imageMsg)
         xml_cfg().XML_Pretty_All(filepath + filename)
 
-    def saveData(self, is2file=False, filename='Flight_Attitude_Simulator2.csv', filepath=''):
+    def saveData(self, is2file=False, filename='Flight_Attitude_Simulator_2State_Continuous.csv', filepath=''):
         self.save_Time.append(self.time)
         self.save_Theta.append(self.theta)
         self.save_dTheta.append(self.dTheta)

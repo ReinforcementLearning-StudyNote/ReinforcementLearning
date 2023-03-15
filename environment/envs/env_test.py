@@ -28,8 +28,8 @@ def test_flight_attitude_simulator():
 
 # Flight Attitude Simulator Continuous Test
 def test_flight_attitude_simulator_continuous():
-    from FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous2
-    env = Flight_Attitude_Simulator_Continuous2(initTheta=-60.0, setTheta=0., save_cfg=True)
+    from FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous
+    env = Flight_Attitude_Simulator_Continuous(initTheta=-60.0, setTheta=0., save_cfg=True)
     test_num = 1
     for _ in range(test_num):
         # env.reset_random()
@@ -41,7 +41,23 @@ def test_flight_attitude_simulator_continuous():
             action = np.array([3])
             env.step_update(action=action)
             print(env.theta, env.dTheta)
-    # env.saveData(is2file=True, filepath='../../datasave/')
+
+
+def test_flight_attitude_simulator_2state_continuous():
+    from FlightAttitudeSimulator.flight_attitude_simulator_2state_continuous import Flight_Attitude_Simulator_2State_Continuous as FAS_2S_Con
+    env = FAS_2S_Con(initTheta=deg2rad(60.0), setTheta=0., save_cfg=True)
+    test_num = 1
+    for _ in range(test_num):
+        # env.reset_random()
+        env.reset()
+        # env.theta=0
+        while not env.is_terminal:
+            env.show_dynamic_image(isWait=False)
+            # action = random.choice(env.action_space)
+            action = np.array([3])
+            env.step_update(action=action)
+            # print(env.theta, env.dTheta)
+        print(env.time)
 
 
 # UGV Bidirectional Continuous Test
@@ -243,6 +259,7 @@ def test_uav_hover():
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
+    test_flight_attitude_simulator_2state_continuous()
     # test_ugv_bidirectional_continuous()
     # test_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
@@ -251,5 +268,5 @@ if __name__ == '__main__':
     # test_cartpole()
     # test_cartpoleangleonly()
     # test_uav_hover()
-    test_cartpole_discrete_angleonly()
+    # test_cartpole_discrete_angleonly()
     pass

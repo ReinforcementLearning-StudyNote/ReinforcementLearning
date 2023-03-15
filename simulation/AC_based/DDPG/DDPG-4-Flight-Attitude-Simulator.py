@@ -6,7 +6,7 @@ import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
-from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous2 as flight_sim_con
+from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_continuous import Flight_Attitude_Simulator_Continuous as flight_sim_con
 from algorithm.actor_critic.DDPG import DDPG
 from common.common_func import *
 from common.common_cls import *
