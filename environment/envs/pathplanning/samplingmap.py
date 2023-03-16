@@ -220,7 +220,7 @@ class samplingmap(obstacle):
         self.map_draw_obs()
         self.map_draw_photo_frame()
         self.map_draw_boundary()
-        self.map_draw_start_terminal()
+        # self.map_draw_start_terminal()
         if show:
             cv.imshow(self.name4image, self.image)
             cv.waitKey(0) if isWait else cv.waitKey(1)

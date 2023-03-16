@@ -91,7 +91,9 @@ In 'DDPG-4-UGV-Forward.py', set:
 </div>
 
 # TODO
-- [ ] Add A2C.
+- [x] Add A2C.
 - [ ] Add A3C.
-- [ ] Add PPO.
-- [ ] Train controllers for CartPole.
+- [x] Add PPO.
+- [x] Train controllers for CartPole.
+- [ ] Add some PPO demos.
+- [ ] Add some A3C demos.

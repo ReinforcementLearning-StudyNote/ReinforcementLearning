@@ -48,7 +48,7 @@ class CartPole(rl_base):
 		self.fm = 8  # maximum force added on the cart
 
 		self.dt = 0.01  # 10ms
-		self.timeMax = 100  # maximum time of each episode
+		self.timeMax = 6  # maximum time of each episode
 		self.time = 0.
 		self.etheta = 0. - self.theta
 		self.ex = 0. - self.x
@@ -184,18 +184,18 @@ class CartPole(rl_base):
 
 		if self.x > self.xMax or self.x < -self.xMax:
 			self.terminal_flag = 2
-			print('Position out...')
+			# print('Position out...')
 			self.terminal_flag = 2
 			return True
 
 		if self.time > self.timeMax:
 			self.terminal_flag = 3
-			print('Time out')
+			# print('Time out')
 			return True
 
 		if self.is_success():
 			self.terminal_flag = 4
-			print('Success')
+			# print('Success')
 			return True
 
 		self.terminal_flag = 0
@@ -212,7 +212,7 @@ class CartPole(rl_base):
 		'''
 		r1 = -self.Q_x * self.ex ** 2			# Qx = 1
 		r2 = -self.Q_dx * self.dx ** 2			# Qdx = 0.1
-		r3 = -self.Q_theta * self.etheta ** 2	# Qtheta =200
+		r3 = -self.Q_theta * self.etheta ** 2	# Qtheta = 200
 		r4 = -self.Q_dtheta * self.dtheta ** 2 	# Qdtheta = 0.1
 		r5 = -self.R * self.force ** 2			# QR = 0.1
 		if self.terminal_flag == 1:

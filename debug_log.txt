@@ -114,3 +114,15 @@ Contents:
 Tips:
     The performance is pretty good.
 =================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 7
+Date: 2023.03.16
+Time: 11:28
+Contents:
+	1). Add PPO-4-CartPoleAngleOnly.py
+	2). PPO-4-UGVBidirectional.py
+Tips:
+    No well-trained controller for the two previous envs yet.
+=================奥利给兄弟们干他就完了=================

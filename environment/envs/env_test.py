@@ -65,18 +65,20 @@ def test_ugv_bidirectional_continuous():
     from UGV.ugv_bidirectional_continuous import UGV_Bidirectional_Continuous
     env = UGV_Bidirectional_Continuous(initPhi=deg2rad(-135),
                                        save_cfg=True,
-                                       x_size=4.0,
-                                       y_size=4.0,
+                                       x_size=10.0,
+                                       y_size=10.0,
                                        start=[2.0, 2.0],
                                        terminal=[4.0, 4.0])
-    env.reset()
-    while not env.is_terminal:
-        # print(env.time)
-        env.show_dynamic_image(isWait=True)
-        action = [-3, 3]
-        env.step_update(action=action)
-        print(env.reward)
-        # print(env.current_state)
+
+    for _ in range(5):
+        env.reset_random()
+        while not env.is_terminal:
+            # print(env.time)
+            env.show_dynamic_image(isWait=False)
+            action = [-3, 3]
+            env.step_update(action=action)
+            # print(env.reward)
+            # print(env.current_state)
 
 
 # UGV Forward Continuous Test
@@ -259,8 +261,8 @@ def test_uav_hover():
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
-    test_flight_attitude_simulator_2state_continuous()
-    # test_ugv_bidirectional_continuous()
+    # test_flight_attitude_simulator_2state_continuous()
+    test_ugv_bidirectional_continuous()
     # test_ugv_forward_continuous()
     # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()

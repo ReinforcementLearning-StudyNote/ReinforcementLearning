@@ -1,10 +1,10 @@
-<Plant E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn" author="Yefeng YANG" date="2022.01.11" name="UGV_Bidirectional_Continuous">
+<Plant name="UGV_Bidirectional_Continuous" author="Yefeng YANG" date="2022.01.11" E-mail="yefeng.yang@connect.polyu.hk; 18B904013@stu.hit.edu.cn">
 	<RL_Base>
 		<state_dim>8</state_dim>
 		<state_num>[inf, inf, inf, inf, inf, inf, inf, inf]</state_num>
 		<state_step>[None, None, None, None, None, None, None, None]</state_step>
 		<state_space>[None, None, None, None, None, None, None, None]</state_space>
-		<state_range>[[-4.0, 4.0], [-4.0, 4.0], [0, 4.0], [0, 4.0], [-inf, inf], [-1.0, 1.0], [-1.0, 1.0], [0.6666666666666667, -0.6666666666666667]]</state_range>
+		<state_range>[[-10.0, 10.0], [-10.0, 10.0], [0, 10.0], [0, 10.0], [-inf, inf], [-1.0, 1.0], [-1.0, 1.0], [0.6666666666666667, -0.6666666666666667]]</state_range>
 		<isStateContinuous>[True, True, True, True, True, True, True, True]</isStateContinuous>
 		<initial_state>[2.0, 2.0, 2.0, 2.0, -2.356194490192345, 0, 0, 0]</initial_state>
 		<current_state>[2.0, 2.0, 2.0, 2.0, -2.356194490192345, 0, 0, 0]</current_state>
@@ -38,16 +38,16 @@
 		<L>0.3</L>
 		<dt>0.02</dt>
 		<time>0.0</time>
-		<x_size>4.0</x_size>
-		<y_size>4.0</y_size>
+		<x_size>10.0</x_size>
+		<y_size>10.0</y_size>
 		<miss>0.4</miss>
 	</Physical>
 	<Image>
 		<width>400</width>
 		<height>400</height>
 		<name4image>TwoWheelUGV</name4image>
-		<x_offset>20.0</x_offset>
-		<y_offset>20.0</y_offset>
-		<pixel_per_meter>90.0</pixel_per_meter>
+		<x_offset>2</x_offset>
+		<y_offset>2</y_offset>
+		<pixel_per_meter>39.6</pixel_per_meter>
 	</Image>
 </Plant>
