@@ -71,31 +71,34 @@ class ReplayBuffer:
 
 
 class RolloutBuffer:
-    def __init__(self):
-        self.actions = []
-        self.states = []
-        self.logprobs = []
-        self.rewards = []
-        self.state_values = []
-        self.is_terminals = []
+    def __init__(self, batch_size: int, state_dim: int, action_dim: int):
+        self.batch_size = batch_size
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.actions = np.zeros((batch_size, action_dim))
+        self.states = np.zeros((batch_size, state_dim))
+        self.log_probs = np.zeros(batch_size)
+        self.rewards = np.zeros(batch_size)
+        self.state_values = np.zeros(batch_size)
+        self.is_terminals = np.zeros(batch_size, dtype=np.float)
 
-    def clear(self):
-        del self.actions[:]
-        del self.states[:]
-        del self.logprobs[:]
-        del self.rewards[:]
-        del self.state_values[:]
-        del self.is_terminals[:]
+    def append(self, s: np.ndarray, a: np.ndarray, log_prob: float, r: float, sv: float, done: float, index: int):
+        self.actions[index] = a
+        self.states[index] = s
+        self.log_probs[index] = log_prob
+        self.rewards[index] = r
+        self.state_values[index] = sv
+        self.is_terminals[index] = done
 
-    def print_len(self):
-        print('====BUFFER====')
-        print('actions: {}'.format(len(self.actions)))
-        print('states: {}'.format(len(self.states)))
-        print('logprobs: {}'.format(len(self.logprobs)))
-        print('rewards: {}'.format(len(self.rewards)))
-        print('state_values: {}'.format(len(self.state_values)))
-        print('is_terminals: {}'.format(len(self.is_terminals)))
-        print('====BUFFER====')
+    def print_size(self):
+        print('==== RolloutBuffer ====')
+        print('actions: {}'.format(self.actions.size))
+        print('states: {}'.format(self.states.size))
+        print('logprobs: {}'.format(self.log_probs.size))
+        print('rewards: {}'.format(self.rewards.size))
+        print('state_values: {}'.format(self.state_values.size))
+        print('is_terminals: {}'.format(self.is_terminals.size))
+        print('==== RolloutBuffer ====')
 
 
 class OUActionNoise(object):
@@ -386,16 +389,16 @@ class PPOActorCritic(nn.Module):
     def forward(self):
         raise NotImplementedError
 
-    def act(self, s):
+    def act(self, s: torch.Tensor) -> tuple:
         action_mean = self.actor(s)
         cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
         dist = MultivariateNormal(action_mean, cov_mat)     # 多变量高斯分布，均值，方差
 
         _a = dist.sample()
-        action_logprob = dist.log_prob(_a)
+        action_log_prob = dist.log_prob(_a)
         state_val = self.critic(s)
 
-        return _a.detach(), action_logprob.detach(), state_val.detach()
+        return _a.detach(), action_log_prob.detach(), state_val.detach()
 
     def evaluate(self, s, a):
         action_mean = self.actor(s)
@@ -430,3 +433,20 @@ class PPOActorCritic(nn.Module):
     def load_checkpoint(self):
         print('...loading checkpoint...')
         self.load_state_dict(torch.load(self.checkpoint_file))
+
+
+class SharedAdam(torch.optim.Adam):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.99), eps=1e-8,
+                 weight_decay=0):
+        super(SharedAdam, self).__init__(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+        # State initialization
+        for group in self.param_groups:
+            for p in group['params']:
+                state = self.state[p]
+                state['step'] = 0
+                state['exp_avg'] = torch.zeros_like(p.data)
+                state['exp_avg_sq'] = torch.zeros_like(p.data)
+
+                # share in memory
+                state['exp_avg'].share_memory_()
+                state['exp_avg_sq'].share_memory_()

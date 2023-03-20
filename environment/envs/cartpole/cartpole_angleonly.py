@@ -186,17 +186,17 @@ class CartPoleAngleOnly(rl_base):
         :param param:   extra parameters for reward function
         :return:
         """
-		'''Should be a function with respec to [theta, dtheta, etheta, x, dx ,ex]'''
+		'''Should be a function with respec to [theta, dtheta, force]'''
 		'''玄学，完全是玄学, sun of a bitch'''
 		'''二次型奖励'''
-		self.Q_theta = 200
-		self.Q_omega = 0.1
-		self.R = 0.1
-		r1_min = -self.thetaMax ** 2 * self.Q_theta
-		r2_min = -8 ** 2 * self.Q_omega
-		r3_min = -self.fm ** 2 * self.R		# 有正有负，仅此而已
-		r1 = -self.theta ** 2 * self.Q_theta # - r1_min / 2
-		r2 = -self.dtheta ** 2 * self.Q_omega # - r2_min / 2
+		Q_theta = 200
+		Q_omega = 0.1
+		R = 0.1
+		# r1_min = -self.thetaMax ** 2 * self.Q_theta
+		# r2_min = -8 ** 2 * self.Q_omega
+		r3_min = -self.fm ** 2 * R		# 有正有负，仅此而已
+		r1 = -self.theta ** 2 * Q_theta # - r1_min / 2
+		r2 = -self.dtheta ** 2 * Q_omega # - r2_min / 2
 		r3 = -self.force ** 2 * self.R - r3_min / 2
 		# r3 = 0
 		r = r1 + r2 + r3

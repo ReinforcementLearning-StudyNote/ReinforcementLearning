@@ -35,18 +35,20 @@ class PPOActorCritic(nn.Module):
 		self.checkpoint_file = chkpt_dir + name + '_ppo'
 		self.checkpoint_file_whole_net = chkpt_dir + name + '_ppoALL'
 		self.action_dim = _action_dim
+		self.state_dim = _state_dim
+		self.action_std_init = _action_std_init
 		# 应该是初始化方差，一个动作就一个方差，两个动作就两个方差，std 是标准差
-		self.action_var = torch.full((_action_dim,), _action_std_init * _action_std_init)
+		self.action_var = torch.full((self.action_dim,), self.action_std_init * self.action_std_init)
 		self.actor = nn.Sequential(
-			nn.Linear(_state_dim, 64),
+			nn.Linear(self.state_dim, 64),
 			nn.Tanh(),
 			nn.Linear(64, 64),
 			nn.Tanh(),
-			nn.Linear(64, _action_dim),
+			nn.Linear(64, self.action_dim),
 			nn.Tanh()
 		)
 		self.critic = nn.Sequential(
-			nn.Linear(_state_dim, 64),
+			nn.Linear(self.state_dim, 64),
 			nn.Tanh(),
 			nn.Linear(64, 64),
 			nn.Tanh(),
@@ -142,6 +144,7 @@ if __name__ == '__main__':
 					K_epochs=80,
 					eps_clip=0.2,
 					action_std_init=0.6,
+					buffer_size=int(env.timeMax / env.dt * 2),		# 假设可以包含两条完整的最长时间的轨迹
 					modelFileXML=cfgPath + cfgFile,
 					path=simulationPath)
 
@@ -156,7 +159,7 @@ if __name__ == '__main__':
 
 		agent.PPO_info()
 
-		learn_every_n_timestep = int(env.timeMax / env.dt) * 2  # 每采集这么多的数据统一学习一次，长度为每回合最大数据的 2 倍
+		# learn_every_n_timestep = int(env.timeMax / env.dt) * 2  # 每采集这么多的数据统一学习一次，长度为每回合最大数据的 2 倍
 		max_training_timestep = int(env.timeMax / env.dt) * 10000  # 10000回合
 		action_std_decay_freq = int(2.5e5)
 		action_std_decay_rate = 0.05  # linearly decay action_std (action_std = action_std - action_std_decay_rate)
@@ -165,37 +168,47 @@ if __name__ == '__main__':
 		sumr = 0
 		start_eps = 0
 		train_num = 0
+		index = 0
 		while timestep <= max_training_timestep:
 			env.reset_random()
 			while not env.is_terminal:
-				timestep += 1
 				env.current_state = env.next_state.copy()
 				# print(env.current_state)
-				action_from_actor, s, a_log_prob, s_value = agent.choose_action(env.current_state)
+				action_from_actor, s, a_log_prob, s_value = agent.choose_action(env.current_state)	# 返回三个没有梯度的tensor
 				action = agent.action_linear_trans(action_from_actor.detach().cpu().numpy().flatten())  # 将动作转换到实际范围上
 				env.step_update(action)  # 环境更新的action需要是物理的action
 				# env.show_dynamic_image(isWait=False)  # 画图
 				sumr += env.reward
 				'''存数'''
-				agent.buffer.states.append(s)
-				agent.buffer.actions.append(action_from_actor)
-				agent.buffer.logprobs.append(a_log_prob)
-				agent.buffer.state_values.append(s_value)
-				agent.buffer.rewards.append(env.reward)
-				agent.buffer.is_terminals.append(1 if env.is_terminal else 0)
+				# agent.buffer.states.append(s)
+				# agent.buffer.actions.append(action_from_actor)
+				# agent.buffer.logprobs.append(a_log_prob)
+				# agent.buffer.state_values.append(s_value)
+				# agent.buffer.rewards.append(env.reward)
+				# agent.buffer.is_terminals.append(1 if env.is_terminal else 0)
+				agent.buffer.append(s=env.current_state,
+									a=action_from_actor.cpu().numpy(),
+									log_prob=a_log_prob.cpu().numpy(),
+									r=env.reward,
+									sv=s_value.cpu().numpy(),
+									done=1.0 if env.is_terminal else 0.0,
+									index=index)
+				index += 1
+				timestep += 1
 				'''存数'''
 				'''学习'''
-				if timestep % learn_every_n_timestep == 0:
+				if timestep % agent.buffer.batch_size == 0:
 					print('========== LEARN ==========')
 					print('Episode: {}'.format(agent.episode))
 					print('Num of learning: {}'.format(train_num))
 					agent.learn()
 					'''clear buffer'''
-					agent.buffer.clear()
+					# agent.buffer.clear()
 					train_num += 1
 					print('Average reward:', round(sumr / (agent.episode + 1 - start_eps), 3))
 					start_eps = agent.episode
 					sumr = 0
+					index = 0
 					if train_num % 50 == 0 and train_num > 0:
 						agent_evaluate()
 						print('check point save')

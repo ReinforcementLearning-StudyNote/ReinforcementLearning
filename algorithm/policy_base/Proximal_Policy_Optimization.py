@@ -17,6 +17,7 @@ class Proximal_Policy_Optimization:
 				 K_epochs: int = 10,
 				 eps_clip: float = 0.2,
 				 action_std_init: float = 0.6,
+				 buffer_size: int = 1200,
 				 modelFileXML: str = '',
 				 path: str = ''):
 		"""
@@ -41,7 +42,8 @@ class Proximal_Policy_Optimization:
 		self.eps_clip = eps_clip
 		self.action_std = action_std_init
 		self.path = path
-		self.buffer = RolloutBuffer()
+		# self.buffer = RolloutBuffer()
+		self.buffer = RolloutBuffer(buffer_size, self.state_dim_nn, self.action_dim_nn)
 		self.actor_lr = actor_lr
 		self.critic_lr = critic_lr
 		'''PPO'''
@@ -92,9 +94,9 @@ class Proximal_Policy_Optimization:
 	def choose_action(self, state):
 		with torch.no_grad():
 			t_state = torch.FloatTensor(state).to(device)
-			action, action_logprob, state_val = self.policy_old.act(t_state)
+			action, action_log_prob, state_val = self.policy_old.act(t_state)
 
-		return action, t_state, action_logprob, state_val
+		return action, t_state, action_log_prob, state_val
 
 	def evaluate(self, state, test_std=0.0):
 		with torch.no_grad():
@@ -124,10 +126,11 @@ class Proximal_Policy_Optimization:
 		rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
 
 		'''3. convert list to tensor'''  # TODO 或许可以用 numpy
-		old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(device)
-		old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(device)
-		old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(device)
-		old_state_values = torch.squeeze(torch.stack(self.buffer.state_values, dim=0)).detach().to(device)
+		with torch.no_grad():
+			old_states = torch.FloatTensor(self.buffer.states).detach().to(self.device)
+			old_actions = torch.FloatTensor(self.buffer.actions).detach().to(self.device)
+			old_log_probs = torch.FloatTensor(self.buffer.log_probs).detach().to(self.device)
+			old_state_values = torch.FloatTensor(self.buffer.state_values).detach().to(self.device)
 
 		'''4. calculate advantages'''
 		advantages = rewards.detach() - old_state_values.detach()	# TODO 长度不相同
@@ -135,13 +138,13 @@ class Proximal_Policy_Optimization:
 		'''5. Optimize policy for K epochs'''
 		for _ in range(self.K_epochs):
 			'''5.1 Evaluating old actions and values'''
-			logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
+			log_probs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
 
 			'''5.2 match state_values tensor dimensions with rewards tensor'''
 			state_values = torch.squeeze(state_values)
 
 			'''5.3 Finding the ratio (pi_theta / pi_theta__old)'''
-			ratios = torch.exp(logprobs - old_logprobs.detach())
+			ratios = torch.exp(log_probs - old_log_probs.detach())
 
 			'''5.4 Finding Surrogate Loss'''
 			surr1 = ratios * advantages
