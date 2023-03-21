@@ -26,23 +26,35 @@ THe 'envs' directory covers the ODE of the physical environments.
 Simulation is the place where we implement our simulation experiments, which means, using different algorithms in different environments.
 
 ## Demos
-Currently, we only eight well-trained agents.
+Currently, we have DQN, DoubleDQN, DuelingDQN, DDPG, TD3, A2C, SAC, PPO, DPPO.
 
-1. A DDPG controller for Flight_Attitude_Simulator.
-2. A DDPG trajectory planner for UGV_Bidirectional_Continuous.
-3. A DDPG trajectory planner for UGV_Forward_Continuous.
-4. A DDPG trajectory planner for UGV_Forward_Obstacle_Continuous.
-5. A DQN controller for a Flight_Attitude_Simulator.
-6. A TD3 trajectory planner for UGV_Forward_Obstacle_Continuous.
-7. A TD3 controller for CartPole_AngleOnly.
-8. A TD3 controller for Flight_Attitude_Simulator.
+Currently, we have the following well-trained controllers
+
+1. A DDPG controller for:
+    FlightAttitudeSimulator,
+    UGVBidirectional (trajectory planner),
+    UGVForward (trajectory planner),
+    UGVForwardObstacleAvoidance (trajectory planner).
+2. A DQN controller for:
+    FlightAttitudeSimulator. 
+3. A TD3 trajectory planner for:
+    UGVForwardObstacleAvoidance,
+    CartPole,
+    CartPoleAngleOnly,
+    FlightAttitudeSimulator.
+4. A PPO controller for:
+    CartPoleAngleOnly,
+    FlightAttitudeSimulator2State. 
+5. A DPPO controller for:
+    CartPoleAngleOnly,
+    FlightAttitudeSimulator2State.
 
 ## Run the scripts
 All runnable scripts are in './simulation/'.
 ### A DQN controller for a flight attitude simulator.
 ```commandline
 cd simulation/DQN_based/
-python DQN-4-Flight-Attitude-Simulator.py
+python3 DQN-4-Flight-Attitude-Simulator.py
 ```
 The result should be similar to the following.
 
@@ -94,6 +106,10 @@ In 'DDPG-4-UGV-Forward.py', set:
 - [x] Add A2C.
 - [ ] Add A3C.
 - [x] Add PPO.
+- [x] Add DPPO.
+- [ ] Add DPPO2.
 - [x] Train controllers for CartPole.
-- [ ] Add some PPO demos.
+- [x] Add some PPO demos.
+- [x] Add some DPPO demos.
 - [ ] Add some A3C demos.
+- [ ] Add more environments.
