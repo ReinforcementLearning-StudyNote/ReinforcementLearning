@@ -18,5 +18,11 @@ import torch.optim as optim
 from torch.distributions import Normal
 from torch.distributions import Categorical
 from torch.distributions import MultivariateNormal
+# from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 
-self.optimizer = torch.optim.Adam()
+
+# dist = Normal(0, 0.1)
+# for i in range(1000):
+# 	writer.add_scalar('x', 2*np.sin(i*np.pi/100), i)	 # dist.sample()
+# writer.close()

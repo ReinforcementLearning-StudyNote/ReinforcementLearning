@@ -362,7 +362,7 @@ class PPOActorCritic(nn.Module):
         self.checkpoint_file = chkpt_dir + name + '_ppo'
         self.checkpoint_file_whole_net = chkpt_dir + name + '_ppoALL'
         self.action_dim = _action_dim
-        # 应该是初始化方差，一个动作就一个方差，两个动作就两个方差，std 是标准差
+        # 初始化方差，一个动作就一个方差，两个动作就两个方差，std 是标准差
         self.action_var = torch.full((_action_dim,), _action_std_init * _action_std_init)
         self.actor = nn.Sequential(
             nn.Linear(_state_dim, 64),
@@ -379,7 +379,7 @@ class PPOActorCritic(nn.Module):
             nn.Tanh(),
             nn.Linear(64, 1)
         )
-        self.device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+        self.device = 'cpu'
         # torch.cuda.empty_cache()
         self.to(self.device)
 
@@ -443,10 +443,11 @@ class SharedAdam(torch.optim.Adam):
         for group in self.param_groups:
             for p in group['params']:
                 state = self.state[p]
-                state['step'] = 0
+                state['step'] = torch.zeros(1)                   # 原来就是0 照着另一个程序改的
                 state['exp_avg'] = torch.zeros_like(p.data)
                 state['exp_avg_sq'] = torch.zeros_like(p.data)
 
                 # share in memory
+                state['step'].share_memory_()       # 这句话是对照另一个程序加的
                 state['exp_avg'].share_memory_()
                 state['exp_avg_sq'].share_memory_()

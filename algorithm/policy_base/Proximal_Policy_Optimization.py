@@ -1,6 +1,7 @@
 from common.common_func import *
 from common.common_cls import *
 from environment.config.xml_write import xml_cfg
+from tensorboardX import SummaryWriter
 
 """use CPU or GPU"""
 use_cuda = torch.cuda.is_available()
@@ -68,6 +69,7 @@ class Proximal_Policy_Optimization:
 		self.save_reward = []  # 保存的每一个回合的奖励
 		self.save_time = []
 		self.save_step = []  # 保存的每一步的步数
+		# self.writer = SummaryWriter(path)
 
 	def set_action_std(self, new_action_std):
 		self.action_std = new_action_std
@@ -98,14 +100,11 @@ class Proximal_Policy_Optimization:
 
 		return action, t_state, action_log_prob, state_val
 
-	def evaluate(self, state, test_std=0.0):
+	def evaluate(self, state):
 		with torch.no_grad():
 			state = torch.FloatTensor(state).to(device)
 			action_mean = self.policy.actor(state)
-			cov_mat = torch.diag(torch.full((self.action_dim_nn, ), test_std)).unsqueeze(dim=0)
-			dist = MultivariateNormal(action_mean, cov_mat)
-			_a = dist.sample()
-		return _a.detach()
+		return action_mean.detach()
 
 	def learn(self):
 		"""
@@ -213,6 +212,3 @@ class Proximal_Policy_Optimization:
 			b = (maxa + mina) / 2
 			linear_action.append(k * a + b)
 		return linear_action
-
-	def save_data(self):
-		pass

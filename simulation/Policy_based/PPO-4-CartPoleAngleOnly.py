@@ -31,6 +31,13 @@ setup_seed(3407)
 
 class PPOActorCritic(nn.Module):
 	def __init__(self, _state_dim, _action_dim, _action_std_init, name='PPOActorCritic', chkpt_dir=''):
+		"""
+		@param _state_dim:
+		@param _action_dim:
+		@param _action_std_init:
+		@param name:
+		@param chkpt_dir:
+		"""
 		super(PPOActorCritic, self).__init__()
 		self.checkpoint_file = chkpt_dir + name + '_ppo'
 		self.checkpoint_file_whole_net = chkpt_dir + name + '_ppoALL'
@@ -113,6 +120,7 @@ class PPOActorCritic(nn.Module):
 
 def agent_evaluate():
 	test_num = 5
+	r = 0
 	for _ in range(test_num):
 		env.reset_random()
 		while not env.is_terminal:
@@ -120,8 +128,11 @@ def agent_evaluate():
 			_action_from_actor, _, _, _ = agent.choose_action(env.current_state)
 			_action = agent.action_linear_trans(_action_from_actor.detach().cpu().numpy().flatten())  # 将动作转换到实际范围上
 			env.step_update(_action)  # 环境更新的action需要是物理的action
+			r += env.reward
 			env.show_dynamic_image(isWait=False)  # 画图
 	cv.destroyAllWindows()
+	r /= test_num
+	return r
 
 
 if __name__ == '__main__':
@@ -168,6 +179,7 @@ if __name__ == '__main__':
 		sumr = 0
 		start_eps = 0
 		train_num = 0
+		test_num = 0
 		index = 0
 		while timestep <= max_training_timestep:
 			env.reset_random()
@@ -175,22 +187,18 @@ if __name__ == '__main__':
 				env.current_state = env.next_state.copy()
 				# print(env.current_state)
 				action_from_actor, s, a_log_prob, s_value = agent.choose_action(env.current_state)	# 返回三个没有梯度的tensor
-				action = agent.action_linear_trans(action_from_actor.detach().cpu().numpy().flatten())  # 将动作转换到实际范围上
+				action_from_actor = action_from_actor.numpy()
+				action = agent.action_linear_trans(action_from_actor.flatten())  # 将动作转换到实际范围上
+				# action = agent.action_linear_trans(action_from_actor.detach().cpu().numpy().flatten())  # 将动作转换到实际范围上
 				env.step_update(action)  # 环境更新的action需要是物理的action
 				# env.show_dynamic_image(isWait=False)  # 画图
 				sumr += env.reward
 				'''存数'''
-				# agent.buffer.states.append(s)
-				# agent.buffer.actions.append(action_from_actor)
-				# agent.buffer.logprobs.append(a_log_prob)
-				# agent.buffer.state_values.append(s_value)
-				# agent.buffer.rewards.append(env.reward)
-				# agent.buffer.is_terminals.append(1 if env.is_terminal else 0)
 				agent.buffer.append(s=env.current_state,
-									a=action_from_actor.cpu().numpy(),
-									log_prob=a_log_prob.cpu().numpy(),
+									a=action_from_actor,	# .cpu().numpy()
+									log_prob=a_log_prob.numpy(),
 									r=env.reward,
-									sv=s_value.cpu().numpy(),
+									sv=s_value.numpy(),
 									done=1.0 if env.is_terminal else 0.0,
 									index=index)
 				index += 1
@@ -204,13 +212,17 @@ if __name__ == '__main__':
 					agent.learn()
 					'''clear buffer'''
 					# agent.buffer.clear()
+					average_train_r = round(sumr / (agent.episode + 1 - start_eps), 3)
+					print('Average reward:', average_train_r)
+					# agent.writer.add_scalar('train_r', average_train_r, train_num)		# to tensorboard
 					train_num += 1
-					print('Average reward:', round(sumr / (agent.episode + 1 - start_eps), 3))
 					start_eps = agent.episode
 					sumr = 0
 					index = 0
 					if train_num % 50 == 0 and train_num > 0:
-						agent_evaluate()
+						average_test_r = agent_evaluate()
+						# agent.writer.add_scalar('test_r', average_test_r, test_num)	# to tensorboard
+						test_num += 1
 						print('check point save')
 						temp = simulationPath + 'episode' + '_' + str(agent.episode) + '_save/'
 						os.mkdir(temp)

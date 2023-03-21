@@ -16,6 +16,7 @@ class CartPoleAngleOnly(rl_base):
         """
 		super(CartPoleAngleOnly, self).__init__()
 		'''physical parameters'''
+		self.name = 'CartPoleAngleOnly'
 		self.initTheta = initTheta
 		self.theta = self.initTheta
 		self.x = 0
@@ -80,7 +81,7 @@ class CartPoleAngleOnly(rl_base):
 		self.image[:, :, 0] = np.ones([self.height, self.width]) * 255
 		self.image[:, :, 1] = np.ones([self.height, self.width]) * 255
 		self.image[:, :, 2] = np.ones([self.height, self.width]) * 255
-		self.name4image = 'cartpole'
+		self.name4image = 'CartPoleAngleOnly'
 		self.xoffset = 0  # pixel
 		self.scale = (self.width - 2 * self.xoffset) / 2 / 1.5  # m -> pixel
 		self.cart_x_pixel = 40  # 仅仅为了显示，比例尺不一样的
@@ -189,33 +190,38 @@ class CartPoleAngleOnly(rl_base):
 		'''Should be a function with respec to [theta, dtheta, force]'''
 		'''玄学，完全是玄学, sun of a bitch'''
 		'''二次型奖励'''
-		Q_theta = 200
-		Q_omega = 0.1
-		R = 0.1
-		# r1_min = -self.thetaMax ** 2 * self.Q_theta
-		# r2_min = -8 ** 2 * self.Q_omega
-		r3_min = -self.fm ** 2 * R		# 有正有负，仅此而已
-		r1 = -self.theta ** 2 * Q_theta # - r1_min / 2
-		r2 = -self.dtheta ** 2 * Q_omega # - r2_min / 2
-		r3 = -self.force ** 2 * self.R - r3_min / 2
-		# r3 = 0
-		r = r1 + r2 + r3
+		# Q_theta = 200
+		# Q_omega = 0.1
+		# R = 0.1
+		# # r1_min = -self.thetaMax ** 2 * self.Q_theta
+		# # r2_min = -8 ** 2 * self.Q_omega
+		# r3_min = -self.fm ** 2 * R		# 有正有负，仅此而已
+		# r1 = -self.theta ** 2 * Q_theta # - r1_min / 2
+		# r2 = -self.dtheta ** 2 * Q_omega # - r2_min / 2
+		# r3 = -self.force ** 2 * self.R - r3_min / 2
+		# # r3 = 0
+		# r = r1 + r2 + r3
 		'''二次型奖励'''
 
 		'''耍赖奖励'''
-		# cur_e_theta = np.fabs(rad2deg(self.current_state[0] / self.staticGain * self.thetaMax))
-		# nex_e_theta = np.fabs(rad2deg(self.next_state[0] / self.staticGain * self.thetaMax))
-		# if nex_e_theta > cur_e_theta:
-		# 	r = -2
-		# elif nex_e_theta == cur_e_theta:
-		# 	r = 0
-		# else:
-		# 	r = 2
-		# if cur_e_theta <= 0.5 and nex_e_theta <= 0.5:
-		# 	r += 5
-		# '''再给一个角度惩罚'''
+		cur_e_theta = np.fabs(rad2deg(self.current_state[0] / self.staticGain * self.thetaMax))
+		nex_e_theta = np.fabs(rad2deg(self.next_state[0] / self.staticGain * self.thetaMax))
+		if nex_e_theta > cur_e_theta:
+			r = -2
+		elif nex_e_theta == cur_e_theta:
+			r = 0
+		else:
+			r = 2
+		if cur_e_theta <= 0.5 and nex_e_theta <= 0.5:
+			r += 5
+		'''再给一个角度惩罚'''
+		if self.terminal_flag == 1:
+			r -= 100
+		elif self.terminal_flag == 3:
+			r += 500
+		else:
+			pass
 		# r -= 5 * cur_e_theta
-		'''二次型奖励'''
 		self.reward = r
 
 	def ode(self, xx: np.ndarray):
