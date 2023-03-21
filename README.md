@@ -31,8 +31,8 @@ Currently, we have DQN, DoubleDQN, DuelingDQN, DDPG, TD3, A2C, SAC, PPO, DPPO.
 Currently, we have the following well-trained controllers
 
 1. A DDPG controller for:
-    FlightAttitudeSimulator,
-    UGVBidirectional (trajectory planner),
+    FlightAttitudeSimulator,\\
+    UGVBidirectional (trajectory planner),\\
     UGVForward (trajectory planner),
     UGVForwardObstacleAvoidance (trajectory planner).
 2. A DQN controller for:
