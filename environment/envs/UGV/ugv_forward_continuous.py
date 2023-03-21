@@ -359,7 +359,7 @@ class UGV_Forward_Continuous(samplingmap, rl_base):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def reset_random(self, uniform=False):
+    def reset_random(self):
         """
         :return:
         """

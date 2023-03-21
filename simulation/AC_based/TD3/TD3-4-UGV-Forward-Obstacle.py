@@ -362,8 +362,8 @@ if __name__ == '__main__':
             # env.reset()
             print('=========START=========')
             print('Episode:', agent.episode)
-            env.reset_random_with_database()
-            # env.reset_random()
+            # env.reset_random_with_database()
+            env.reset_random()
             sumr = 0
             new_state.clear()
             new_action.clear()

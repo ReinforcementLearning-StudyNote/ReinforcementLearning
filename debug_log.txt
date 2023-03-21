@@ -136,4 +136,6 @@ Contents:
 	1). Add DPPO
 	2). Add DPPO-4-CartPoleAngleOnly.py
 	3). Add a controller for CartPoleAngleOnly using DPPO.
+	4). Add DPPO-4-FlightSimulator2State.py
+	5). Add a controller for FlightSimulator2State using DPPO.
 =================奥利给兄弟们干他就完了=================

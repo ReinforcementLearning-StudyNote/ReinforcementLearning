@@ -48,6 +48,7 @@ class UGV_Bidirectional_Continuous(samplingmap, rl_base):
         self.omegaMin = deg2rad(-360)
 
         self.miss = 0.4
+        self.name = 'UGVBidirectional'
         '''physical parameters'''
 
         '''rl_base'''
@@ -78,14 +79,13 @@ class UGV_Bidirectional_Continuous(samplingmap, rl_base):
         self.initial_action = [0.0, 0.0]
         self.current_action = self.initial_action.copy()
 
-
         self.reward = 0.0
         self.is_terminal = False
         self.terminal_flag = 0  # 0-正常 1-出界 2-超时 3-成功
         '''rl_base'''
 
         '''visualization_opencv'''
-        self.show_dynamic_image(isWait=True)
+        self.show_dynamic_image(isWait=False)
         '''visualization_opencv'''
 
         '''datasave'''
@@ -228,28 +228,28 @@ class UGV_Bidirectional_Continuous(samplingmap, rl_base):
 
         r1 = -1  # 常值误差，每运行一步，就 -1
 
-        if currentError > nextError + 1e-2:
-            r2 = 3
-        elif 1e-2 + currentError < nextError:
-            r2 = -3
-        else:
-            r2 = 0
-        # r2 = 0
-        currentTheta = cal_vector_rad([cur_s[0], cur_s[1]], [math.cos(cur_s[4]), math.sin(cur_s[4])])
-        nextTheta = cal_vector_rad([nex_s[0], nex_s[1]], [math.cos(nex_s[4]), math.sin(nex_s[4])])
-        # print(currentTheta, nextTheta)
-        if currentTheta > nextTheta + 1e-3:  # 带1e-4是为了
-            r3 = 2
-        elif 1e-3 + currentTheta < nextTheta:
-            r3 = -2
-        else:
-            r3 = 0
-        # r3 = 0
+        # if currentError > nextError + 1e-2:
+        #     r2 = 3
+        # elif 1e-2 + currentError < nextError:
+        #     r2 = -3
+        # else:
+        #     r2 = 0
+        r2 = 0
+        # currentTheta = cal_vector_rad([cur_s[0], cur_s[1]], [math.cos(cur_s[4]), math.sin(cur_s[4])])
+        # nextTheta = cal_vector_rad([nex_s[0], nex_s[1]], [math.cos(nex_s[4]), math.sin(nex_s[4])])
+        # # print(currentTheta, nextTheta)
+        # if currentTheta > nextTheta + 1e-3:  # 带1e-4是为了
+        #     r3 = 2
+        # elif 1e-3 + currentTheta < nextTheta:
+        #     r3 = -2
+        # else:
+        #     r3 = 0
+        r3 = 0
         '''4. 其他'''
         if self.terminal_flag == 3:     # 成功
             r4 = 1000
         elif self.terminal_flag == 2:   # 超时
-            r4 = -100
+            r4 = -200
         else:
             r4 = 0
         # if self.terminal_flag == 1:  # 惩

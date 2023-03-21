@@ -37,6 +37,7 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.laserState = int(2 * self.laserRange / self.laserStep) + 1  # 雷达的线数
         self.visualLaser = [[0, 0] for _ in range(self.laserState)]  # 探测点坐标
         self.visualFlag = [0 for _ in range(self.laserState)]  # 探测点类型
+        self.name = 'UGVForwardObstacleAvoidance'
         '''physical parameters'''
 
         '''map database'''
@@ -156,10 +157,10 @@ class UGV_Forward_Obstacle_Continuous(UGV):
             self.terminal_flag = 4
             return True
         # if self.delta_phi_absolute > 6 * math.pi + deg2rad(0) and dis_two_points([self.x, self.y], [self.initX, self.initY]) <= 1.0:
-        # if self.delta_phi_absolute > 6 * math.pi + deg2rad(0):
-        #     print('...转的角度太大了...')
-        #     self.terminal_flag = 1
-        #     return True
+        if self.delta_phi_absolute > 6 * math.pi + deg2rad(0):
+            print('...转的角度太大了...')
+            self.terminal_flag = 1
+            return True
         if dis_two_points([self.x, self.y], self.terminal) <= self.miss:
             print('...success...')
             self.terminal_flag = 3
@@ -323,7 +324,8 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         currentError = math.sqrt(cex ** 2 + cey ** 2)
         nextError = math.sqrt(nex ** 2 + ney ** 2)
 
-        gain = 2.0 * math.sqrt(self.dx ** 2 + self.dy ** 2)
+        # gain = 2.0 * math.sqrt(self.dx ** 2 + self.dy ** 2)
+        gain = 1
 
         r1 = -1  # 常值误差，每运行一步，就 -1
 
@@ -347,16 +349,17 @@ class UGV_Forward_Obstacle_Continuous(UGV):
 
         '''4. 其他'''
         if self.terminal_flag == 3:  # 成功了
-            r4 = 100
+            r4 = 500
         elif self.terminal_flag == 1:  # 转的角度太大了
-            r4 = 0
+            r4 = -200
         elif self.terminal_flag == 4:  # 碰撞障碍物
-            r4 = -10
+            r4 = -300
         else:
             r4 = 0
         '''4. 其他'''
 
-        self.reward = r1 + r2 + r3 + r4
+        # self.reward = r1 + r2 + r3 + r4
+        self.reward = r1 + r4
 
     def step_update(self, action: list):
         self.wLeft = max(min(action[0], self.wMax), 0)
@@ -461,67 +464,68 @@ class UGV_Forward_Obstacle_Continuous(UGV):
         self.savewRight = [self.wRight]
         '''data_save'''
 
-    def reset_random(self, uniform=False):
-        """
-        :return:
-        """
-        '''physical parameters'''
-        self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
-        self.set_random_obstacles(25)
-        self.x = self.start[0]  # X
-        self.y = self.start[1]  # Y
-        self.initX = self.start[0]
-        self.initY = self.start[1]
+    # def reset_random(self, uniform=False):
+    #     """
+    #     :return:
+    #     """
+    #     '''physical parameters'''
+    #     self.set_start([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
+    #     self.set_terminal([random.uniform(self.rBody, self.x_size - self.rBody), random.uniform(self.rBody, self.y_size - self.rBody)])
+    #     self.set_random_obstacles(25)
+    #     self.x = self.start[0]  # X
+    #     self.y = self.start[1]  # Y
+    #     self.initX = self.start[0]
+    #     self.initY = self.start[1]
+    #
+    #     phi0 = cal_vector_rad([self.terminal[0] - self.x, self.terminal[1] - self.y], [1, 0])
+    #     phi0 = phi0 if self.y <= self.terminal[1] else -phi0
+    #     # print(rad2deg(phi0))
+    #     self.phi = random.uniform(phi0 - deg2rad(45), phi0 + deg2rad(45))  # 将初始化的角度放在初始对准目标的90度范围内
+    #     '''角度处理'''
+    #     if self.phi > math.pi:
+    #         self.phi -= 2 * math.pi
+    #     if self.phi < -math.pi:
+    #         self.phi += 2 * math.pi
+    #     '''角度处理'''
+    #     self.initPhi = self.phi
+    #
+    #     self.dx = 0
+    #     self.dy = 0
+    #     self.dphi = 0
+    #     self.wLeft = 0.
+    #     self.wRight = 0.
+    #     self.time = 0.  # time
+    #     self.delta_phi_absolute = 0.
+    #     self.trajectory = [self.start]
+    #     '''physical parameters'''
+    #
+    #     '''RL_BASE'''
+    #     self.initial_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
+    #                           (self.terminal[1] - self.y) / self.y_size * self.staticGain,
+    #                           self.x / self.x_size * self.staticGain,
+    #                           self.y / self.y_size * self.staticGain,
+    #                           self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
+    #     # self.state_normalization(self.initial_state, gain=self.staticGain, index0=0, index1=3)
+    #     self.current_state = self.initial_state.copy()
+    #     self.next_state = self.initial_state.copy()
+    #     self.current_action = self.initial_action.copy()
+    #     self.reward = 0.0
+    #     self.is_terminal = False
+    #     '''RL_BASE'''
+    #
+    #     '''data_save'''
+    #     self.saveX = [self.x]
+    #     self.saveY = [self.y]
+    #     self.savePhi = [self.phi]
+    #     self.savedX = [self.dx]
+    #     self.savedY = [self.dy]
+    #     self.savedPhi = [self.dphi]
+    #     self.savewLeft = [self.wLeft]
+    #     self.savewRight = [self.wRight]
+    #     '''data_save'''
 
-        phi0 = cal_vector_rad([self.terminal[0] - self.x, self.terminal[1] - self.y], [1, 0])
-        phi0 = phi0 if self.y <= self.terminal[1] else -phi0
-        # print(rad2deg(phi0))
-        self.phi = random.uniform(phi0 - deg2rad(45), phi0 + deg2rad(45))  # 将初始化的角度放在初始对准目标的90度范围内
-        '''角度处理'''
-        if self.phi > math.pi:
-            self.phi -= 2 * math.pi
-        if self.phi < -math.pi:
-            self.phi += 2 * math.pi
-        '''角度处理'''
-        self.initPhi = self.phi
-
-        self.dx = 0
-        self.dy = 0
-        self.dphi = 0
-        self.wLeft = 0.
-        self.wRight = 0.
-        self.time = 0.  # time
-        self.delta_phi_absolute = 0.
-        self.trajectory = [self.start]
-        '''physical parameters'''
-
-        '''RL_BASE'''
-        self.initial_state = [(self.terminal[0] - self.x) / self.x_size * self.staticGain,
-                              (self.terminal[1] - self.y) / self.y_size * self.staticGain,
-                              self.x / self.x_size * self.staticGain,
-                              self.y / self.y_size * self.staticGain,
-                              self.phi, self.dx, self.dy, self.dphi] + self.get_fake_laser()
-        # self.state_normalization(self.initial_state, gain=self.staticGain, index0=0, index1=3)
-        self.current_state = self.initial_state.copy()
-        self.next_state = self.initial_state.copy()
-        self.current_action = self.initial_action.copy()
-        self.reward = 0.0
-        self.is_terminal = False
-        '''RL_BASE'''
-
-        '''data_save'''
-        self.saveX = [self.x]
-        self.saveY = [self.y]
-        self.savePhi = [self.phi]
-        self.savedX = [self.dx]
-        self.savedY = [self.dy]
-        self.savedPhi = [self.dphi]
-        self.savewLeft = [self.wLeft]
-        self.savewRight = [self.wRight]
-        '''data_save'''
-
-    def reset_random_with_database(self):
+    # def reset_random_with_database(self):
+    def reset_random(self):
         num = random.randint(0, self.numData - 1)
         data = self.database[num]
         '''physical parameters and map'''

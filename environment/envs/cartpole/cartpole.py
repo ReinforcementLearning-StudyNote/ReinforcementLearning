@@ -52,6 +52,7 @@ class CartPole(rl_base):
 		self.time = 0.
 		self.etheta = 0. - self.theta
 		self.ex = 0. - self.x
+		self.name = 'CartPole'
 		'''physical parameters'''
 
 		'''RL_BASE'''

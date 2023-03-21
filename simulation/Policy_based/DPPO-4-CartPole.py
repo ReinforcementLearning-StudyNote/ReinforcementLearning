@@ -5,7 +5,7 @@ import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
-from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
+from environment.envs.cartpole.cartpole import CartPole
 from algorithm.policy_base.Distributed_PPO import Distributed_PPO as DPPO
 from algorithm.policy_base.Distributed_PPO import Worker
 from common.common_cls import *
@@ -14,7 +14,7 @@ import torch.multiprocessing as mp
 optPath = '../../datasave/network/'
 show_per = 1
 timestep = 0
-ENV = 'DPPO-CartPoleAngleOnly'
+ENV = 'DPPO-CartPole'
 
 
 def setup_seed(seed):
@@ -114,11 +114,11 @@ if __name__ == '__main__':
 	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'
 	os.mkdir(simulationPath)
 	c = cv.waitKey(1)
-	TRAIN = False  # 直接训练
+	TRAIN = True  # 直接训练
 	RETRAIN = False  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
-	env = CartPoleAngleOnly(0, False)
+	env = CartPole(0, 0, False)
 
 	if TRAIN:
 		'''1. 启动多进程'''
@@ -162,7 +162,7 @@ if __name__ == '__main__':
 					   g_train_n=agent.global_training_num,
 					   _index=i,
 					   _name='worker' + str(i),
-					   _env=env,  # 或者直接写env，随意
+					   _env=env,
 					   _queue=agent.queue,
 					   _lock=agent.lock,
 					   _ppo_msg=ppo_msg)
@@ -180,7 +180,7 @@ if __name__ == '__main__':
 	else:
 		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=0, path=simulationPath)
 		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy', simulationPath)
-		agent.load_models(optPath + 'DPPO-4-CartPoleAngleOnly/')
+		agent.load_models(optPath + 'DPPO-4-CartPole/')
 		agent.eval_policy.load_state_dict(agent.global_policy.state_dict())
 		test_num = 100
 		for _ in range(test_num):

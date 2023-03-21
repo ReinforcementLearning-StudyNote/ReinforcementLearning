@@ -5,7 +5,7 @@ import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
-from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
+from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_2state_continuous import Flight_Attitude_Simulator_2State_Continuous as FAS_2S
 from algorithm.policy_base.Distributed_PPO import Distributed_PPO as DPPO
 from algorithm.policy_base.Distributed_PPO import Worker
 from common.common_cls import *
@@ -14,7 +14,7 @@ import torch.multiprocessing as mp
 optPath = '../../datasave/network/'
 show_per = 1
 timestep = 0
-ENV = 'DPPO-CartPoleAngleOnly'
+ENV = 'DPPO-FlightAttitudeSimulator'
 
 
 def setup_seed(seed):
@@ -114,11 +114,11 @@ if __name__ == '__main__':
 	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'
 	os.mkdir(simulationPath)
 	c = cv.waitKey(1)
-	TRAIN = False  # 直接训练
+	TRAIN = True  # 直接训练
 	RETRAIN = False  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
-	env = CartPoleAngleOnly(0, False)
+	env = FAS_2S(0, False)
 
 	if TRAIN:
 		'''1. 启动多进程'''
@@ -179,8 +179,8 @@ if __name__ == '__main__':
 		agent.start_multi_process()
 	else:
 		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=0, path=simulationPath)
-		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy', simulationPath)
-		agent.load_models(optPath + 'DPPO-4-CartPoleAngleOnly/')
+		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy_ppo', simulationPath)
+		agent.load_models(optPath + 'DPPO-4-FlightAttitudeSimulator2State/')
 		agent.eval_policy.load_state_dict(agent.global_policy.state_dict())
 		test_num = 100
 		for _ in range(test_num):

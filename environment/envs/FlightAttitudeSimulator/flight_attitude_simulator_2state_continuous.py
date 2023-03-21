@@ -7,7 +7,7 @@ from environment.envs import *
 
 
 class Flight_Attitude_Simulator_2State_Continuous(rl_base):
-    def __init__(self, initTheta: float, setTheta: float, save_cfg: bool):
+    def __init__(self, initTheta: float, save_cfg: bool):
         """
         @note:                  initialization, 这个环境只有两个状态，角度和角速度，默认设定点为零度，并且取消初始角度，此时角度误差默认为负角度
         @param initTheta:       initial theta
