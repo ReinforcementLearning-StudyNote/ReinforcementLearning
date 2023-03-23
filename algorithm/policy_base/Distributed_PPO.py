@@ -154,6 +154,8 @@ class Worker(mp.Process):
 									   index=index)
 					index += 1
 					timestep += 1
+					if timestep % action_std_decay_freq == 0:
+						self.decay_action_std(action_std_decay_rate, min_action_std)
 					if index == self.buffer.batch_size:
 						break
 			'''收集数据'''
@@ -169,8 +171,6 @@ class Worker(mp.Process):
 				print('Global training: ', self.global_training_num.value)
 			print('========== LEARN ==========')
 			'''学习'''
-			if timestep % action_std_decay_freq == 0:
-				self.decay_action_std(action_std_decay_rate, min_action_std)
 			self.episode += 1
 			self.queue.put(round(sumr / (self.episode + 1 - start_eps), 3))
 

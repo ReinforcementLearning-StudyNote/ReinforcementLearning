@@ -124,7 +124,7 @@ class Proximal_Policy_Optimization:
 		rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
 		rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
 
-		'''3. convert list to tensor'''  # TODO 或许可以用 numpy
+		'''3. convert numpy to tensor'''
 		with torch.no_grad():
 			old_states = torch.FloatTensor(self.buffer.states).detach().to(self.device)
 			old_actions = torch.FloatTensor(self.buffer.actions).detach().to(self.device)
@@ -132,7 +132,7 @@ class Proximal_Policy_Optimization:
 			old_state_values = torch.FloatTensor(self.buffer.state_values).detach().to(self.device)
 
 		'''4. calculate advantages'''
-		advantages = rewards.detach() - old_state_values.detach()	# TODO 长度不相同
+		advantages = rewards.detach() - old_state_values.detach()
 
 		'''5. Optimize policy for K epochs'''
 		for _ in range(self.K_epochs):

@@ -139,3 +139,12 @@ Contents:
 	4). Add DPPO-4-FlightSimulator2State.py
 	5). Add a controller for FlightSimulator2State using DPPO.
 =================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 9
+Date: 2023.03.23
+Time: 21:38
+Contents:
+	1). Add DPPO2 (without debugging)
+=================奥利给兄弟们干他就完了=================
