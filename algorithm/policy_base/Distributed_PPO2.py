@@ -1,3 +1,5 @@
+import atexit
+
 import cv2 as cv
 import numpy as np
 from common.common_cls import *
@@ -22,7 +24,8 @@ class Worker(mp.Process):
 				 gamma:float,
 				 action_std_decay_freq: int,
 				 action_std_decay_rate: float,
-				 min_action_std: float
+				 min_action_std: float,
+				 action_std_init: float
 				 ):
 		"""
 		@param env:				RL environment
@@ -44,9 +47,9 @@ class Worker(mp.Process):
 		self.global_permit = global_permit
 		'''share_buffer 是一个 buffer_size 行, (状态维度 + 动作维度 + log_prob + sv + r) 列的 numpy 矩阵'''
 		buffer = np.zeros((buffer_size, self.env.state_dim + self.env.action_dim + 3), dtype=np.float)
-		self.share_buffer = np.ndarray(buffer.shape, self.buffer.dtype, share_memory.buf)
+		self.share_buffer = np.ndarray(buffer.shape, buffer.dtype, share_memory.buf)
 		self.local_policy = PPOActorCritic(self.env.state_dim, self.env.action_dim, 0.8, '', '')
-		self.action_std = 0.8
+		self.action_std = action_std_init
 		self.timestep = 0
 		self.action_std_decay_freq = action_std_decay_freq
 		self.action_std_decay_rate = action_std_decay_rate
@@ -160,10 +163,13 @@ class Distributed_PPO2:
 				 action_std_decay_freq: int = int(5e4),
 				 action_std_decay_rate: float = 0.05,
 				 min_action_std: float = 0.1,
+				 action_std_init: float = 0.8,
 				 total_tr_cnt: int = 5000,
 				 k_epo: int = 250
 				 ):
+		atexit.register(self.clean)
 		self.env = env
+		self.path = path
 
 		'''PPO'''
 		self.actor_lr = actor_lr
@@ -179,7 +185,8 @@ class Distributed_PPO2:
 		self.action_std_decay_freq = action_std_decay_freq
 		self.action_std_decay_rate = action_std_decay_rate
 		self.min_action_std = min_action_std
-		self.total_tr_cnt = g_tr_cnt		# 网络一共训练多少轮
+		self.action_std_init = action_std_init
+		self.total_tr_cnt = total_tr_cnt		# 网络一共训练多少轮
 		self.g_tr_cnt = 0
 		self.k_epo = k_epo				# 每一轮训练多少次
 		self.gamma = 0.99
@@ -192,12 +199,15 @@ class Distributed_PPO2:
 		self.g_buf = []
 		self.share_memory = []
 		self.global_permit = []
-		for _ in range(self.num_of_pro):
+		for i in range(self.num_of_pro):
+			# shared_memory.SharedMemory.close(shared_memory.SharedMemory(name='buffer4'))
+			# shared_memory.SharedMemory.unlink(shared_memory.SharedMemory(name='buffer4'))
 			share_mem = shared_memory.SharedMemory(create=True, name='buffer' + str(i), size=ref_buffer.nbytes)		# 创建共享内存
 			buffer = np.ndarray(ref_buffer.shape, ref_buffer.dtype, share_mem.buf)		# 创建一个变量，指向共享内存
 			self.g_buf.append(buffer)				# 共享内存
 			self.share_memory.append(share_mem)				# 指向共享内存的变量
 			self.global_permit.append(mp.Value('i', 0))		# 全局标志位
+		atexit.register(self.clean)		# 保证共享内存可以正常关闭
 		self.processes = [mp.Process(target=self.global_learn, args=())]	# training process
 		'''multi process'''
 
@@ -224,10 +234,11 @@ class Distributed_PPO2:
 			gamma:float,
 			action_std_decay_freq: int,
 			action_std_decay_rate: float,
-			min_action_std: float
+			min_action_std: float,
+			action_std_init: float
 		'''
 		for i in range(self.num_of_pro):
-			worker = Worker(env=env,
+			worker = Worker(env=self.env,
 							name='worker' + str(i),
 							index=i,
 							global_policy=self.global_policy,
@@ -237,7 +248,8 @@ class Distributed_PPO2:
 							gamma=self.gamma,
 							action_std_decay_freq=self.action_std_decay_freq,
 							action_std_decay_rate=self.action_std_decay_rate,
-							min_action_std=self.min_action_std
+							min_action_std=self.min_action_std,
+							action_std_init=self.action_std_init
 							)
 			self.processes.append(worker)
 
@@ -281,7 +293,7 @@ class Distributed_PPO2:
 				for i in range(self.num_of_pro):
 					# s, a, lg, sv, r
 					self.d_buf_s[i * self.buffer_size: (i + 1) * self.buffer_size] = self.g_buf[i][:, 0:self.env.state_dim]
-					self.d_buf_a[i * self.buffer_size: (i + 1) * self.buffer_size] = self.g_buf[i][:, self.env.state_dim, self.env.state_dim + self.env.action_dim]
+					self.d_buf_a[i * self.buffer_size: (i + 1) * self.buffer_size] = self.g_buf[i][:, self.env.state_dim: self.env.state_dim + self.env.action_dim]
 					self.d_buf_lg_prob[i * self.buffer_size: (i + 1) * self.buffer_size] = self.g_buf[i][:, -3]
 					self.d_buf_vs[i * self.buffer_size: (i + 1) * self.buffer_size] = self.g_buf[i][:, -2]
 					self.d_buf_r[i * self.buffer_size: (i + 1) * self.buffer_size] = self.g_buf[i][:, -1]
@@ -339,7 +351,6 @@ class Distributed_PPO2:
 				'''啥也不干，等着采集数据'''
 				pass
 		print('Training termination...')
-		self.clean()
 
 	def save_models(self):
 		self.global_policy.save_checkpoint()
@@ -347,7 +358,27 @@ class Distributed_PPO2:
 	def save_models_all(self):
 		self.global_policy.save_all_net()
 
-	@atexit.register
+	def DPPO2_info(self):
+		with open(self.path + 'DPPO2_info.txt', 'w') as f:
+			f.writelines('========== DPPO2 info ==========')
+			f.writelines('number of process: {}'.format(self.num_of_pro))
+			f.writelines('agent name: {}'.format(self.env.name))
+			f.writelines('state_dim: {}'.format(self.env.state_dim))
+			f.writelines('action_dim: {}'.format(self.env.action_dim))
+			f.writelines('action_range: {}'.format(self.env.action_range))
+			f.writelines('actor learning rate: {}'.format(self.actor_lr))
+			f.writelines('critic learning rate: {}'.format(self.critic_lr))
+			f.writelines('DPPO2 training device: {}'.format(self.device))
+			f.writelines('action_std_init: {}'.format(self.action_std_init))
+			f.writelines('action_std_decay_freq: {}'.format(self.action_std_decay_freq))
+			f.writelines('action_std_decay_rate: {}'.format(self.action_std_decay_rate))
+			f.writelines('min_action_std: {}'.format(self.min_action_std))
+			f.writelines('total training count: {}'.format(self.total_tr_cnt))
+			f.writelines('k_epoch: {}'.format(self.k_epo))
+			f.writelines('gamma: {}'.format(self.gamma))
+			f.writelines('========== DPPO2 info ==========')
+
+	# @atexit.register
 	def clean(self):
 		for _share in self.share_memory:
 			_share.close()
