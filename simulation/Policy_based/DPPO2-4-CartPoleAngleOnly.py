@@ -2,13 +2,11 @@ import os
 import sys
 import datetime
 import cv2 as cv
-import atexit
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
 from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
 from algorithm.policy_base.Distributed_PPO2 import Distributed_PPO2 as DPPO2
-from algorithm.policy_base.Distributed_PPO import Worker
 from common.common_cls import *
 import torch.multiprocessing as mp
 
@@ -27,6 +25,7 @@ def setup_seed(seed):
 
 setup_seed(3407)
 os.environ["OMP_NUM_THREADS"] = "1"
+
 
 class PPOActorCritic(nn.Module):
 	def __init__(self, _state_dim, _action_dim, _action_std_init, name='PPOActorCritic', chkpt_dir=''):
@@ -134,6 +133,7 @@ if __name__ == '__main__':
 		action_std_decay_rate = 0.05
 		min_action_std = 0.1
 		action_std_init = 0.8
+		eps_clip = 0.2
 		total_tr_cnt = 5000
 		k_epo = 250
 
@@ -146,10 +146,11 @@ if __name__ == '__main__':
 					  action_std_decay_rate=action_std_decay_rate,
 					  min_action_std=min_action_std,
 					  action_std_init=action_std_init,
+					  eps_clip=eps_clip,
 					  total_tr_cnt=total_tr_cnt,
 					  k_epo=k_epo)
 
-		'''3. 重新加载全局网络和优化器，这是必须的操作，因为考虑到不同的学习环境要设计不同的网络结构，在训练前，要重写 PPOActorCritic 类。并且需要判断是不是要重新加载优化器'''
+		'''3. 重新加载全局网络和优化器，这是必须的操作，因为考虑到不同的学习环境要设计不同的网络结构，在训练前，要重写 PPOActorCritic，并且重新加载优化器'''
 		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, action_std, 'GlobalPolicy', simulationPath)
 		agent.global_policy.share_memory()
 		agent.optimizer = torch.optim.Adam([
@@ -162,25 +163,7 @@ if __name__ == '__main__':
 		agent.DPPO2_info()
 
 		'''5. 启动多进程'''
-		'''
-			五个学习进程，一个评估进程，一共六个。
-			学习进程结束会释放标志，当评估进程收集到五个标志时，评估结束。
-			评估结束时，评估程序跳出 while True 死循环，整体程序结束。
-			结果存储在 simulationPath 中，评估过程中自动存储，不用管。
-		'''
 		agent.start_multi_process()
 	else:
-		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=0, path=simulationPath)
-		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy', simulationPath)
-		agent.load_models(optPath + 'DPPO2-4-CartPoleAngleOnly/')
-		agent.eval_policy.load_state_dict(agent.global_policy.state_dict())
-		test_num = 100
-		for _ in range(test_num):
-			env.reset_random()
-			while not env.is_terminal:
-				env.current_state = env.next_state.copy()
-				action_from_actor = agent.evaluate(env.current_state)
-				action_from_actor = action_from_actor.numpy()
-				action = agent.action_linear_trans(action_from_actor.flatten())  # 将动作转换到实际范围上
-				env.step_update(action)  # 环境更新的action需要是物理的action
-				env.show_dynamic_image(isWait=False)  # 画图
+		agent = DPPO2(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=0, path=simulationPath)
+		pass

@@ -1,11 +1,10 @@
 import atexit
-
 import cv2 as cv
-import numpy as np
+# import numpy as np
 from common.common_cls import *
 import torch.multiprocessing as mp
 from multiprocessing import shared_memory
-import pandas as pd
+# import pandas as pd
 
 """
 	Note: CPU is recommended for DPPO.
@@ -21,17 +20,15 @@ class Worker(mp.Process):
 				 global_permit: mp.Value,
 				 share_memory: shared_memory,
 				 buffer_size: int,
-				 gamma:float,
+				 gamma: float,
 				 action_std_decay_freq: int,
 				 action_std_decay_rate: float,
 				 min_action_std: float,
-				 action_std_init: float
-				 ):
+				 action_std_init: float):
 		"""
 		@param env:				RL environment
 		@param name:			name of the worker
 		@param index:			index of the worker
-		@param global_flag:		forget
 		@param global_permit:	permission receives from the chief, different workers need different permissions
 		@param share_memory:	shared buffer
 		@param buffer_size:		buffer size
@@ -54,6 +51,7 @@ class Worker(mp.Process):
 		self.action_std_decay_freq = action_std_decay_freq
 		self.action_std_decay_rate = action_std_decay_rate
 		self.min_action_std = min_action_std
+		self.device = 'cpu'
 
 	def choose_action(self, state):
 		"""
@@ -61,7 +59,7 @@ class Worker(mp.Process):
 		@return:		action (tensor), state (tensor), the log-probability of action (tensor), and state value (tensor)
 		"""
 		with torch.no_grad():
-			t_state = torch.FloatTensor(state).to(device)
+			t_state = torch.FloatTensor(state).to(self.device)
 			action, action_log_prob, state_val = self.local_policy.act(t_state)
 		return action, t_state, action_log_prob, state_val
 
@@ -108,11 +106,12 @@ class Worker(mp.Process):
 		# rewards = np.zeros(_l)
 		discounted_reward = 0
 		_i = 0
+		# 倒过来存储，计算值函数是从末端往回推
 		for reward, is_terminal in zip(reversed(buffer_r), reversed(buffer_done)):
 			if is_terminal:
 				discounted_reward = 0
 			discounted_reward = reward + (self.gamma * discounted_reward)
-			self.share_buffer[_l - i - 1, -1] = discounted_reward
+			self.share_buffer[_l - _i - 1, -1] = discounted_reward
 			# rewards.insert(0, discounted_reward)
 
 	def run(self):
@@ -125,28 +124,33 @@ class Worker(mp.Process):
 		while True:
 			if self.global_permit.value == 1:
 				index = 0
-				self.load_global_policy(global_polocy)
+				self.load_global_policy()
 				'''开始搜集数据'''
+				_immediate_r = np.zeros(self.buffer_size)
+				_done = np.zeros(self.buffer_size)
 				while index < self.buffer_size:
-					env.reset_random()
-					while not env.is_terminal:
+					self.env.reset_random()
+					while not self.env.is_terminal:
 						self.env.current_state = self.env.next_state.copy()
 						action_from_actor, s, a_log_prob, s_value = self.choose_action(self.env.current_state)  # 返回三个没有梯度的 tensor
 						action_from_actor = action_from_actor.numpy()
 						action = self.action_linear_trans(action_from_actor.flatten())	# flatten 也有去掉多余括号的功能
 						self.env.step_update(action)
 						'''状态维度 + 动作维度 + log_prob + sv + r'''
-						self.share_buffer[index, 0: self.env.state_dim] = self.env.current_state.copy()
-						self.share_buffer[index, self.env.state_dim: self.env.state_dim + self.env.action_dim] = action_from_actor.copy()
-						self.share_buffer[index, -3] = a_log_prob.item()	# 因为就 1 个数，所以可以用 item
-						self.share_buffer[index, -2] = s_value.item()		# 因为就 1 个数，所以可以用 item
+						self.share_buffer[index, 0: self.env.state_dim] = self.env.current_state.copy()		# 状态
+						self.share_buffer[index, self.env.state_dim: self.env.state_dim + self.env.action_dim] = action_from_actor.copy()	# 动作
+						self.share_buffer[index, -3] = a_log_prob.item()	# 对数概率，因为就 1 个数，所以可以用 item
+						self.share_buffer[index, -2] = s_value.item()		# 状态值函数，因为就 1 个数，所以可以用 item
+						_immediate_r[index] = self.env.reward
+						_done[index] = 1.0 if self.env.is_terminal else 0.0
 						index += 1
 						self.timestep += 1
 						if self.timestep % self.action_std_decay_freq == 0:
 							self.decay_action_std(self.action_std_decay_rate, self.min_action_std)
 						if index == self.buffer_size:
 							break
-				self.package_rewards()		# 将 reward 放到 buffer 的最后一列
+
+				self.package_rewards(_immediate_r, _done)		# 将 reward 放到 buffer 的最后一列
 				self.global_permit.value = 0		# 数据采集结束，将标志置 0
 			else:
 				'''等待 chief 进程发送允许标志'''
@@ -164,9 +168,9 @@ class Distributed_PPO2:
 				 action_std_decay_rate: float = 0.05,
 				 min_action_std: float = 0.1,
 				 action_std_init: float = 0.8,
+				 eps_clip: float = 0.2,
 				 total_tr_cnt: int = 5000,
-				 k_epo: int = 250
-				 ):
+				 k_epo: int = 250):
 		atexit.register(self.clean)
 		self.env = env
 		self.path = path
@@ -186,6 +190,7 @@ class Distributed_PPO2:
 		self.action_std_decay_rate = action_std_decay_rate
 		self.min_action_std = min_action_std
 		self.action_std_init = action_std_init
+		self.eps_clip = eps_clip
 		self.total_tr_cnt = total_tr_cnt		# 网络一共训练多少轮
 		self.g_tr_cnt = 0
 		self.k_epo = k_epo				# 每一轮训练多少次
@@ -200,8 +205,6 @@ class Distributed_PPO2:
 		self.share_memory = []
 		self.global_permit = []
 		for i in range(self.num_of_pro):
-			# shared_memory.SharedMemory.close(shared_memory.SharedMemory(name='buffer4'))
-			# shared_memory.SharedMemory.unlink(shared_memory.SharedMemory(name='buffer4'))
 			share_mem = shared_memory.SharedMemory(create=True, name='buffer' + str(i), size=ref_buffer.nbytes)		# 创建共享内存
 			buffer = np.ndarray(ref_buffer.shape, ref_buffer.dtype, share_mem.buf)		# 创建一个变量，指向共享内存
 			self.g_buf.append(buffer)				# 共享内存
@@ -249,8 +252,7 @@ class Distributed_PPO2:
 							action_std_decay_freq=self.action_std_decay_freq,
 							action_std_decay_rate=self.action_std_decay_rate,
 							min_action_std=self.min_action_std,
-							action_std_init=self.action_std_init
-							)
+							action_std_init=self.action_std_init)
 			self.processes.append(worker)
 
 	def start_multi_process(self):
@@ -343,7 +345,7 @@ class Distributed_PPO2:
 							action_from_actor = action_from_actor.numpy()
 							action = self.action_linear_trans(action_from_actor.flatten())  # 将动作转换到实际范围上
 							self.env.step_update(action)  # 环境更新的action需要是物理的action
-							r += self.env.reward
+							# r += self.env.reward
 							self.env.show_dynamic_image(isWait=False)  # 画图
 					cv.destroyAllWindows()
 				self.permit_exploration()	# 允许收集数据

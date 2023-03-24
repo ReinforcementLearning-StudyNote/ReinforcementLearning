@@ -27,6 +27,7 @@ def setup_seed(seed):
 setup_seed(3407)
 os.environ["OMP_NUM_THREADS"] = "1"
 
+
 class PPOActorCritic(nn.Module):
 	def __init__(self, _state_dim, _action_dim, _action_std_init, name='PPOActorCritic', chkpt_dir=''):
 		super(PPOActorCritic, self).__init__()
@@ -154,7 +155,7 @@ if __name__ == '__main__':
 		])
 
 		'''4. 添加进程'''
-		ppo_msg = {'gamma': 0.99, 'k_epo': int(k_epo_init/process_num*1.5), 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
+		ppo_msg = {'gamma': 0.99, 'k_epo': int(k_epo_init / process_num * 1.5), 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
 		for i in range(agent.num_of_pro):
 			w = Worker(g_pi=agent.global_policy,
 					   l_pi=PPOActorCritic(agent.env.state_dim, agent.env.action_dim, action_std, 'LocalPolicy', simulationPath),
