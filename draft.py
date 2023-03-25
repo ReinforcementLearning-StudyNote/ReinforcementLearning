@@ -24,37 +24,42 @@ from tensorboardX import SummaryWriter
 import torch.multiprocessing as mp
 from multiprocessing import shared_memory
 
-a = np.arange(2)
-share_a = shared_memory.SharedMemory(create=True, size=a.nbytes)
+import multiprocessing
+import numpy as np
+import time
 
-def send(sh:shared_memory.SharedMemory):
-	sh2 = shared_memory.SharedMemory(name=sh.name)
-	c = np.ndarray(a.shape, a.dtype, sh2.buf)
-	try:
-		while True:
-			time.sleep(0.2)
-			c[0] += 1
-			c[1] += 1
-	except:
-		sh2.close()
+def write_to_shared_memory(shared_mem):
+    # 写入数据到共享内存
+    arr = np.zeros((100,100))
+    for i in range(100):
+        for j in range(100):
+            arr[i][j] = i + j
+    shared_mem_np = np.ndarray(shared_mem.shape, dtype=np.float32, buffer=shared_mem.buf)
+    shared_mem_np[:] = arr[:]
 
-def receive(sh:shared_memory.SharedMemory):
-	sh1 = shared_memory.SharedMemory(name=sh.name)
-	b = np.ndarray(a.shape, a.dtype, sh1.buf)
-	try:
-		while True:
-			print(b)
-			time.sleep(0.2)
-	except:
-		sh1.close()
+def read_from_shared_memory(shared_mem):
+    # 从共享内存中读取数据
+    shared_mem_np = np.ndarray(shared_mem.shape, dtype=np.float32, buffer=shared_mem.buf)
+    for i in range(100):
+        for j in range(100):
+            print(shared_mem_np[i][j], end=' ')
+        print()
 
-p1 = mp.Process(target=send, args=(share_a,))
-p2 = mp.Process(target=receive, args=(share_a,))
-p1.start()
-p2.start()
-p1.join()
-p2.join()
-@atexit.register
-def clean():
-	share_a.close()
-	share_a.unlink()
+if __name__ == '__main__':
+    # 创建共享内存
+    shared_mem = multiprocessing.shared_memory.SharedMemory(create=True, size=100*100*4)
+
+    # 创建两个进程，一个写入数据到共享内存，一个读取数据
+    p1 = multiprocessing.Process(target=write_to_shared_memory, args=(shared_mem,))
+    p2 = multiprocessing.Process(target=read_from_shared_memory, args=(shared_mem,))
+
+    p1.start()
+    p2.start()
+
+    p1.join()
+    p2.join()
+
+    # 删除共享内存
+    shared_mem.close()
+    shared_mem.unlink()
+
