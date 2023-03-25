@@ -35,7 +35,6 @@ class PPOActorCritic(nn.Module):
 		self.action_dim = _action_dim
 		self.state_dim = _state_dim
 		self.action_std_init = _action_std_init
-		# 应该是初始化方差，一个动作就一个方差，两个动作就两个方差，std 是标准差
 		self.action_var = torch.full((self.action_dim,), self.action_std_init * self.action_std_init)
 		self.actor = nn.Sequential(
 			nn.Linear(self.state_dim, 64),
@@ -52,7 +51,8 @@ class PPOActorCritic(nn.Module):
 			nn.Tanh(),
 			nn.Linear(64, 1)
 		)
-		self.device = 'cpu'
+		self.device = 'cuda:0'
+		torch.cuda.empty_cache()	# 清一下显存，不清暂时也没啥问题，不过应该没坏处
 		self.to(self.device)
 
 	def set_action_std(self, new_action_std):
@@ -134,7 +134,7 @@ if __name__ == '__main__':
 		min_action_std = 0.1
 		action_std_init = 0.8
 		eps_clip = 0.2
-		total_tr_cnt = 5000
+		total_tr_cnt = 1	# 5000
 		k_epo = 250
 
 		agent = DPPO2(env=env,
