@@ -125,7 +125,7 @@ class Worker(mp.Process):
 	def run(self):
 		max_training_timestep = int(self.env.timeMax / self.env.dt) * 5000  # 5000 最长回合的数据
 		# max_training_timestep = 5000
-		action_std_decay_freq = int(2.5e5)  # 每隔这么多个 timestep 把探索方差减小点
+		action_std_decay_freq = int(2e5)  # 每隔这么多个 timestep 把探索方差减小点
 		action_std_decay_rate = 0.05  # linearly decay action_std (action_std = action_std - action_std_decay_rate)
 		min_action_std = 0.1  # 方差最小不能小于 0.1，不管啥时候，都得适当探索
 		train_num = 0
@@ -222,7 +222,7 @@ class Distributed_PPO:
 		self.evaluate_record = []
 		self.training_record = []
 
-	def global_evaluate(self, ):
+	def global_evaluate(self):
 		while True:
 			training_r = self.queue.get()
 			if training_r is None:
@@ -231,7 +231,7 @@ class Distributed_PPO:
 				self.training_record.append(training_r)
 				if len(self.training_record) % 100 == 0:	# 就往文件里面存一下
 					self.save_training_record()
-			if self.global_training_num.value % 50 == 0 and self.global_training_num.value > 0:
+			if self.global_training_num.value % 100 == 0 and self.global_training_num.value > 0:
 				self.eval_policy.load_state_dict(self.global_policy.state_dict())  # 复制 global policy
 				print('...saving check point... ', int(self.global_training_num.value / 50))
 				self.save_models()

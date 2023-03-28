@@ -24,7 +24,7 @@ def setup_seed(seed):
 	random.seed(seed)
 
 
-setup_seed(3407)
+# setup_seed(3407)
 os.environ["OMP_NUM_THREADS"] = "1"
 
 
@@ -115,7 +115,7 @@ if __name__ == '__main__':
 	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'
 	os.mkdir(simulationPath)
 	c = cv.waitKey(1)
-	TRAIN = False  # 直接训练
+	TRAIN = True  # 直接训练
 	RETRAIN = False  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
@@ -140,10 +140,10 @@ if __name__ == '__main__':
 			脑海中一定要有这么个观念：从完成任务的目的出发，policy-based 算法的多进程、value-based 算法的经验池，都是一种牛逼但是 “无奈” 之举。
 		'''
 		process_num = 6
-		actor_lr = 3e-4 / process_num
-		critic_lr = 1e-3 / process_num
-		action_std = 0.6
-		k_epo_init = 100
+		actor_lr = 3e-4 / min(process_num, 4)
+		critic_lr = 1e-3 / min(process_num, 4)
+		action_std = 0.8
+		k_epo = int(100 / process_num * 1.1)
 		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=process_num, path=simulationPath)
 
 		'''3. 重新加载全局网络和优化器，这是必须的操作，因为考虑到不同的学习环境要设计不同的网络结构，在训练前，要重写 PPOActorCritic 类'''
@@ -155,7 +155,7 @@ if __name__ == '__main__':
 		])
 
 		'''4. 添加进程'''
-		ppo_msg = {'gamma': 0.99, 'k_epo': int(k_epo_init / process_num * 1.5), 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
+		ppo_msg = {'gamma': 0.99, 'k_epo': k_epo, 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
 		for i in range(agent.num_of_pro):
 			w = Worker(g_pi=agent.global_policy,
 					   l_pi=PPOActorCritic(agent.env.state_dim, agent.env.action_dim, action_std, 'LocalPolicy', simulationPath),

@@ -117,7 +117,7 @@ class Proximal_Policy_Optimization:
 		for reward, is_terminal in zip(reversed(self.buffer.rewards), reversed(self.buffer.is_terminals)):
 			if is_terminal:
 				discounted_reward = 0
-			discounted_reward = reward + (self.gamma * discounted_reward)
+			discounted_reward = reward + self.gamma * discounted_reward
 			rewards.insert(0, discounted_reward)
 
 		'''2. Normalizing the rewards'''

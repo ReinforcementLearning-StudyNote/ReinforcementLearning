@@ -149,3 +149,21 @@ Contents:
 	1). Add DPPO2 (without debugging)
 =================奥利给兄弟们干他就完了=================
 
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 10
+Date: 2023.03.28
+Time: 22:43
+Contents:
+	Nothing, just remind that, DPPO2 doesn't work!!
+
+Tips: 疯了，一周白干，DPPO2 不好使，不知道是哪里的代码出问题了。
+    DPPO2 使用了 python 较新的 shared_memory 作为通信机制，这样做快，我对比了一个 github上 用 pipe 的，真的是快的特别多，
+    但是这会和 CUDA 的多进程冲突，所以只能用 CPU。但是当我只开一个进程的时候，训练完全没有效果，而同样的环境，用 PPO 秒收敛。
+    用 DPPO1，因为我减小了学习率，前期因为 agent 太多，收敛也不容易，所以 DPPO1 收敛地比 PPO 慢很多，但是很稳，最后效果相同。
+    所以，肯定不是 DPPO2 网络训练问题，应该是中间某个环节的数据传输出问题了 (多进程通信，包括探索的数据通信，网络参数通信，等等)。
+    github 上没有找到用 shared_memory 写的 (虽然我坚持认为这么做最科学，但是 mp.shared_memory 好像是 python3.8 之后的，所以可能暂时没有这么写的)。
+    debug 到吐，最后也没查出来是谁的问题。。。
+    哪位大佬碰巧看到，可以浏览一下 /algorithm/policy_base/Distributed_PPO2.py 和 /simulation/POlicy_based/DPPO2-4-CartPoleAngleOnly.py 这俩是对应的。
+    多谢大佬...... >_< Q_Q T_T
+=================奥利给兄弟们干他就完了=================

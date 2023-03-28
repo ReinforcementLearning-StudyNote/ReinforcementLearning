@@ -125,7 +125,7 @@ if __name__ == '__main__':
 	RETRAIN = False  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
-	env = FAS_2S(0, 0, False)
+	env = FAS_2S(0, False)
 
 	if TRAIN:
 		agent = PPO(actor_lr=3e-4,
@@ -134,6 +134,7 @@ if __name__ == '__main__':
 					K_epochs=80,
 					eps_clip=0.2,
 					action_std_init=0.6,
+					buffer_size=int(env.timeMax / env.dt * 2),
 					modelFileXML=cfgPath + cfgFile,
 					path=simulationPath)
 
@@ -157,10 +158,10 @@ if __name__ == '__main__':
 		sumr = 0
 		start_eps = 0
 		train_num = 0
+		index = 0
 		while timestep <= max_training_timestep:
 			env.reset_random()
 			while not env.is_terminal:
-				timestep += 1
 				env.current_state = env.next_state.copy()
 				# print(env.current_state)
 				action_from_actor, s, a_log_prob, s_value = agent.choose_action(env.current_state)
@@ -169,21 +170,23 @@ if __name__ == '__main__':
 				# env.show_dynamic_image(isWait=False)  # 画图
 				sumr += env.reward
 				'''存数'''
-				agent.buffer.states.append(s)
-				agent.buffer.actions.append(action_from_actor)
-				agent.buffer.logprobs.append(a_log_prob)
-				agent.buffer.state_values.append(s_value)
-				agent.buffer.rewards.append(env.reward)
-				agent.buffer.is_terminals.append(1 if env.is_terminal else 0)
+				agent.buffer.append(s=env.current_state,
+									a=action_from_actor,  # .cpu().numpy()
+									log_prob=a_log_prob.numpy(),
+									r=env.reward,
+									sv=s_value.numpy(),
+									done=1.0 if env.is_terminal else 0.0,
+									index=index)
 				'''存数'''
+				index += 1
+				timestep += 1
 				'''学习'''
 				if timestep % learn_every_n_timestep == 0:
 					print('========== LEARN ==========')
 					print('Episode: {}'.format(agent.episode))
 					print('Num of learning: {}'.format(train_num))
 					agent.learn()
-					'''clear buffer'''
-					agent.buffer.clear()
+					index = 0
 					train_num += 1
 					print('Average reward:', round(sumr / (agent.episode + 1 - start_eps), 3))
 					start_eps = agent.episode
