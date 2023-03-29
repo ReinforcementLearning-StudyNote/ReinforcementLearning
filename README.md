@@ -1,5 +1,5 @@
 # Temporarily stop updating
-See 
+See [ReinforcementLearning_V2](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2).
 # Installation
 This platform can be implemented on both windows and ubuntu since it is all established by Python. Currently, there is no ROS-related packages.
 ## Python version
