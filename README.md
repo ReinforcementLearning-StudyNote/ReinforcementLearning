@@ -1,19 +1,6 @@
-# Final update~
-The bugs in this repository have almost been fixed. Therefore, we copy the whole project back to our previous repository: Reinforcement Learning.
-
-We will try to make sure there are no bugs in the current version. However, this repository will no be updated anymore.
-
-Please click the link below to visit or download the latest one. ^_^
-
-See [ReinforcementLearning](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning).
-
-Tips: The two repositories, [ReinforcementLearning](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning) and
-[ReinforcementLearning_V2](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2) are exactly the same for 
-today's (12nd, June, 2023) update. However, future modifications will only be implemented in [ReinforcementLearning](https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning).
-
 # Installation
 This platform can be implemented on both windows and ubuntu if you have installed python3. Currently, there is no ROS-related packages.
-It only requires pytorch, numpy, and opencv except original python packages.
+It only requires pytorch, numpy, and opencv.
 ## Python version
 Python higher than 3.8 is recommended.
 ## Installation
