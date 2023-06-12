@@ -2,19 +2,22 @@ import os
 import sys
 import datetime
 import cv2 as cv
+import numpy as np
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
-from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_2state_continuous import Flight_Attitude_Simulator_2State_Continuous as FAS_2S
+from environment.envs.SecondOrderIntegration.SecondOrderIntegration import SecondOrderIntegration as env
 from algorithm.policy_base.Distributed_PPO import Distributed_PPO as DPPO
 from algorithm.policy_base.Distributed_PPO import Worker
 from common.common_cls import *
 import torch.multiprocessing as mp
+import matplotlib.pyplot as plt
 
-optPath = '../../datasave/network/'
+
+optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
-ENV = 'DPPO-FlightAttitudeSimulator'
+ENV = 'DPPO-SecondOrderIntegration'
 
 
 def setup_seed(seed):
@@ -24,8 +27,9 @@ def setup_seed(seed):
 	random.seed(seed)
 
 
-setup_seed(3407)
+# setup_seed(3407)
 os.environ["OMP_NUM_THREADS"] = "1"
+
 
 class PPOActorCritic(nn.Module):
 	def __init__(self, _state_dim, _action_dim, _action_std_init, name='PPOActorCritic', chkpt_dir=''):
@@ -108,17 +112,20 @@ class PPOActorCritic(nn.Module):
 
 
 if __name__ == '__main__':
-	log_dir = '../../datasave/log/'
+	log_dir = '../../../datasave/log/'
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
 	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'
 	os.mkdir(simulationPath)
 	c = cv.waitKey(1)
-	TRAIN = True  # 直接训练
-	RETRAIN = False  # 基于之前的训练结果重新训练
+	TRAIN = False  # 直接训练
+	RETRAIN = True  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
-	env = FAS_2S(0, False)
+	env = env(pos0=np.array([1.0, 1.0]),
+			  vel0=np.array([0.0, 0.0]),
+			  map_size=np.array([5.0, 5.0]),
+			  target=np.array([4.0, 4.0]))
 
 	if TRAIN:
 		'''1. 启动多进程'''
@@ -138,15 +145,17 @@ if __name__ == '__main__':
 			但是还是要注意，每个人同时不要走太远，不要走太快，稳稳当当一步一步来。
 			脑海中一定要有这么个观念：从完成任务的目的出发，policy-based 算法的多进程、value-based 算法的经验池，都是一种牛逼但是 “无奈” 之举。
 		'''
-		process_num = 6
-		actor_lr = 3e-4 / process_num
-		critic_lr = 1e-3 / process_num
+		process_num = 5
+		actor_lr = 1e-5 / min(process_num, 5)
+		critic_lr = 1e-4 / min(process_num, 5)		# 一直都是 1e-3
 		action_std = 0.6
-		k_epo_init = 100
-		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=process_num, path=simulationPath)
+		k_epo = int(100 / process_num * 1)		# int(100 / process_num * 1.1)
+		agent = DPPO(env=env, actor_lr=actor_lr, critic_lr=critic_lr, num_of_pro=process_num, path=simulationPath)
 
 		'''3. 重新加载全局网络和优化器，这是必须的操作，因为考虑到不同的学习环境要设计不同的网络结构，在训练前，要重写 PPOActorCritic 类'''
 		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, action_std, 'GlobalPolicy', simulationPath)
+		if RETRAIN:
+			agent.global_policy.load_state_dict(torch.load('Policy_PPO_4_20700'))
 		agent.global_policy.share_memory()
 		agent.optimizer = SharedAdam([
 			{'params': agent.global_policy.actor.parameters(), 'lr': actor_lr},
@@ -154,7 +163,7 @@ if __name__ == '__main__':
 		])
 
 		'''4. 添加进程'''
-		ppo_msg = {'gamma': 0.99, 'k_epo': int(k_epo_init/process_num*1.5), 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
+		ppo_msg = {'gamma': 0.99, 'k_epo': k_epo, 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
 		for i in range(agent.num_of_pro):
 			w = Worker(g_pi=agent.global_policy,
 					   l_pi=PPOActorCritic(agent.env.state_dim, agent.env.action_dim, action_std, 'LocalPolicy', simulationPath),
@@ -179,12 +188,18 @@ if __name__ == '__main__':
 		agent.start_multi_process()
 	else:
 		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=0, path=simulationPath)
-		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy_ppo', simulationPath)
-		agent.load_models(optPath + 'DPPO-4-FlightAttitudeSimulator2State/')
+		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy', simulationPath)
+		agent.load_models(optPath + 'DPPO-4-SecondOrderIntegration/')
+		# agent.global_policy.load_state_dict(torch.load('Policy_PPO_4_20700'))
 		agent.eval_policy.load_state_dict(agent.global_policy.state_dict())
-		test_num = 100
-		for _ in range(test_num):
+		test_num = 10
+		error = []
+		terminal_list = []
+		# cap = cv.VideoWriter('record.mp4', cv.VideoWriter_fourcc(*'mp4v'), 120, (env.image_size[0]-env.board, env.image_size[1]))
+		for i in range(test_num):
 			env.reset_random()
+			if i % 100 == 0:
+				print(i)
 			while not env.is_terminal:
 				env.current_state = env.next_state.copy()
 				action_from_actor = agent.evaluate(env.current_state)
@@ -192,3 +207,35 @@ if __name__ == '__main__':
 				action = agent.action_linear_trans(action_from_actor.flatten())  # 将动作转换到实际范围上
 				env.step_update(action)  # 环境更新的action需要是物理的action
 				env.show_dynamic_image(isWait=False)  # 画图
+				# cap.write(env.image[:, 0:env.image_size[0] - env.board])
+			error.append(np.linalg.norm(env.error))
+			terminal_list.append(env.init_target)
+		# cap.release()
+		'''统计一下，没有什么特殊的'''
+		error = np.array(error)
+		terminal_list = np.array(terminal_list)
+		norm_error = (error - np.min(error)) / (np.max(error) - np.min(error))
+		color = []
+		for _e in norm_error:
+			color.append((_e, 0., 0.))
+		print('Mean error  ', error.mean())
+		print('Std error   ', error.std())
+		print('Max error   ', np.max(error))
+		print('Min error   ', np.min(error))
+		plt.figure(0)
+		plt.plot(range(test_num), error)
+		plt.ylim(0, 0.35)
+		plt.yticks(np.arange(0, 0.35, 0.05))
+
+		plt.figure(1)
+		plt.hist(error, rwidth=0.05)
+
+		print('分布图')
+		plt.figure(2)
+		plt.scatter(x=terminal_list[:, 0], y=terminal_list[:, 1], marker='o', c=color, s=[25 for _ in range(test_num)])		#
+		plt.axis('equal')
+		plt.xlim(0, env.map_size[0])
+		plt.ylim(0, env.map_size[1])
+		plt.xticks(np.arange(0, 1, env.map_size[0]))
+		plt.yticks(np.arange(0, 1, env.map_size[1]))
+		plt.show()

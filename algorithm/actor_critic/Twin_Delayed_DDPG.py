@@ -1,9 +1,8 @@
 import pandas as pd
-import torch
-
 from common.common_func import *
 from common.common_cls import *
 from environment.config.xml_write import xml_cfg
+import cv2 as cv
 
 """use CPU or GPU"""
 use_cuda = torch.cuda.is_available()
@@ -14,6 +13,7 @@ device = torch.device("cpu") if use_cpu_only else torch.device("cuda" if use_cud
 
 class Twin_Delayed_DDPG:
     def __init__(self,
+                 env,
                  gamma: float = 0.9,
                  noise_clip: float = 1 / 2,
                  noise_policy: float = 1 / 4,
@@ -23,80 +23,82 @@ class Twin_Delayed_DDPG:
                  actor_soft_update: float = 1e-2,
                  memory_capacity: int = 5000,
                  batch_size: int = 64,
-                 modelFileXML: str = '',
+                 actor: Actor = Actor(),
+                 target_actor: Actor = Actor(),
+                 critic1: Critic = Critic(),
+                 target_critic1: Critic = Critic(),
+                 critic2: Critic = Critic(),
+                 target_critic2: Critic = Critic(),
                  path: str = ''):
         """
-        :param gamma:                       discount factor
-        :param noise_clip:                  upper limit of noise in policy for training
-        :param noise_policy:                variance of noise in policy for training
-        :param policy_delay:                update delay
-        :param critic1_soft_update:         update rate of critic1
-        :param critic2_soft_update:         update rate of critic2
-        :param actor_soft_update:           update rate of actor
-        :param memory_capacity:             capacity of replay buffer
-        :param batch_size:                  batch size
-        :param modelFileXML:                model description file
-        :param path:                        saving path
+        @param env:
+        @param gamma:
+        @param noise_clip:
+        @param noise_policy:
+        @param policy_delay:
+        @param critic1_soft_update:
+        @param critic2_soft_update:
+        @param actor_soft_update:
+        @param memory_capacity:
+        @param batch_size:
+        @param actor:
+        @param target_actor:
+        @param critic1:
+        @param target_critic1:
+        @param critic2:
+        @param target_critic2:
+        @param path:
         """
-        '''From rl_base'''
-        # TD3 要求智能体状态必须是连续的，动作必须连续的
-        self.agentName, self.state_dim_nn, self.action_dim_nn, self.action_range = \
-            self.get_RLBase_from_XML(modelFileXML)
-        # agentName:            the name of the agent
-        # state_dim_nn:         the dimension of the neural network input
-        # action_dim_nn:        the dimension of the neural network output
-        # action_range:         the range of physical action
-        '''From rl_base'''
-
+        self.env = env
         '''Twin-Delay-DDPG'''
         self.gamma = gamma
         # for target policy smoothing regularization
         self.noise_clip = noise_clip
         self.noise_policy = noise_policy
-        self.action_regularization = GaussianNoise(mu=np.zeros(self.action_dim_nn))
+        self.action_regularization = GaussianNoise(mu=np.zeros(self.env.action_dim))
         # for target policy smoothing regularization
         self.policy_delay = policy_delay
         self.policy_delay_iter = 0
         self.critic1_tau = critic1_soft_update
         self.critic2_tau = critic2_soft_update
         self.actor_tau = actor_soft_update
-        self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_nn)
+        self.memory = ReplayBuffer(memory_capacity, batch_size, self.env.state_dim, self.env.action_dim)
         self.path = path
         '''Twin-Delay-DDPG'''
 
         '''network'''
-        self.actor = Actor(1e-4, self.state_dim_nn, self.action_dim_nn, name='Actor', chkpt_dir=self.path)
-        self.target_actor = Actor(1e-4, self.state_dim_nn, self.action_dim_nn, name='TargetActor', chkpt_dir=self.path)
+        self.actor = actor
+        self.target_actor = target_actor
 
-        self.critic1 = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic1', chkpt_dir=self.path)
-        self.target_critic1 = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic1', chkpt_dir=self.path)
+        self.critic1 = critic1
+        self.target_critic1 = target_critic1
 
-        self.critic2 = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic2', chkpt_dir=self.path)
-        self.target_critic2 = Critic(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic2', chkpt_dir=self.path)
+        self.critic2 = critic2
+        self.target_critic2 = target_critic2
         self.actor_replace_iter = 0
         '''network'''
 
-        self.noise_OU = OUActionNoise(mu=np.zeros(self.action_dim_nn))
-        self.noise_gaussian = GaussianNoise(mu=np.zeros(self.action_dim_nn))
+        self.noise_OU = OUActionNoise(mu=np.zeros(self.env.action_dim))
+        self.noise_gaussian = GaussianNoise(mu=np.zeros(self.env.action_dim))
         self.update_network_parameters()
 
         self.episode = 0
         self.reward = 0
 
-        self.save_episode = []          # 保存的每一个回合的回合数
-        self.save_reward = []           # 保存的每一个回合的奖励
+        self.save_episode = []  # 保存的每一个回合的回合数
+        self.save_reward = []  # 保存的每一个回合的奖励
         self.save_time = []
-        self.save_average_reward = []   # 保存的每一个回合的平均时间的奖励
+        self.save_average_reward = []  # 保存的每一个回合的平均时间的奖励
         self.save_successful_rate = []
-        self.save_step = []             # 保存的每一步的步数
-        self.save_stepreward = []       # 保存的每一步的奖励
+        self.save_step = []  # 保存的每一步的步数
+        self.save_stepreward = []  # 保存的每一步的奖励
 
     def choose_action_random(self):
         """
         :brief:     因为该函数与choose_action并列，所以输出也必须是[-1, 1]之间
         :return:    random action
         """
-        return np.random.uniform(low=-1, high=1, size=self.action_dim_nn)
+        return np.random.uniform(low=-1, high=1, size=self.env.action_dim)
 
     def choose_action(self, state, is_optimal=False, sigma=1 / 3):
         self.actor.eval()  # 切换到测试模式
@@ -105,7 +107,8 @@ class Twin_Delayed_DDPG:
         if is_optimal:
             mu_prime = mu
         else:
-            mu_prime = mu + torch.tensor(self.noise_gaussian(sigma=sigma), dtype=torch.float).to(self.actor.device)  # action with gaussian noise
+            mu_prime = mu + torch.tensor(self.noise_gaussian(sigma=sigma), dtype=torch.float).to(
+                self.actor.device)  # action with gaussian noise
             # mu_prime = mu + torch.tensor(self.noise_OU(), dtype=torch.float).to(self.actor.device)             # action with OU noise
         self.actor.train()  # 切换回训练模式
         mu_prime_np = mu_prime.cpu().detach().numpy()
@@ -116,6 +119,23 @@ class Twin_Delayed_DDPG:
         t_state = torch.tensor(state, dtype=torch.float).to(self.target_actor.device)  # get the tensor of the state
         act = self.target_actor(t_state).to(self.target_actor.device)  # choose action
         return act.cpu().detach().numpy()
+
+    def agent_evaluate(self, test_num: int = 5, show_per: int = 10):
+        for _ in range(test_num):
+            self.env.reset_random()
+            while not self.env.is_terminal:
+                cv.waitKey(1)
+                self.env.current_state = self.env.next_state.copy()
+
+                t_state = torch.tensor(self.env.current_state, dtype=torch.float).to(
+                    self.target_actor.device)  # get the tensor of the state
+                mu = self.target_actor(t_state).to(self.target_actor.device)  # choose action
+                mu = mu.cpu().detach().numpy()
+                action = self.action_linear_trans(mu)
+                self.env.step_update(action)  # 环境更新的action需要是物理的action
+                if self.episode % show_per == 0:
+                    self.env.show_dynamic_image(isWait=False)
+        cv.destroyAllWindows()
 
     def learn(self, is_reward_ascent=True, critic_random=True):
         if self.memory.mem_counter < self.memory.batch_size:
@@ -136,15 +156,16 @@ class Twin_Delayed_DDPG:
         # done = torch.tensor(done, dtype=torch.float).to(self.critic2.device)
         '''这里TD3的不同Critic网络，默认在同一块GPU上，当然......我就有一块GPU'''
 
-        self.target_actor.eval()            # PI'
-        self.target_critic1.eval()          # Q1'
-        self.critic1.eval()                 # Q1
-        self.target_critic2.eval()          # Q2'
-        self.critic2.eval()                 # Q2
+        self.target_actor.eval()  # PI'
+        self.target_critic1.eval()  # Q1'
+        self.critic1.eval()  # Q1
+        self.target_critic2.eval()  # Q2'
+        self.critic2.eval()  # Q2
 
-        target_actions = self.target_actor.forward(new_state).to(self.critic1.device)                   # a' = PI'(s')
+        target_actions = self.target_actor.forward(new_state).to(self.critic1.device)  # a' = PI'(s')
         '''动作正则化'''
-        action_noise = torch.clip(torch.tensor(self.action_regularization(sigma=self.noise_policy)), -self.noise_clip, self.noise_clip).to(self.critic1.device)
+        action_noise = torch.clip(torch.tensor(self.action_regularization(sigma=self.noise_policy)), -self.noise_clip,
+                                  self.noise_clip).to(self.critic1.device)
         target_actions += action_noise
         '''动作正则化'''
         critic_value1_ = self.target_critic1.forward(new_state, target_actions)
@@ -171,7 +192,9 @@ class Twin_Delayed_DDPG:
         经验：数据处理，千万不要使用list，用numpy或者tensor都行。
         '''
         '''取较小的Q'''
-        target = torch.tensor(reward + self.gamma * torch.minimum(critic_value1_.squeeze(), critic_value2_.squeeze()) * done).to(self.critic1.device)
+        target = torch.tensor(
+            reward + self.gamma * torch.minimum(critic_value1_.squeeze(), critic_value2_.squeeze()) * done).to(
+            self.critic1.device)
 
         target1 = target.view(self.memory.batch_size, 1)
         target2 = target.view(self.memory.batch_size, 1)
@@ -223,18 +246,29 @@ class Twin_Delayed_DDPG:
 
         self.update_network_parameters()
 
-    def update_network_parameters(self):
+    def update_network_parameters(self, is_target_critics_delay: bool = False):
         """
         :return:        None
         """
-        for target_param, param in zip(self.target_critic1.parameters(), self.critic1.parameters()):
-            target_param.data.copy_(target_param.data * (1.0 - self.critic1_tau) + param.data * self.critic1_tau)  # soft update
-        for target_param, param in zip(self.target_critic2.parameters(), self.critic2.parameters()):
-            target_param.data.copy_(target_param.data * (1.0 - self.critic2_tau) + param.data * self.critic2_tau)  # soft update
+        if not is_target_critics_delay:
+            for target_param, param in zip(self.target_critic1.parameters(), self.critic1.parameters()):
+                target_param.data.copy_(
+                    target_param.data * (1.0 - self.critic1_tau) + param.data * self.critic1_tau)  # soft update
+            for target_param, param in zip(self.target_critic2.parameters(), self.critic2.parameters()):
+                target_param.data.copy_(
+                    target_param.data * (1.0 - self.critic2_tau) + param.data * self.critic2_tau)  # soft update
 
         if self.policy_delay_iter % self.policy_delay == 0:
             for target_param, param in zip(self.target_actor.parameters(), self.actor.parameters()):
-                target_param.data.copy_(target_param.data * (1.0 - self.actor_tau) + param.data * self.actor_tau)  # soft update
+                target_param.data.copy_(
+                    target_param.data * (1.0 - self.actor_tau) + param.data * self.actor_tau)  # soft update
+            if is_target_critics_delay:
+                for target_param, param in zip(self.target_critic1.parameters(), self.critic1.parameters()):
+                    target_param.data.copy_(
+                        target_param.data * (1.0 - self.critic1_tau) + param.data * self.critic1_tau)  # soft update
+                for target_param, param in zip(self.target_critic2.parameters(), self.critic2.parameters()):
+                    target_param.data.copy_(
+                        target_param.data * (1.0 - self.critic2_tau) + param.data * self.critic2_tau)
 
     def save_models(self):
         self.actor.save_checkpoint()
@@ -289,21 +323,22 @@ class Twin_Delayed_DDPG:
         :return:            数据字典
         """
         root = xml_cfg().XML_Load(filename)
-        return xml_cfg().XML_GetTagValue(node=xml_cfg().XML_FindNode(nodename='RL_Base', root=root)), root.attrib['name']
+        return xml_cfg().XML_GetTagValue(node=xml_cfg().XML_FindNode(nodename='RL_Base', root=root)), root.attrib[
+            'name']
 
     def TD3_info(self):
-        print('agent name：', self.agentName)
-        print('state_dim:', self.state_dim_nn)
-        print('action_dim:', self.action_dim_nn)
-        print('action_range:', self.action_range)
+        print('agent name：', self.env.name)
+        print('state_dim:', self.env.state_dim)
+        print('action_dim:', self.env.action_dim)
+        print('action_range:', self.env.action_range)
 
     def action_linear_trans(self, action):
         # the action output
         linear_action = []
-        for i in range(self.action_dim_nn):
+        for i in range(self.env.action_dim):
             a = min(max(action[i], -1), 1)
-            maxa = self.action_range[i][1]
-            mina = self.action_range[i][0]
+            maxa = self.env.action_range[i][1]
+            mina = self.env.action_range[i][0]
             k = (maxa - mina) / 2
             b = (maxa + mina) / 2
             linear_action.append(k * a + b)
@@ -320,7 +355,8 @@ class Twin_Delayed_DDPG:
             self.save_step.append(step)
             self.save_stepreward.append(reward)
 
-    def saveData_EpisodeReward(self, episode, time, reward, average_reward, successrate, is2file=False, filename='EpisodeReward.csv'):
+    def saveData_EpisodeReward(self, episode, time, reward, average_reward, successrate, is2file=False,
+                               filename='EpisodeReward.csv'):
         if is2file:
             data = pd.DataFrame({
                 'episode': self.save_episode,

@@ -13,12 +13,15 @@ from common.common_func import *
 from common.common_cls import *
 
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'CartPoleDiscreteAngleOnly.xml'
+# cfgPath = '../../../environment/config/'
+# cfgFile = 'CartPoleDiscreteAngleOnly.xml'
 optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
 eval_rs = []
+ALGORITHM = 'A2C'
+ENV = 'CartPoleDiscreteAngleOnly'
+
 
 class Critic(nn.Module):
     def __init__(self, beta, state_dim, action_dim, name, chkpt_dir):
@@ -67,9 +70,9 @@ class Critic(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-class SofemaxActor(nn.Module):
+class SoftmaxActor(nn.Module):
     def __init__(self, alpha, state_dim, action_num, name, chkpt_dir):
-        super(SofemaxActor, self).__init__()
+        super(SoftmaxActor, self).__init__()
         self.state_dim = state_dim
         self.action_num = action_num            # 这是一个list，每一个元素代表对应的action_space的长度，即 "每个action有几个取值"
         self.action_dim = len(action_num)       # 这是action的维度，即 "几个action"
@@ -121,31 +124,11 @@ class SofemaxActor(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-def agent_evaluate():
-    sum_r = 0
-    N = 1
-    for _ in range(N):
-        env.reset_random()
-        r = 0
-        while not env.is_terminal:
-            cv.waitKey(1)
-            env.current_state = env.next_state.copy()
-            action_from_actor, _ = agent.choose_action(env.current_state, True)
-            action = agent.action_index_find(action_from_actor)
-            env.step_update(action)  # 环境更新的action需要是物理的action
-            r += env.reward
-            # if agent.episode % show_per == 0:
-            #     env.show_dynamic_image(isWait=False)
-        sum_r += r
-    cv.destroyAllWindows()
-    return sum_r / N, env.time
-
-
 if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-A2C-CartPoleDiscreteAngleOnly/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
@@ -156,16 +139,15 @@ if __name__ == '__main__':
     env = CartPoleDiscreteAngleOnly(initTheta=0, save_cfg=False)
 
     if TRAIN:
-        agent = A2C(gamma=0.99,
+        actor = SoftmaxActor(1e-3, env.state_dim, env.action_num, 'SoftmaxActor', simulationPath)
+        critic = Critic(1e-3, env.state_dim, env.action_dim, 'Critic', simulationPath)
+        agent = A2C(env=env,
+                    gamma=0.99,
                     timestep_num=10,
-                    modelFileXML=cfgPath + cfgFile,
+                    actor=actor,
+                    critic=critic,
                     path=simulationPath)
         agent.A2C_info()
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = SofemaxActor(1e-3, agent.state_dim_nn, agent.action_num, 'SoftmaxActor', simulationPath)
-        agent.critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-
 
         successCounter = 0
         timeOutCounter = 0
@@ -225,7 +207,7 @@ if __name__ == '__main__':
                 agent.critic.save_checkpoint(name='Critic_A2C', path=temp, num=agent.episode)
 
             if agent.episode % 10 == 0:
-                average_r, t = agent_evaluate()
+                average_r, t = agent.agent_evaluate(5)
                 eval_rs += average_r
                 print('[%d], [%.3f], [%.3fs]' % (agent.episode, average_r, t))
 

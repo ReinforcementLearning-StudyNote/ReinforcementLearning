@@ -1,23 +1,19 @@
-import math
 import os
 import sys
 import datetime
 import time
 import cv2 as cv
-import numpy as np
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
 from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_2state_continuous import Flight_Attitude_Simulator_2State_Continuous as FAS_2S
 from algorithm.policy_base.Proximal_Policy_Optimization import Proximal_Policy_Optimization as PPO
 from common.common_func import *
 from common.common_cls import *
 
-cfgPath = '../../environment/config/'
-cfgFile = 'Flight_Attitude_Simulator_2State_Continuous.xml'
-optPath = '../../datasave/network/'
-show_per = 1
+optPath = '../../../datasave/network/'
 timestep = 0
+ALGORITHM = 'PPO'
+ENV = 'FlightAttitudeSimulator2StateContinuous'
 
 
 class PPOActorCritic(nn.Module):
@@ -54,19 +50,19 @@ class PPOActorCritic(nn.Module):
 	def forward(self):
 		raise NotImplementedError
 
-	def act(self, s):
-		action_mean = self.actor(s)
+	def act(self, _s):
+		action_mean = self.actor(_s)
 		cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
 		dist = MultivariateNormal(action_mean, cov_mat)
 
 		_a = dist.sample()
 		action_logprob = dist.log_prob(_a)
-		state_val = self.critic(s)
+		state_val = self.critic(_s)
 
 		return _a.detach(), action_logprob.detach(), state_val.detach()
 
-	def evaluate(self, s, a):
-		action_mean = self.actor(s)
+	def evaluate(self, _s, a):
+		action_mean = self.actor(_s)
 		action_var = self.action_var.expand_as(action_mean)
 		cov_mat = torch.diag_embed(action_var).to(self.device)
 		dist = MultivariateNormal(action_mean, cov_mat)
@@ -77,7 +73,7 @@ class PPOActorCritic(nn.Module):
 
 		action_logprobs = dist.log_prob(a)
 		dist_entropy = dist.entropy()
-		state_values = self.critic(s)
+		state_values = self.critic(_s)
 
 		return action_logprobs, state_values, dist_entropy
 
@@ -100,52 +96,34 @@ class PPOActorCritic(nn.Module):
 		self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-def agent_evaluate():
-	test_num = 5
-	for _ in range(test_num):
-		env.reset_random()
-		while not env.is_terminal:
-			env.current_state = env.next_state.copy()
-			action_from_actor, _, _, _ = agent.choose_action(env.current_state)
-			action = agent.action_linear_trans(action_from_actor.detach().cpu().numpy().flatten())  # 将动作转换到实际范围上
-			env.step_update(action)  # 环境更新的action需要是物理的action
-			env.show_dynamic_image(isWait=False)  # 画图
-	cv.destroyAllWindows()
-
-
 if __name__ == '__main__':
-	log_dir = '../../datasave/log/'
+	log_dir = '../../../datasave/log/'
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
-	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + \
-					 '-PPO-FlightAttitudeSimulator2StateContinuous/'
+	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
 	os.mkdir(simulationPath)
 	c = cv.waitKey(1)
 	TRAIN = True  # 直接训练
 	RETRAIN = False  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
-	env = FAS_2S(0, False)
+	env = FAS_2S(deg2rad(0), False)
 
 	if TRAIN:
-		agent = PPO(actor_lr=3e-4,
+		action_std_init = 0.6
+		policy = PPOActorCritic(env.state_dim, env.action_dim, action_std_init, 'Policy', simulationPath)
+		policy_old = PPOActorCritic(env.state_dim, env.action_dim, action_std_init, 'Policy_old', simulationPath)
+		agent = PPO(env=env,
+					actor_lr=3e-4,
 					critic_lr=1e-3,
 					gamma=0.99,
 					K_epochs=80,
 					eps_clip=0.2,
-					action_std_init=0.6,
+					action_std_init=action_std_init,
 					buffer_size=int(env.timeMax / env.dt * 2),
-					modelFileXML=cfgPath + cfgFile,
+					policy=policy,
+					policy_old=policy_old,
 					path=simulationPath)
-
-		'''重新加载Policy网络结构，这是必须的操作'''
-		agent.policy = PPOActorCritic(agent.state_dim_nn, agent.action_dim_nn, agent.action_std, 'Policy', simulationPath)
-		agent.policy_old = PPOActorCritic(agent.state_dim_nn, agent.action_dim_nn, agent.action_std, 'Policy_old', simulationPath)
-		agent.optimizer = torch.optim.Adam([
-			{'params': agent.policy.actor.parameters(), 'lr': agent.actor_lr},
-			{'params': agent.policy.critic.parameters(), 'lr': agent.critic_lr}
-		])
-		'''重新加载Policy网络结构，这是必须的操作'''
 
 		agent.PPO_info()
 
@@ -163,15 +141,13 @@ if __name__ == '__main__':
 			env.reset_random()
 			while not env.is_terminal:
 				env.current_state = env.next_state.copy()
-				# print(env.current_state)
 				action_from_actor, s, a_log_prob, s_value = agent.choose_action(env.current_state)
-				action = agent.action_linear_trans(action_from_actor.detach().cpu().numpy().flatten())  # 将动作转换到实际范围上
-				env.step_update(action)  # 环境更新的action需要是物理的action
-				# env.show_dynamic_image(isWait=False)  # 画图
+				action = agent.action_linear_trans(action_from_actor.detach().cpu().numpy().flatten())
+				env.step_update(action)
 				sumr += env.reward
 				'''存数'''
 				agent.buffer.append(s=env.current_state,
-									a=action_from_actor,  # .cpu().numpy()
+									a=action_from_actor,
 									log_prob=a_log_prob.numpy(),
 									r=env.reward,
 									sv=s_value.numpy(),
@@ -191,8 +167,8 @@ if __name__ == '__main__':
 					print('Average reward:', round(sumr / (agent.episode + 1 - start_eps), 3))
 					start_eps = agent.episode
 					sumr = 0
-					if train_num % 50 == 0 and train_num > 0:
-						agent_evaluate()
+					if train_num % 50 == 0 and train_num > 0:		# 每学习 50 次，测试一下下，看看效果~ ^_^
+						agent.agent_evaluate(5)
 						print('check point save')
 						temp = simulationPath + 'episode' + '_' + str(agent.episode) + '_save/'
 						os.mkdir(temp)

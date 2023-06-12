@@ -1,72 +1,39 @@
-# import torch.nn as nn
-# import torch.nn.functional as func
-# import torch
-from environment.config.xml_write import xml_cfg
-from common.common_func import *
+import math
+
+import numpy as np
+import torch
+
 from common.common_cls import *
 import pandas as pd
 
 """use CPU or GPU"""
 use_cuda = torch.cuda.is_available()
-# device = torch.device("cuda" if use_cuda else "cpu")
-device = torch.device("cpu")
+device = torch.device("cuda:0" if use_cuda else "cpu")
+# device = torch.device("cpu")
 """use CPU or GPU"""
-
-
-class NeuralNetwork(nn.Module):
-    def __init__(self, _input: int, _output: int):
-        """
-        :brief:             神经网络初始化
-        :param _input:      输入维度
-        :param _output:     输出维度
-        """
-        super(NeuralNetwork, self).__init__()
-        self.hidden1 = nn.Linear(_input, 64)  # input -> hidden1
-        self.hidden2 = nn.Linear(64, 64)  # hidden1 -> hidden2
-        self.out = nn.Linear(64, _output)  # hidden2 -> output
-        self.init()
-
-    def init(self):
-        torch.nn.init.orthogonal_(self.hidden1.weight, gain=1)
-        torch.nn.init.uniform_(self.hidden1.bias, 0, 1)
-        torch.nn.init.orthogonal_(self.hidden2.weight, gain=1)
-        torch.nn.init.uniform_(self.hidden2.bias, 0, 1)
-        torch.nn.init.orthogonal_(self.out.weight, gain=1)
-        torch.nn.init.uniform_(self.out.bias, 0, 1)
-
-    def forward(self, _x):
-        """
-        :brief:         神经网络前向传播
-        :param _x:      输入网络层的张量
-        :return:        网络的输出
-        """
-        x = _x
-        x = self.hidden1(x)
-        x = func.relu(x)
-        x = self.hidden2(x)
-        x = func.relu(x)
-        state_action_value = self.out(x)
-        return state_action_value
 
 
 class DQN:
     def __init__(self,
+                 env,
                  gamma: float = 0.9,
                  epsilon: float = 0.95,
                  learning_rate: float = 0.01,
                  memory_capacity: int = 5000,
                  batch_size: int = 64,
                  target_replace_iter: int = 100,
-                 modelFileXML: str = ''):
+                 eval_net: DQNNet = DQNNet(),
+                 target_net: DQNNet = DQNNet()):
         """
-
-        :param gamma:                   discount factor
-        :param epsilon:                 exploration probability
-        :param learning_rate:           learning rate of the neural network
-        :param memory_capacity:         capacity of the replay memory
-        :param batch_size:
-        :param target_replace_iter:
-        :param modelFileXML:            model file
+        @param env:
+        @param gamma:
+        @param epsilon:
+        @param learning_rate:
+        @param memory_capacity:
+        @param batch_size:
+        @param target_replace_iter:
+        @param eval_net:
+        @param target_net:
         """
         '''DQN'''
         self.gamma = gamma
@@ -76,14 +43,14 @@ class DQN:
         self.batch_size = batch_size
         self.target_replace_iter = target_replace_iter
         self.episode = 0
+        # self.device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+        self.device = device
         '''DQN'''
-
+        self.env = env
         '''From rl_base'''
         # DQN 要求智能体状态必须是连续的，但是动作必须是离散的
         # DQN 状态维度可以是很多，每增加一维，神经网络输出就增加一维
         # DQN 动作是离散的，所以神经网络输出维度等于动作空间中动作的数量。动作每增加一维，神经网络输出维度就增加该维对应的动作数量
-        self.agentName, self.state_dim_nn, self.action_dim_nn, self.action_space, self.action_dim_physical, self.action_num = \
-            self.get_RLBase_from_XML(modelFileXML)
         # agentName:            the name of the agent
         # state_dim_nn:         the dimension of the neural network input
         # action_dim_nn:        the dimension of the neural network output
@@ -92,12 +59,12 @@ class DQN:
         '''From rl_base'''
 
         '''NN'''
-        self.eval_net = NeuralNetwork(_input=self.state_dim_nn, _output=self.action_dim_nn).to(device)
-        self.target_net = NeuralNetwork(_input=self.state_dim_nn, _output=self.action_dim_nn).to(device)
+        self.eval_net = eval_net
+        self.target_net = target_net
         self.target_net.load_state_dict(self.eval_net.state_dict())
         self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=self.learning_rate)
         self.loss_func = nn.MSELoss()
-        self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_physical)
+        self.memory = ReplayBuffer(memory_capacity, batch_size, self.env.state_dim, self.env.action_dim)
         self.target_replace_count = 0
         '''NN'''
 
@@ -110,35 +77,16 @@ class DQN:
         self.save_epsilon = []      #
         '''datasave'''
 
-    @staticmethod
-    def load_rl_basefromXML(filename: str) -> (dict, str):
-        """
-        :brief:             从模型文件中加载数据到DQN中
-        :param filename:    模型文件
-        :return:            数据字典
-        """
-        root = xml_cfg().XML_Load(filename)
-        return xml_cfg().XML_GetTagValue(node=xml_cfg().XML_FindNode(nodename='RL_Base', root=root)), root.attrib['name']
-
-    def get_RLBase_from_XML(self, filename):
-        rl_base, agentName = self.load_rl_basefromXML(filename=filename)
-        state_dim_nn = int(rl_base['state_dim'])            # input dimension of NN
-        action_space = str2list(rl_base['action_space'])    #
-        action_dim_nn = 1
-        action_dim_physical = len(action_space)
-        action_num = []
-        for item in action_space:
-            action_num.append(len(item))
-            action_dim_nn *= len(item)
-        return agentName, state_dim_nn, action_dim_nn, action_space, action_dim_physical, action_num
-
     def get_action_random(self):
         """
         :brief:         choose an action randomly
         :return:        the number of the action
         """
         # random.seed()
-        return np.random.choice(np.arange(0, self.action_dim_nn, 1))
+        # _a = []
+        # for _num in self.env.action_num:
+        #     _a.append(np.random.choice(_num))
+        return np.random.randint(np.prod(self.env.action_num))
 
     def get_action_optimal_in_DQN(self, state):
         """
@@ -148,10 +96,15 @@ class DQN:
         """
         t_state = torch.tensor(state).float().to(device)
         t_action_value = self.target_net(t_state).cpu().detach().numpy()
+        # 分离动作价值的各个维度，分别取最大
+        # index = self.target_net.index
+        # num = []
+        # for i in range(self.env.action_dim):
+        #     num.append(np.argmax(t_action_value[index[i]: index[i + 1]]))
         # print(t_action_value.shape)
+        # print(index)
         # num = np.random.choice(np.where(t_action_value == np.max(t_action_value))[0])
-        num = np.argmax(t_action_value)
-        return num
+        return np.argmax(t_action_value)
 
     def get_action_with_fixed_epsilon(self, state, epsilon):
         """
@@ -170,31 +123,25 @@ class DQN:
     def actionNUm2PhysicalAction(self, action):
         """
         :brief:             Convert action number to physical action
-        :param action:      the number if the action
+        :param action:      the number of the action
         :return:            physical action
-        :rules:             Action in higher-dimension has higher priority. For example, if the action space is
-                            [['a', 'b', 'c'], ['d', 'e', 'f', 'g'], ['h', 'i', 'j', 'k', 'l']], then the dimension is 3,
-                            and the length of each dimension is 3, 4, and 5. We will use some examples to illustrate
-                            the relationship between actionNum and physicalAction:
-                            actionNum   ->    physicalAction
-                                0       ->    ['a', 'd', 'h']
-                                1       ->    ['a', 'd', 'i']
-                                5       ->    ['a', 'e', 'h']
-                                8       ->    ['a', 'e', 'k']
-                                20      ->    ['b', 'd', 'h']
         """
-        actionSpaceReverse = self.action_space.copy()
-        actionSpaceReverse.reverse()           # 动作空间反序
+        # linear_action = []
+        # for _a, _action_space in zip(action, self.env.action_space):
+        #     linear_action.append(_action_space[_a])
+        # return np.array(linear_action)
+        actionSpace = self.env.action_space.copy()
         physicalAction = []
         count = 0
-        for _item in actionSpaceReverse:       # 反序查找
+        for _item in reversed(actionSpace):  # 反序查找
             length = len(_item)
-            index = action % length
+            index = math.floor(action % length)
+            # print("_item:", _item, "index:", index)
             physicalAction.append(_item[index])
             count += 1
             action = int(action / length)
         physicalAction.reverse()
-        return physicalAction
+        return np.array(physicalAction)
 
     def get_epsilon(self):
         """
@@ -215,47 +162,41 @@ class DQN:
             self.epsilon = 0.1
         """Episode-Epsilon for Flight Attitude Simulator"""
 
-        """Episode-Epsilon for Nav Empty World"""
-        if 0 <= self.episode <= 500:
-            self.epsilon = -0.0006 * self.episode + 0.9
-        elif 500 < self.episode <= 1000:
-            self.epsilon = -0.0006 * self.episode + 1.05
-        elif 1000 < self.episode <= 1500:
-            self.epsilon = -0.0006 * self.episode + 1.2
-        elif 1500 < self.episode <= 2000:
-            self.epsilon = -0.0006 * self.episode + 1.35
-        else:
-            self.epsilon = 0.1
-        """Episode-Epsilon for Nav Empty World"""
+        # """Episode-Epsilon for Nav Empty World"""
+        # if 0 <= self.episode <= 500:
+        #     self.epsilon = -0.0006 * self.episode + 0.9
+        # elif 500 < self.episode <= 1000:
+        #     self.epsilon = -0.0006 * self.episode + 1.05
+        # elif 1000 < self.episode <= 1500:
+        #     self.epsilon = -0.0006 * self.episode + 1.2
+        # elif 1500 < self.episode <= 2000:
+        #     self.epsilon = -0.0006 * self.episode + 1.35
+        # else:
+        #     self.epsilon = 0.1
+        # """Episode-Epsilon for Nav Empty World"""
         return self.epsilon
 
     def torch_action2num(self, batch_action_number: np.ndarray):
         row = batch_action_number.shape[0]
-        col = batch_action_number.shape[1]
-        index_a = []
-        for j in range(row):
-            index = []
-            for i in range(col):
-                index.append(np.squeeze(np.argwhere(batch_action_number[j, i] == self.action_space[i])).tolist())
-            index_a.append(index.copy())
-            # print(index)
-        # print(index_a)
-        numpy_a = np.array(index_a)
-        # print(numpy_a)
+        # col = batch_action_number.shape[1]
+        # res = [[-1] * col for _ in range(row)]
+        # for i in range(batch_action_number.shape[0]):
+        #     for j, a in enumerate(batch_action_number[i]):
+        #         res[i][j] = self.env.action_space[j].index(a)
+        # return torch.tensor(res)
         res = []
         for i in range(row):
-            temp = numpy_a[i]
-            j = col - 1
-            k = 1
-            _sum = 0
-            while j >= 0:
-                _sum += k * temp[j]
-                k *= self.action_num[j]
-                j -= 1
-            res.append(_sum)
-        return torch.unsqueeze(torch.tensor(res).long(), dim=1)
+            lastLen = 1
+            actionIdx = 0
+            idx = len(batch_action_number[i]) - 1
+            for actions in reversed(self.env.action_space):
+                actionIdx += actions.index(batch_action_number[i][idx]) * lastLen
+                lastLen *= len(actions)
+                idx -= 1
+            res.append(actionIdx)
+        return torch.tensor(res)
 
-    def nn_training(self, saveNNPath=None, is_reward_ascent=False):
+    def learn(self, saveNNPath=None, is_reward_ascent=False):
         """
         :param is_reward_ascent:
         :brief:             train the neural network
@@ -281,7 +222,7 @@ class DQN:
         res = torch.max(input=q_next, dim=1, keepdim=True)
         q_target = t_r + self.gamma * (res[0].mul(t_bool))
         for _ in range(1):
-            q_eval = self.eval_net(t_s).gather(1, t_a_pos)
+            q_eval = self.eval_net(t_s).gather(1, t_a_pos.unsqueeze(1))
             loss = self.loss_func(q_eval, q_target)
             self.optimizer.zero_grad()
             loss.backward()
@@ -299,21 +240,15 @@ class DQN:
         self.target_net.load_state_dict(torch.load(nn_para))
 
     def DQN_info(self):
-        print('DQN agent name:', self.agentName)
-        print('DQN input dimension:', self.state_dim_nn)
-        print('DQN output dimension:', self.action_dim_nn)
-        print('Agent physical action dimension:', self.action_dim_physical)
-        print('Agent action space:', self.action_space)
+        print('DQN agent name:', self.env.name)
+        print('DQN input dimension:', self.env.state_dim)
+        print('DQN output dimension:', self.env.action_num)
+        print('Agent physical action dimension:', self.env.action_dim)
+        print('Agent action space:', self.env.action_space)
         print('Replay memory capitaty:', self.memory_capacity)
         print('Batch size:', self.batch_size)
 
-    def saveData_EpisodeRewardEpsilon(self,
-                                      episode,
-                                      reward,
-                                      epsilon,
-                                      is2file=False,
-                                      filename='EpisodeRewardEpsilon.csv',
-                                      filepath=''):
+    def saveData_EpisodeRewardEpsilon(self, episode, reward, epsilon, is2file=False, filename='EpisodeRewardEpsilon.csv', filepath=''):
         if is2file:
             data = pd.DataFrame({
                 'episode:': self.save_episode,
@@ -326,13 +261,7 @@ class DQN:
             self.save_reward.append(reward)
             self.save_epsilon.append(epsilon)
 
-    def saveData_StepTDErrorNNLose(self,
-                                   step,
-                                   tderror,
-                                   nnlose,
-                                   is2file=False,
-                                   filename='StepTDErrorNNLose.csv',
-                                   filepath=''):
+    def saveData_StepTDErrorNNLose(self, step, tderror, nnlose, is2file=False, filename='StepTDErrorNNLose.csv', filepath=''):
         if is2file:
             data = pd.DataFrame({
                 'Step:': self.save_step,

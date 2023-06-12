@@ -1,10 +1,7 @@
-import math
 import os
-import random
 import sys
 import cv2 as cv
 import numpy as np
-import torch
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "./")
@@ -23,7 +20,9 @@ def test_flight_attitude_simulator():
             # action = random.choice(env.action_space)
             action = [0.0]
             env.step_update(action=action)
-    # env.saveData(is2file=True, filepath='../../datasave/')
+
+
+# env.saveData(is2file=True, filepath='../../datasave/')
 
 
 # Flight Attitude Simulator Continuous Test
@@ -44,19 +43,20 @@ def test_flight_attitude_simulator_continuous():
 
 
 def test_flight_attitude_simulator_2state_continuous():
-    from FlightAttitudeSimulator.flight_attitude_simulator_2state_continuous import Flight_Attitude_Simulator_2State_Continuous as FAS_2S_Con
-    env = FAS_2S_Con(initTheta=deg2rad(60.0), setTheta=0., save_cfg=True)
+    from FlightAttitudeSimulator.flight_attitude_simulator_2state_continuous import \
+        Flight_Attitude_Simulator_2State_Continuous as FAS_2S_Con
+    env = FAS_2S_Con(initTheta=deg2rad(0.0), save_cfg=True)
     test_num = 1
     for _ in range(test_num):
         # env.reset_random()
         env.reset()
         # env.theta=0
         while not env.is_terminal:
-            env.show_dynamic_image(isWait=False)
+            env.show_dynamic_image(isWait=True)
             # action = random.choice(env.action_space)
             action = np.array([3])
             env.step_update(action=action)
-            # print(env.theta, env.dTheta)
+        # print(env.theta, env.dTheta)
         print(env.time)
 
 
@@ -77,8 +77,135 @@ def test_ugv_bidirectional_continuous():
             env.show_dynamic_image(isWait=False)
             action = [-3, 3]
             env.step_update(action=action)
-            # print(env.reward)
+        # print(env.reward)
+        # print(env.current_state)
+
+
+def test_UGVBidirectional2():
+    from UGV2.UGVBidirectional_backup import UGV_Bidirectional as env
+    env = env(pos0=np.array([1.0, 1.0]),
+              phi0=deg2rad(45),
+              target=np.array([4., 1]),
+              map_size=np.array([5.0, 5.0]))  # 其余参数默认
+
+    for _ in range(5):
+        env.reset()
+        sumr = 0
+        while not env.is_terminal:
+            # print(env.time)
+            env.show_dynamic_image(isWait=True)
+            action = np.array([5, 5])  # np.pi/16
+            # print('error: [%.2f, %.2f]' % (env.pos[0], env.pos[1]))
+            # print('phi: %.1f' % (rad2deg(env.phi)))
+            # print('omega: %.1f' % (rad2deg(env.omega)))
             # print(env.current_state)
+            env.step_update(action=action)
+            sumr += env.reward
+        # print(rad2deg(env.sum_d_theta))
+        # print(env.reward)
+
+
+def test_UGVBidirectional():
+    from environment.envs.UGV2.UGVBidirectional_backup import UGV_Bidirectional as env
+    env = env(pos0=np.array([1.0, 1.0]),
+              phi0=deg2rad(0),
+              target=np.array([4., 3.]),
+              map_size=np.array([5.0, 5.0]))  # 其余参数默认
+
+    for _ in range(5):
+        env.reset()
+        sumr = 0
+        while not env.is_terminal:
+            # print(env.time)
+            env.show_dynamic_image(isWait=True)
+            action = np.array([1, -5])  # np.pi/16
+            # print('error: [%.2f, %.2f]' % (env.pos[0], env.pos[1]))
+            # print('phi: %.1f' % (rad2deg(env.phi)))
+            # print('         omega: %.1f' % (rad2deg(env.omega)))
+            # print(env.current_state)
+            env.step_update(action=action)
+            print(env.w_wheel, " ", env.omega)
+            sumr += env.reward
+            # print(env.wLeft, " ", env.wRight)
+        # print(rad2deg(env.sum_d_theta))
+        print(sumr)
+        # plt.plot(env.plotw[0])
+        # plt.plot(env.plotw[1])
+        # plt.legend(['expect', 'w'])
+        # plt.show()
+
+
+def test_UGVForward_pid():
+    from environment.envs.UGV_PID.UGVForward_pid import UGV_Forward_PID as env
+    env = env(pos0=np.array([1.0, 1.0]),
+              phi0=deg2rad(-135),
+              target=np.array([4., 3.]),
+              map_size=np.array([5.0, 5.0]))  # 其余参数默认
+
+    for _ in range(5):
+        env.reset()
+        sumr = 0
+        while not env.is_terminal:
+            # print(env.time)
+            env.show_dynamic_image(isWait=True)
+            action = np.array([1, 1, 100, 1])  # np.pi/16
+            # print('error: [%.2f, %.2f]' % (env.pos[0], env.pos[1]))
+            # print('phi: %.1f' % (rad2deg(env.phi)))
+            # print('         omega: %.1f' % (rad2deg(env.omega)))
+            # print(env.current_state)
+            env.step_update(action=action)
+            sumr += env.reward
+            # print(env.wLeft, " ", env.wRight)
+        # print(rad2deg(env.sum_d_theta))
+        print(sumr)
+        # plt.plot(env.plotw[0])
+        # plt.plot(env.plotw[1])
+        # plt.legend(['expect', 'w'])
+        # plt.show()
+
+
+def test_UGVBidirectional_pid():
+    from environment.envs.UGV_PID.UGVBidirectional_pid import UGV_Bidirectional_PID as env
+    env = env(pos0=np.array([1.0, 1.0]),
+              phi0=deg2rad(90),
+              target=np.array([4., 3.]),
+              map_size=np.array([5.0, 5.0]))  # 其余参数默认
+
+    for _ in range(5):
+        env.reset()
+        sumr = 0
+        while not env.is_terminal:
+            # print(env.time)
+            env.show_dynamic_image(isWait=True)
+            action = np.array([5, 1, 100, 1])  # np.pi/16
+            # print('error: [%.2f, %.2f]' % (env.pos[0], env.pos[1]))
+            # print('phi: %.1f' % (rad2deg(env.phi)))
+            # print('         omega: %.1f' % (rad2deg(env.omega)))
+            # print(env.current_state)
+            env.step_update(action=action)
+            sumr += env.reward
+            # print(env.wLeft, " ", env.wRight)
+        # print(rad2deg(env.sum_d_theta))
+        print(sumr)
+
+
+def test_SecondOrderIntegration():
+    from SecondOrderIntegration.SecondOrderIntegration import SecondOrderIntegration as env
+    env = env(pos0=np.array([2.0, 2.0]), map_size=np.array([10.0, 10.0]))  # 其余参数默认
+
+    for _ in range(5):
+        env.reset()
+        # env.phi = -np.pi/2
+        while not env.is_terminal:
+            # print(env.time)
+            env.show_dynamic_image(isWait=True)
+            action = np.array([-3, 2])
+            env.step_update(action=action)
+            print(np.hstack((env.error, env.pos, env.vel)))
+            print(env.current_state)
+        # print(env.vel)
+        # print(env.reward)
+        # print(env.current_state)
 
 
 # UGV Forward Continuous Test
@@ -102,14 +229,39 @@ def test_ugv_forward_continuous():
             # action = [9, 6]
             action = env.towards_target_PID(threshold=10, kp=10, ki=0, kd=0)
             env.step_update(action=action)
-            # print(env.reward)
-            # print(env.current_state)
+        # print(env.reward)
+        # print(env.current_state)
+
+
+def test_UGVForward():
+    from UGV2.UGVForward import UGV_Forward as env
+    env = env(pos0=np.array([4.0, 1.0]),
+              vel0=np.array([0.0, 0.0]),
+              phi0=deg2rad(180),
+              omega0=0.,
+              map_size=np.array([5.0, 5.0]),
+              target=np.array([3.0, 0.0]))
+    test_num = 5
+    for _ in range(test_num):
+        env.reset()
+        sumr = 0
+        while not env.is_terminal:
+            # print(env.time)
+            if cv.waitKey(1) == 27:
+                return
+            env.show_dynamic_image(isWait=True)
+            action = np.array([5., 15.])
+            env.step_update(action=action)
+            sumr += env.reward
+            print(env.w_wheel)
+        print(sumr)
 
 
 # UGV Forward Obstacles Continuous Test
 def test_ugv_forward_obstacles_continuous():
     from UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obstacle_Continuous
-    env = UGV_Forward_Obstacle_Continuous(initPhi=deg2rad(0), save_cfg=True, x_size=11, y_size=11, start=[2.5, 2.5], terminal=[4.0, 2.5],
+    env = UGV_Forward_Obstacle_Continuous(initPhi=deg2rad(0), save_cfg=True, x_size=11, y_size=11, start=[2.5, 2.5],
+                                          terminal=[4.0, 2.5],
                                           dataBasePath='./pathplanning/11X11-AllCircle1/')
     num = 0
     while num < 1:
@@ -124,21 +276,23 @@ def test_ugv_forward_obstacles_continuous():
             # print(env.time)
             if cv.waitKey(1) == 27:
                 return
-            env.show_dynamic_imagewithobs(isWait=False)
+            env.show_dynamic_imagewithobs(isWait=True)
             action = env.towards_target_PID(threshold=np.inf, kp=10, kd=0, ki=0)
             # cap.write(env.save)
             # action = [0, 1 * math.pi]
             env.step_update(action=action)
-            # print(env.current_state[0 : 4])
-            # if env.terminal_flag == 4:
-            #     print(env.reward)
-            # print(env.current _state)
+        # print(env.current_state[0 : 4])
+        # if env.terminal_flag == 4:
+        #     print(env.reward)
+        # print(env.current _state)
         num += 1
+
 
 # UGV Forward Discrete Test
 def test_ugv_forward_discrete():
     from UGV.ugv_forward_discrete import UGV_Forward_Discrete
-    env = UGV_Forward_Discrete(initPhi=deg2rad(60), save_cfg=True, x_size=5.0, y_size=5.0, start=[2.5, 2.5], terminal=[4.8, 4.8])
+    env = UGV_Forward_Discrete(initPhi=deg2rad(60), save_cfg=True, x_size=5.0, y_size=5.0, start=[2.5, 2.5],
+                               terminal=[4.8, 4.8])
     while True:
         env.reset_random()
         env.show_dynamic_image(isWait=True)
@@ -156,7 +310,8 @@ def test_ugv_forward_discrete():
 # UGV Forward OBstacle Discrete Test
 def test_ugv_forward_obstacles_discrete():
     from UGV.ugv_forward_obstacle_discrete import UGV_Forward_Obstacle_Discrete
-    env = UGV_Forward_Obstacle_Discrete(initPhi=deg2rad(0), save_cfg=True, x_size=11, y_size=11, start=[2.5, 2.5], terminal=[4.0, 2.5],
+    env = UGV_Forward_Obstacle_Discrete(initPhi=deg2rad(0), save_cfg=True, x_size=11, y_size=11, start=[2.5, 2.5],
+                                        terminal=[4.0, 2.5],
                                         dataBasePath='./pathplanning/11X11-AllCircle1/')
     num = 0
     while num < 30:
@@ -177,7 +332,7 @@ def test_ugv_forward_obstacles_discrete():
             # print(env.current_state[0 : 4])
             if env.terminal_flag == 4:
                 print(env.reward)
-            # print(env.current _state)
+        # print(env.current _state)
         num += 1
 
 
@@ -192,13 +347,14 @@ def test_cartpole():
                 return
             env.image = env.show.copy()
             env.show_dynamic_image(isWait=True)
-            f = 0
+            f = 5
             # f = random.uniform(-env.fm, env.fm)
             # f = -1 * math.sin(2 * math.pi * env.time)
             # print(env.x, env.dx, env.theta, env.dtheta)
             env.step_update(action=[f])
             print(env.time)
         num += 1
+
 
 def test_cartpoleangleonly():
     from cartpole.cartpole_angleonly import CartPoleAngleOnly
@@ -210,7 +366,7 @@ def test_cartpoleangleonly():
             if cv.waitKey(1) == 27:
                 return
             env.image = env.show.copy()
-            env.show_dynamic_image(isWait=False)
+            env.show_dynamic_image(isWait=True)
             f = [5]
             # f = [random.uniform(-env.fm, env.fm)]
             # f = -1 * math.sin(2 * math.pi * env.time)
@@ -219,8 +375,9 @@ def test_cartpoleangleonly():
             cur_e_theta = rad2deg(env.current_state[0] / env.staticGain * env.thetaMax)
             nex_e_theta = rad2deg(env.next_state[0] / env.staticGain * env.thetaMax)
             print(cur_e_theta, nex_e_theta, env.reward)
-            # print(env.time)
+        # print(env.time)
         num += 1
+
 
 def test_cartpole_discrete_angleonly():
     from cartpole.cartpole_discrete_angle_only import CartPoleDiscreteAngleOnly
@@ -240,17 +397,18 @@ def test_cartpole_discrete_angleonly():
             i += 1
         num += 1
 
+
 def test_uav_hover():
     from UAV.uav_hover import UAV_Hover
     import matplotlib.pyplot as plt
     env = UAV_Hover(target_pos=[0, 0, 4])
-    env.uav_vis.arm_scale = 10      # 显示放大的尺度，自己设置即可
     num = 0
     plt.ion()
     while num < 2:
         env.reset_random()
         while not env.is_terminal:
             env.show_dynamic_image(per_show=1)
+            # cv.waitKey(0)
             plt.pause(0.00000001)
             f = [random.uniform(env.fmin, env.fmax) for _ in range(4)]
             env.step_update(action=f)
@@ -258,12 +416,32 @@ def test_uav_hover():
     plt.ioff()
 
 
+def test_two_link_manipulator():
+    from RobotManipulators.TwoLinkManipulator import TwoLinkManipulator
+    env = TwoLinkManipulator()
+    num = 0
+    while num < 2:
+        env.reset_random()
+        r = 0
+        while not env.is_terminal:
+            env.show_dynamic_image()
+            cv.waitKey(0)
+            env.step_update(action=np.array([-8., 10.]))
+            r += env.reward
+        num += 1
+        print(r)
+
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
     # test_flight_attitude_simulator_2state_continuous()
-    test_ugv_bidirectional_continuous()
+    # test_ugv_bidirectional_continuous()
+    # test_UGVForward_pid()
+    # test_UGVBidirectional_pid()
+    # test_UGVBidirectional()
+    # test_SecondOrderIntegration()
     # test_ugv_forward_continuous()
+    # test_UGVForward()
     # test_ugv_forward_obstacles_continuous()
     # test_ugv_forward_discrete()
     # test_ugv_forward_obstacles_discrete()
@@ -271,4 +449,5 @@ if __name__ == '__main__':
     # test_cartpoleangleonly()
     # test_uav_hover()
     # test_cartpole_discrete_angleonly()
+    # test_two_link_manipulator()
     pass

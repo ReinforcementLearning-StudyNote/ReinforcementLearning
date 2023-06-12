@@ -1,10 +1,8 @@
-import math
 import os
 import sys
 import datetime
 import time
 import cv2 as cv
-import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 # import copy
@@ -12,14 +10,14 @@ from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
 from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common_func import *
 from common.common_cls import *
-import matplotlib.pyplot as plt
 
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'CartPoleAngleOnly.xml'
 optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
+ALGORITHM = 'TD3'
+ENV = 'CartPoleAngleOnly'
+
 
 class Critic(nn.Module):
     def __init__(self, beta, state_dim, action_dim, name, chkpt_dir):
@@ -233,28 +231,11 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 print('replay_count = ', agent.memory.mem_counter)
 
 
-def agent_evaluate():
-    for _ in range(3):
-        env.reset_random()
-        while not env.is_terminal:
-            cv.waitKey(1)
-            env.current_state = env.next_state.copy()
-
-            t_state = torch.tensor(env.current_state, dtype=torch.float).to(agent.target_actor.device)  # get the tensor of the state
-            mu = agent.target_actor(t_state).to(agent.target_actor.device)  # choose action
-            mu = mu.cpu().detach().numpy()
-            action = agent.action_linear_trans(mu)
-            env.step_update(action)  # 环境更新的action需要是物理的action
-            if agent.episode % show_per == 0:
-                env.show_dynamic_image(isWait=False)
-    cv.destroyAllWindows()
-
-
 if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-CartPoleAngleOnly/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
@@ -262,26 +243,29 @@ if __name__ == '__main__':
     TEST = not TRAIN
     is_storage_only_success = False
 
-    env = CartPoleAngleOnly(initTheta=0, save_cfg=False)
+    env = CartPoleAngleOnly(initTheta=deg2rad(0), save_cfg=False)
 
     if TRAIN:
-        agent = TD3(gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
+        actor = Actor(1e-4, env.state_dim, env.action_dim, 'Actor', simulationPath)
+        target_actor = Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath)
+        critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic1', simulationPath)
+        target_critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic1', simulationPath)
+        critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic2', simulationPath)
+        target_critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic2', simulationPath)
+        agent = TD3(env=env,
+                    gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
                     actor_soft_update=1e-2,
                     memory_capacity=50000,  # 100000
                     batch_size=512,  # 1024
-                    modelFileXML=cfgPath + cfgFile,
+                    actor=actor,
+                    target_actor=target_actor,
+                    critic1=critic1,
+                    target_critic1=target_critic1,
+                    critic2=critic2,
+                    target_critic2=target_critic2,
                     path=simulationPath)
-
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
-        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
-        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
-        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
 
         agent.TD3_info()
         successCounter = 0
@@ -334,7 +318,7 @@ if __name__ == '__main__':
             agent.episode += 1
             if agent.episode % 10 == 0:
                 agent.save_models()
-                agent_evaluate()
+                agent.agent_evaluate(5)
             if timestep % 500 == 0:
                 print('check point save')
                 temp = simulationPath + 'timestep' + '_' + str(timestep) + '_save/'
@@ -348,12 +332,8 @@ if __name__ == '__main__':
                 agent.target_critic2.save_checkpoint(name='TargetCritic2_td3', path=temp, num=timestep)
 
     if TEST:
-        agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
-
-        '''重新加载target actor网络结构，这是必须的操作'''
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent = TD3(env=env, target_actor=Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath))
         agent.load_target_actor_optimal(path=optPath, file='TD3-CartPoleAngleOnly/parameters/TargetActor_td3')
-        '''重新加载target actor网络结构，这是必须的操作'''
 
         for _ in range(3):
             env.reset_random()

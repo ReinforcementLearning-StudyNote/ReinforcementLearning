@@ -1,4 +1,3 @@
-import math
 import os
 import sys
 import datetime
@@ -13,11 +12,11 @@ from common.common_func import *
 from common.common_cls import *
 
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'CartPole.xml'
 optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
+ALGORITHM = 'TD3'
+ENV = 'CartPole'
 
 class Critic(nn.Module):
     def __init__(self, beta, state_dim, action_dim, name, chkpt_dir):
@@ -109,13 +108,13 @@ class Actor(nn.Module):
         self.fc1 = nn.Linear(self.state_dim, 128)  # 输入 -> 第一个隐藏层
         self.batch_norm1 = nn.LayerNorm(128)
 
-        self.fc2 = nn.Linear(128, 128)  # 第一个隐藏层 -> 第二个隐藏层
-        self.batch_norm2 = nn.LayerNorm(128)
+        self.fc2 = nn.Linear(128, 64)  # 第一个隐藏层 -> 第二个隐藏层
+        self.batch_norm2 = nn.LayerNorm(64)
 
         # self.fc3 = nn.Linear(64, 32)  # 第2个隐藏层 -> 第3个隐藏层
         # self.batch_norm3 = nn.LayerNorm(32)
 
-        self.mu = nn.Linear(128, self.action_dim)  # 第3个隐藏层 -> 输出层
+        self.mu = nn.Linear(64, self.action_dim)  # 第3个隐藏层 -> 输出层
 
         # self.initialization()
         self.initialization_default()
@@ -202,7 +201,6 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
         env.reset_random() if randomEnv else env.reset()
-        # env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -232,31 +230,15 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
                 print('replay_count = ', agent.memory.mem_counter)
 
 
-def agent_evaluate():
-    for _ in range(3):
-        env.reset_random()
-        while not env.is_terminal:
-            cv.waitKey(1)
-            env.current_state = env.next_state.copy()
-
-            t_state = torch.tensor(env.current_state, dtype=torch.float).to(agent.target_actor.device)  # get the tensor of the state
-            mu = agent.target_actor(t_state).to(agent.target_actor.device)  # choose action
-            mu = mu.cpu().detach().numpy()
-            action = agent.action_linear_trans(mu)
-            env.step_update(action)  # 环境更新的action需要是物理的action
-            if agent.episode % show_per == 0:
-                env.show_dynamic_image(isWait=False)
-    cv.destroyAllWindows()
-
 
 if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-CartPole/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
-    TRAIN = False  # 直接训练
+    TRAIN = True  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
     is_storage_only_success = False
@@ -264,30 +246,32 @@ if __name__ == '__main__':
     env = CartPole(initTheta=0, initX=0, save_cfg=False)
 
     if TRAIN:
-        agent = TD3(gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
+        actor = Actor(1e-4, env.state_dim, env.action_dim, 'Actor', simulationPath)
+        target_actor = Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath)
+        critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic1', simulationPath)
+        target_critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic1', simulationPath)
+        critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic2', simulationPath)
+        target_critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic2', simulationPath)
+        agent = TD3(env=env,
+                    gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
                     actor_soft_update=1e-2,
                     memory_capacity=50000,  # 100000
                     batch_size=512,  # 1024
-                    modelFileXML=cfgPath + cfgFile,
+                    actor=actor,
+                    target_actor=target_actor,
+                    critic1=critic1,
+                    target_critic1=target_critic1,
+                    critic2=critic2,
+                    target_critic2=target_critic2,
                     path=simulationPath)
-
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
-        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
-        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
-        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-
         agent.TD3_info()
         successCounter = 0
         timeOutCounter = 0
         collisionCounter = 0
         # cv.waitKey(0)
-        MAX_EPISODE = 20000
+        MAX_EPISODE = 600
 
         if RETRAIN:
             print('Retraining')
@@ -307,7 +291,7 @@ if __name__ == '__main__':
         step = 0
         while agent.episode <= MAX_EPISODE:
             # print('=========START=========')
-            print('Episode:', agent.episode)
+            # print('Episode:', agent.episode)
             env.reset_random()
             sumr = 0
             while not env.is_terminal:      # 每个回合
@@ -326,7 +310,7 @@ if __name__ == '__main__':
                 agent.memory.store_transition(env.current_state, env.current_action, env.reward, env.next_state, 1 if env.is_terminal else 0)
 
                 agent.learn(is_reward_ascent=False)
-                if timestep % 500 == 0:
+                if timestep % 200 == 0:
                     # print('check point save')
                     temp = simulationPath + 'timestep' + '_' + str(timestep) + '_save/'
                     os.mkdir(temp)
@@ -337,22 +321,18 @@ if __name__ == '__main__':
                     agent.target_critic1.save_checkpoint(name='TargetCritic1_td3', path=temp, num=timestep)
                     agent.critic2.save_checkpoint(name='Critic2_td3', path=temp, num=timestep)
                     agent.target_critic2.save_checkpoint(name='TargetCritic2_td3', path=temp, num=timestep)
-
+            print('Episode:', agent.episode, ' Reward:', sumr)
             agent.episode += 1
             if agent.episode % 50 == 0:
                 print('Episode: {}'.format(agent.episode))
                 agent.save_models()
-                agent_evaluate()
+                agent.agent_evaluate(5)
 
     if TEST:
-        agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
-
-        '''重新加载target actor网络结构，这是必须的操作'''
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.load_target_actor_optimal(path=optPath, file='TD3-CartPole/parameters/TargetActor_td3')
-        '''重新加载target actor网络结构，这是必须的操作'''
-
-        for _ in range(3):
+        agent = TD3(env=env, target_actor=Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath))
+        # agent.load_target_actor_optimal(path=optPath, file='TD3-CartPole/parameters/TargetActor_td3')
+        agent.load_target_actor_optimal(path='', file='TargetActor_td3241800')
+        for _ in range(5):
             env.reset_random()
             while not env.is_terminal:
                 cv.waitKey(1)

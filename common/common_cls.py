@@ -8,6 +8,7 @@ import torch.nn.functional as func
 import torch
 from torch.distributions import Normal
 from torch.distributions import MultivariateNormal
+from torch.distributions import Categorical
 
 
 # import scipy.spatial as spt
@@ -22,7 +23,7 @@ class ReplayBuffer:
         self._s_mem = np.zeros((self.mem_size, state_dim))
         self.a_mem = np.zeros((self.mem_size, action_dim))
         self.r_mem = np.zeros(self.mem_size)
-        self.end_mem = np.zeros(self.mem_size, dtype=np.float)
+        self.end_mem = np.zeros(self.mem_size, dtype=np.float32)
         self.log_prob_mem = np.zeros(self.mem_size)
         self.sorted_index = []
         self.resort_count = 0
@@ -80,7 +81,8 @@ class RolloutBuffer:
         self.log_probs = np.zeros(batch_size)
         self.rewards = np.zeros(batch_size)
         self.state_values = np.zeros(batch_size)
-        self.is_terminals = np.zeros(batch_size, dtype=np.float)
+        self.is_terminals = np.zeros(batch_size, dtype=np.float32)
+        self.index = 0
 
     def append(self, s: np.ndarray, a: np.ndarray, log_prob: float, r: float, sv: float, done: float, index: int):
         self.actions[index] = a
@@ -89,6 +91,22 @@ class RolloutBuffer:
         self.rewards[index] = r
         self.state_values[index] = sv
         self.is_terminals[index] = done
+
+    def append_traj(self, s: np.ndarray, a: np.ndarray, log_prob: np.ndarray, r: np.ndarray, sv: np.ndarray, done: np.ndarray):
+        _l = len(done)
+        for i in range(_l):
+            if self.index == self.batch_size:
+                self.index = 0
+                return True
+            else:
+                self.actions[self.index] = a[i]
+                self.states[self.index] = s[i]
+                self.log_probs[self.index] = log_prob[i]
+                self.rewards[self.index] = r[i]
+                self.state_values[self.index] = sv[i]
+                self.is_terminals[self.index] = done[i]
+                self.index += 1
+        return False
 
     def print_size(self):
         print('==== RolloutBuffer ====')
@@ -99,6 +117,55 @@ class RolloutBuffer:
         print('state_values: {}'.format(self.state_values.size))
         print('is_terminals: {}'.format(self.is_terminals.size))
         print('==== RolloutBuffer ====')
+
+
+class RolloutBuffer2:
+    def __init__(self, state_dim: int, action_dim: int):
+        self.buffer_size = 0
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.actions = np.atleast_2d([]).astype(np.float32)
+        self.states = np.atleast_2d([]).astype(np.float32)
+        self.log_probs = np.atleast_1d([]).astype(np.float32)
+        self.rewards = np.atleast_1d([]).astype(np.float32)
+        self.state_values = np.atleast_1d([]).astype(np.float32)
+        self.is_terminals = np.atleast_1d([]).astype(np.float32)
+
+    def append_traj(self, s: np.ndarray, a: np.ndarray, log_prob: np.ndarray, r: np.ndarray, sv: np.ndarray, done: np.ndarray):
+        if self.buffer_size == 0:
+            self.states = np.atleast_2d(s).astype(np.float32)
+            self.actions = np.atleast_2d(a).astype(np.float32)
+            self.log_probs = np.atleast_1d(log_prob).astype(np.float32)
+            self.rewards = np.atleast_1d(r).astype(np.float32)
+            self.state_values = np.atleast_1d(sv).astype(np.float32)
+            self.is_terminals = np.atleast_1d(done).astype(np.float32)
+        else:
+            self.states = np.vstack((self.states, s))
+            self.actions = np.vstack((self.actions, a))
+            self.log_probs = np.hstack((self.log_probs, log_prob))
+            self.rewards = np.hstack((self.rewards, r))
+            self.state_values = np.hstack((self.state_values, sv))
+            self.is_terminals= np.hstack((self.is_terminals, done))
+        self.buffer_size += len(done)
+
+    def print_size(self):
+        print('==== RolloutBuffer ====')
+        print('actions: {}'.format(self.actions.size))
+        print('states: {}'.format(self.states.size))
+        print('logprobs: {}'.format(self.log_probs.size))
+        print('rewards: {}'.format(self.rewards.size))
+        print('state_values: {}'.format(self.state_values.size))
+        print('is_terminals: {}'.format(self.is_terminals.size))
+        print('==== RolloutBuffer ====')
+
+    def clean(self):
+        self.buffer_size = 0
+        self.actions = np.atleast_2d([]).astype(np.float32)
+        self.states = np.atleast_2d([]).astype(np.float32)
+        self.log_probs = np.atleast_1d([]).astype(np.float32)
+        self.rewards = np.atleast_1d([]).astype(np.float32)
+        self.state_values = np.atleast_1d([]).astype(np.float32)
+        self.is_terminals = np.atleast_1d([]).astype(np.float32)
 
 
 class OUActionNoise(object):
@@ -130,6 +197,100 @@ class GaussianNoise(object):
 
     def __call__(self, sigma=1 / 3):
         return np.random.normal(self.mu, sigma, self.mu.shape)
+
+
+class DQNNet(nn.Module):
+    def __init__(self, _input: int = 1, _output: list = None):
+        """
+        :brief:             神经网络初始化
+        :param _input:      输入维度
+        :param _output:     输出维度
+        """
+        super(DQNNet, self).__init__()
+        if _output is None:
+            _output = [1]
+        self.hidden1 = nn.Linear(_input, 64)  # input -> hidden1
+        self.hidden2 = nn.Linear(64, 64)  # hidden1 -> hidden2
+        self.out = nn.Linear(64, _output[0])  # hidden2 -> output
+        self.init()
+
+    def init(self):
+        torch.nn.init.orthogonal_(self.hidden1.weight, gain=1)
+        torch.nn.init.uniform_(self.hidden1.bias, 0, 1)
+        torch.nn.init.orthogonal_(self.hidden2.weight, gain=1)
+        torch.nn.init.uniform_(self.hidden2.bias, 0, 1)
+        torch.nn.init.orthogonal_(self.out.weight, gain=1)
+        torch.nn.init.uniform_(self.out.bias, 0, 1)
+
+    def forward(self, _x):
+        """
+        :brief:         神经网络前向传播
+        :param _x:      输入网络层的张量
+        :return:        网络的输出
+        """
+        x = _x
+        x = self.hidden1(x)
+        x = func.relu(x)
+        x = self.hidden2(x)
+        x = func.relu(x)
+        state_action_value = self.out(x)
+        return state_action_value
+
+
+class DuelingNeuralNetwork(nn.Module):
+    def __init__(self, _input: int, _output: list):
+        """
+        :brief:             神经网络初始化
+        :param _input:      输入维度
+        :param _output:     输出维度
+        """
+        super(DuelingNeuralNetwork, self).__init__()
+        self.hidden1 = nn.Linear(_input, 64)  # input -> hidden1
+        self.hidden2 = nn.Linear(64, 64)  # hidden1 -> hidden2
+        # self.out = nn.Linear(64, _output)  # hidden2 -> output
+        self.value = nn.Linear(64, _output[0])
+        self.advantage = nn.Linear(64, _output[0])
+        # self.init()
+        self.init_default()
+
+    def init(self):
+        torch.nn.init.orthogonal_(self.hidden1.weight, gain=1)
+        torch.nn.init.uniform_(self.hidden1.bias, 0, 1)
+        torch.nn.init.orthogonal_(self.hidden2.weight, gain=1)
+        torch.nn.init.uniform_(self.hidden2.bias, 0, 1)
+        torch.nn.init.orthogonal_(self.out.weight, gain=1)
+        torch.nn.init.uniform_(self.out.bias, 0, 1)
+        torch.nn.init.orthogonal_(self.value.weight, gain=1)
+        torch.nn.init.uniform_(self.value.bias, 0, 1)
+        torch.nn.init.orthogonal_(self.advantage.weight, gain=1)
+        torch.nn.init.uniform_(self.advantage.bias, 0, 1)
+
+    def init_default(self):
+        self.hidden1.reset_parameters()
+        self.hidden2.reset_parameters()
+        self.value.reset_parameters()
+        self.advantage.reset_parameters()
+
+    def forward(self, _x):
+        """
+        :brief:         神经网络前向传播
+        :param _x:      输入网络层的张量
+        :return:        网络的输出
+        """
+        x = _x
+        x = self.hidden1(x)
+        x = func.relu(x)
+        x = self.hidden2(x)
+        x = func.relu(x)
+
+        x1 = self.value(x)
+        x1 = func.relu(x1)
+
+        x2 = self.advantage(x)
+        x2 = func.relu(x2)
+
+        state_action_value = x1 + (x2 - x2.mean())
+        return state_action_value
 
 
 class Critic(nn.Module):
@@ -316,26 +477,69 @@ class ProbActor(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-class SofemaxActor(nn.Module):
-    def __init__(self, alpha=1e-4, state_dim=1, action_num=1, name='DiscreteActor', chkpt_dir=''):
-        super(SofemaxActor, self).__init__()
-        self.state_dim = state_dim
-        self.action_dim = action_num
+class SoftmaxActor(nn.Module):
+    def __init__(self, alpha=1e-4, state_dim=1, action_dim=1, action_num=None, name='DiscreteActor', chkpt_dir=''):
+        super(SoftmaxActor, self).__init__()
+        self.state_dim = state_dim              # 状态的维度，即 ”有几个状态“
+        self.action_dim = action_dim            # 动作的维度，即 "有几个动作"
+        if action_num is None:
+            self.action_num = [3, 3, 3, 3]      # 每个动作有几个取值，离散动作空间特有
+        self.index = [0]
+        for i in range(action_dim):
+            self.index.append(self.index[i] + self.action_num[i])
         self.alpha = alpha
-        self.checkpoint_file = chkpt_dir + name + '_ddpg'
-        self.checkpoint_file_whole_net = chkpt_dir + name + '_ddpgALL'
-        self.layer = nn.Linear(state_dim, action_num)
+        self.checkpoint_file = chkpt_dir + name + '_PPO_Dis'
+        self.checkpoint_file_whole_net = chkpt_dir + name + '_PPO_DisALL'
+
+        self.fc1 = nn.Linear(state_dim, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.out = [nn.Linear(64, self.action_num[i]) for i in range(self.action_dim)]
         self.optimizer = torch.optim.Adam(self.parameters(), lr=alpha)
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+        self.initialization()
+
+        # self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = 'cpu'
         self.to(self.device)
 
-    def initialization(self):
-        pass
+    @staticmethod
+    def orthogonal_init(layer, gain=1.0):
+        nn.init.orthogonal_(layer.weight, gain=gain)
+        nn.init.constant_(layer.bias, 0)
 
-    def forward(self, state):
-        x = func.relu(self.layer(state))
-        x = func.softmax(x, dim=1)
-        return x
+    def initialization(self):
+        self.orthogonal_init(self.fc1)
+        self.orthogonal_init(self.fc2)
+        for i in range(self.action_dim):
+            self.orthogonal_init(self.out[i], gain=0.01)
+
+    def forward(self, xx: torch.Tensor):
+        xx = torch.tanh(self.fc1(xx))       # xx -> 第一层 -> tanh
+        xx = torch.tanh(self.fc2(xx))       # xx -> 第二层 -> tanh
+        a_prob = []
+        for i in range(self.action_dim):
+            a_prob.append(func.softmax(self.out[i](xx), dim=1).T)   # xx -> 每个动作维度的第三层 -> softmax
+        return nn.utils.rnn.pad_sequence(a_prob).T      # 得到很多分布列，分布列合并，差的数用 0 补齐，不影响 log_prob 和 entropy
+
+    def evaluate(self, xx: torch.Tensor):
+        xx = torch.unsqueeze(xx, 0)
+        a_prob = self.forward(xx)
+        _a = torch.argmax(a_prob, dim=2)
+        return _a
+
+    def choose_action(self, xx):
+        with torch.no_grad():
+            dist = Categorical(probs=self.forward(xx))
+            _a = dist.sample()
+            _a_logprob = dist.log_prob(_a)
+            _a_entropy = dist.entropy()
+        '''
+            这里跟连续系统不一样的地方在于，这里的概率是多个分布列，pytorch 或许无法表示多维分布列。
+            所以用了 mean 函数，但是主观分析不影响结果，因为 mean 的单调性与 sum 是一样的。
+            连续动作有多维联合高斯分布，但是协方差矩阵都是对角阵，所以跟多个一维的也没区别。
+        '''
+        return _a, torch.mean(_a_logprob, dim=1), torch.mean(_a_entropy, dim=1)
+        # return _a
 
     def save_checkpoint(self, name=None, path='', num=None):
         print('...saving checkpoint...')
@@ -354,6 +558,87 @@ class SofemaxActor(nn.Module):
     def load_checkpoint(self):
         print('...loading checkpoint...')
         self.load_state_dict(torch.load(self.checkpoint_file))
+
+
+# class SoftmaxActor(nn.Module):
+#     def __init__(self, alpha=3e-4, state_dim=1, action_dim=1, action_num=None, name='DiscreteActor', chkpt_dir=''):
+#         super(SoftmaxActor, self).__init__()
+#         self.state_dim = state_dim              # 状态的维度，即 ”有几个状态“
+#         self.action_dim = action_dim            # 动作的维度，即 "有几个动作"
+#         if action_num is None:
+#             self.action_num = [3, 3, 3, 3]      # 每个动作有几个取值，离散动作空间特有
+#         self.alpha = alpha
+#         self.checkpoint_file = chkpt_dir + name + '_PPO_Dis'
+#         self.checkpoint_file_whole_net = chkpt_dir + name + '_PPO_DisALL'
+#
+#         self.fc1 = nn.Linear(state_dim, 64)
+#         self.fc2 = nn.Linear(64, 64)
+#         self.out = [nn.Linear(64, 2) for _ in range(self.action_dim)]
+#         self.optimizer = torch.optim.Adam(self.parameters(), lr=alpha)
+#
+#         self.initialization()
+#
+#         # self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+#         self.device = 'cpu'
+#         self.to(self.device)
+#
+#     @staticmethod
+#     def orthogonal_init(layer, gain=1.0):
+#         nn.init.orthogonal_(layer.weight, gain=gain)
+#         nn.init.constant_(layer.bias, 0)
+#
+#     def initialization(self):
+#         self.orthogonal_init(self.fc1)
+#         self.orthogonal_init(self.fc2)
+#         for i in range(self.action_dim):
+#             self.orthogonal_init(self.out[i], gain=0.01)
+#
+#     def forward(self, xx: torch.Tensor):
+#         xx = torch.tanh(self.fc1(xx))       # xx -> 第一层 -> tanh
+#         xx = torch.tanh(self.fc2(xx))       # xx -> 第二层 -> tanh
+#         a_prob = []
+#         for i in range(self.action_dim):
+#             a_prob.append(func.softmax(self.out[i](xx), dim=1).T)   # xx -> 每个动作维度的第三层 -> softmax
+#         return nn.utils.rnn.pad_sequence(a_prob).T      # 得到很多分布列，分布列合并，差的数用 0 补齐，不影响 log_prob 和 entropy
+#
+#     def evaluate(self, xx: torch.Tensor):
+#         xx = torch.unsqueeze(xx, 0)
+#         a_prob = self.forward(xx)
+#         _a = torch.argmax(a_prob, dim=2)
+#         return _a
+#
+#     def choose_action(self, xx):  # choose action 默认是在训练情况下的函数，默认有batch
+#         xx = torch.unsqueeze(xx, 0)
+#         with torch.no_grad():
+#             dist = Categorical(probs=self.forward(xx))
+#             _a = dist.sample()
+#             _a_logprob = dist.log_prob(_a)
+#             _a_entropy = dist.entropy()
+#         '''
+#             这里跟连续系统不一样的地方在于，这里的概率是多个分布列，pytorch 或许无法表示多维分布列。
+#             所以用了 sum 函数，但是主观分析不影响结果，因为 sum 的单调性与 sum 是一样的。
+#             连续动作有多维联合高斯分布，但是协方差矩阵都是对角阵，所以跟多个一维的也没区别。
+#         '''
+#         return _a, torch.sum(_a_logprob, dim=1), torch.sum(_a_entropy, dim=1)
+#         # return _a
+#
+#     def save_checkpoint(self, name=None, path='', num=None):
+#         print('...saving checkpoint...')
+#         if name is None:
+#             torch.save(self.state_dict(), self.checkpoint_file)
+#         else:
+#             if num is None:
+#                 torch.save(self.state_dict(), path + name)
+#             else:
+#                 torch.save(self.state_dict(), path + name + str(num))
+#
+#     def save_all_net(self):
+#         print('...saving all net...')
+#         torch.save(self, self.checkpoint_file_whole_net)
+#
+#     def load_checkpoint(self):
+#         print('...loading checkpoint...')
+#         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
 class PPOActorCritic(nn.Module):

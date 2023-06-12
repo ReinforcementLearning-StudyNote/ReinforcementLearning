@@ -5,7 +5,7 @@ import sys
 import datetime
 import cv2 as cv
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
 from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
 from algorithm.policy_base.Distributed_PPO2 import Distributed_PPO2 as DPPO2
@@ -14,7 +14,7 @@ from common.common_cls import *
 import torch.multiprocessing as mp
 from multiprocessing import shared_memory
 
-optPath = '../../datasave/network/'
+optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
 ENV = 'DPPO2-CartPoleAngleOnly'
@@ -118,7 +118,7 @@ class PPOActorCritic(nn.Module):
 
 
 if __name__ == '__main__':
-	log_dir = '../../datasave/log/'
+	log_dir = '../../../datasave/log/'
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
 	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'

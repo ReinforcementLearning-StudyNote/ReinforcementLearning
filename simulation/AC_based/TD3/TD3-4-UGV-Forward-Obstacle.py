@@ -1,4 +1,3 @@
-import math
 import os
 import sys
 import datetime
@@ -12,14 +11,14 @@ from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common_func import *
 from common.common_cls import *
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'
 optPath = '../../../datasave/network/'
 dataBasePath1 = '../../../environment/envs/pathplanning/11X11-AllCircle1/'
 dataBasePath2 = '../../../environment/envs/pathplanning/5X5-AllCircle2/'
 dataBasePath3 = '../../../environment/envs/pathplanning/5X5-AllCircle3/'
 dataBasePath4 = '../../../environment/envs/pathplanning/5X5-AllCircle4/'
 show_per = 1
+ALGORITHM = 'TD3'
+ENV = 'UGV-Forward-Obstacle'
 
 
 class Critic(nn.Module):
@@ -215,7 +214,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random_with_database() if randomEnv else env.reset()
+        env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -263,7 +262,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random_with_database() if randomEnv else env.reset()
+        env.reset_random() if randomEnv else env.reset()
         # env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
@@ -303,7 +302,7 @@ if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-UGV-Forward-Obstacle/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -319,22 +318,28 @@ if __name__ == '__main__':
                                           terminal=[4.5, 4.5],
                                           dataBasePath=dataBasePath1)
     if TRAIN:
-        agent = TD3(gamma=0., noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
+        '''重新加载actor和critic网络结构，这是必须的操作'''
+        actor = Actor(1e-4, 8, env.state_dim - 8, env.action_dim, 'Actor', simulationPath)
+        target_actor = Actor(1e-4, 8, env.state_dim - 8, env.action_dim, 'TargetActor', simulationPath)
+        critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic1', simulationPath)
+        target_critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic1', simulationPath)
+        critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic2', simulationPath)
+        target_critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic2', simulationPath)
+        '''重新加载actor和critic网络结构，这是必须的操作'''
+        agent = TD3(env=env,
+                    gamma=0., noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
                     actor_soft_update=1e-2,
                     memory_capacity=60000,  # 100000
                     batch_size=512,  # 1024
-                    modelFileXML=cfgPath + cfgFile,
+                    actor=actor,
+                    target_actor=target_actor,
+                    critic1=critic1,
+                    target_critic1=target_critic1,
+                    critic2=critic2,
+                    target_critic2=target_critic2,
                     path=simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
-        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
-        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
-        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.TD3_info()
         successCounter = 0
         timeOutCounter = 0
@@ -450,11 +455,8 @@ if __name__ == '__main__':
         print('TESTing...')
         RECORD = False
         optPath = '../../../datasave/network/TD3-UGV-Obstacle-Avoidance/parameters/'
-        agent = TD3(modelFileXML=cfgPath + cfgFile, path=simulationPath)
-        '''重新加载actor网络结构，这是必须的操作'''
-        agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent = TD3(env=env, target_actor=Actor(1e-4, 8, env.state_dim - 8, env.action_dim, 'TargetActor', simulationPath))
         agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
-        '''重新加载actor网络结构，这是必须的操作'''
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height)) if RECORD else None
         simulation_num = 50
         successCounter = 0

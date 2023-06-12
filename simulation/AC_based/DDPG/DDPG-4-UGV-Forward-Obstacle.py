@@ -10,8 +10,7 @@ from environment.envs.UGV.ugv_forward_obstacle_continuous import UGV_Forward_Obs
 from algorithm.actor_critic.DDPG import DDPG
 from common.common_cls import *
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'UGV_Forward_Obstacle_Continuous.xml'
+
 optPath = '../../../datasave/network/'
 dataBasePath1 = '../../../environment/envs/pathplanning/11X11-AllCircle1/'
 dataBasePath2 = '../../../environment/envs/pathplanning/5X5-AllCircle2/'
@@ -215,7 +214,7 @@ def fullFillReplayMemory_with_Optimal(randomEnv: bool,
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random_with_database() if randomEnv else env.reset()
+        env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
         _new_reward.clear()
@@ -263,7 +262,7 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     fullFillCount = max(min(fullFillCount, agent.memory.mem_size), agent.memory.batch_size)
     _new_state, _new_action, _new_reward, _new_state_, _new_done = [], [], [], [], []
     while agent.memory.mem_counter < fullFillCount:
-        env.reset_random_with_database() if randomEnv else env.reset()
+        env.reset_random() if randomEnv else env.reset()
         # env.reset_random() if randomEnv else env.reset()
         _new_state.clear()
         _new_action.clear()
@@ -319,19 +318,21 @@ if __name__ == '__main__':
                                           terminal=[4.5, 4.5],
                                           dataBasePath=dataBasePath1)
     if TRAIN:
-        agent = DDPG(gamma=0.99,
+        actor = Actor(1e-4, 8, env.state_dim - 8, env.action_dim, 'Actor', simulationPath)
+        target_actor = Actor(1e-4, 8, env.state_dim - 8, env.action_dim, 'TargetActor', simulationPath)
+        critic = Critic(1e-3, env.state_dim, env.action_dim, 'Critic', simulationPath)
+        target_critic = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic', simulationPath)
+        agent = DDPG(env=env,
+                     gamma=0.99,
                      actor_soft_update=1e-2,
                      critic_soft_update=1e-2,
                      memory_capacity=60000,  # 100000
                      batch_size=512,  # 1024
-                     modelFileXML=cfgPath + cfgFile,
+                     actor=actor,
+                     target_actor=target_actor,
+                     critic=critic,
+                     target_critic=target_critic,
                      path=simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.DDPG_info()
         successCounter = 0
         timeOutCounter = 0
@@ -359,7 +360,7 @@ if __name__ == '__main__':
             # env.reset()
             print('=========START=========')
             print('Episode:', agent.episode)
-            env.reset_random_with_database()
+            env.reset_random()
             # env.reset_random()
             sumr = 0
             new_state.clear()
@@ -445,11 +446,8 @@ if __name__ == '__main__':
         print('TESTing...')
         RECORD = True
         optPath = '../../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
-        agent = DDPG(modelFileXML=cfgPath + cfgFile, path=simulationPath)
-        '''重新加载actor网络结构，这是必须的操作'''
-        agent.target_actor = Actor(1e-4, 8, agent.state_dim_nn - 8, agent.action_dim_nn, 'Actor', simulationPath)
+        agent = DDPG(env=env, target_actor=Actor(1e-4, 8, env.state_dim - 8, env.action_dim, 'Actor', simulationPath))
         agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
-        '''重新加载actor网络结构，这是必须的操作'''
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height)) if RECORD else None
         simulation_num = 5
         successCounter = 0
@@ -457,7 +455,7 @@ if __name__ == '__main__':
         collisionCounter = 0
         for i in range(simulation_num):
             print('==========START' + str(i) + '==========')
-            env.reset_random_with_database()
+            env.reset_random()
             while not env.is_terminal:
                 if cv.waitKey(1) == 27:
                     break

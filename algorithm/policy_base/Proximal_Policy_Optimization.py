@@ -1,7 +1,8 @@
+import numpy as np
+
 from common.common_func import *
 from common.common_cls import *
-from environment.config.xml_write import xml_cfg
-from tensorboardX import SummaryWriter
+import cv2 as cv
 
 """use CPU or GPU"""
 use_cuda = torch.cuda.is_available()
@@ -12,6 +13,7 @@ device = torch.device("cpu") if use_cpu_only else torch.device("cuda" if use_cud
 
 class Proximal_Policy_Optimization:
 	def __init__(self,
+				 env,
 				 actor_lr: float = 3e-4,
 				 critic_lr: float = 1e-3,
 				 gamma: float = 0.99,
@@ -19,39 +21,38 @@ class Proximal_Policy_Optimization:
 				 eps_clip: float = 0.2,
 				 action_std_init: float = 0.6,
 				 buffer_size: int = 1200,
-				 modelFileXML: str = '',
+				 policy: PPOActorCritic = PPOActorCritic(1, 1, 0.1, '', ''),
+				 policy_old: PPOActorCritic = PPOActorCritic(1, 1, 0.1, '', ''),
 				 path: str = ''):
 		"""
 		@note:
+		@param env:					RL environment
 		@param actor_lr:			actor learning rate
 		@param critic_lr:			critic learning rate
 		@param gamma:				discount factor
 		@param K_epochs:			update policy for K epochs in one PPO update
 		@param eps_clip:			clip parameter for PPO
 		@param action_std_init:		starting std for action distribution (Multivariate Normal)
-		@param modelFileXML:		model description file
 		@param path:				path
 		"""
-		'''From rl_base'''
-		# 这里使用连续动作，连续状态
-		self.agentName, self.state_dim_nn, self.action_dim_nn, self.action_range = self.get_RLBase_from_XML(modelFileXML)
-		'''From rl_base'''
-
+		self.env = env
 		'''PPO'''
 		self.gamma = gamma  # discount factor
 		self.K_epochs = K_epochs  # 每隔 timestep_num 学习一次
 		self.eps_clip = eps_clip
 		self.action_std = action_std_init
 		self.path = path
-		# self.buffer = RolloutBuffer()
-		self.buffer = RolloutBuffer(buffer_size, self.state_dim_nn, self.action_dim_nn)
+		self.buffer = RolloutBuffer(buffer_size, self.env.state_dim, self.env.action_dim)
+		self.buffer2 = RolloutBuffer2(self.env.state_dim, self.env.action_dim)
 		self.actor_lr = actor_lr
 		self.critic_lr = critic_lr
 		'''PPO'''
 
 		'''networks'''
-		self.policy = PPOActorCritic(self.state_dim_nn, self.action_dim_nn, action_std_init, name='PPOActorCritic', chkpt_dir=self.path)
-		self.policy_old = PPOActorCritic(self.state_dim_nn, self.action_dim_nn, action_std_init, name='PPOActorCritic_old', chkpt_dir=self.path)
+		# self.policy = PPOActorCritic(self.env.state_dim, self.env.action_dim, action_std_init, name='PPOActorCritic', chkpt_dir=self.path)
+		# self.policy_old = PPOActorCritic(self.env.state_dim, self.env.action_dim, action_std_init, name='PPOActorCritic_old', chkpt_dir=self.path)
+		self.policy = policy
+		self.policy_old = policy_old
 		self.policy_old.load_state_dict(self.policy.state_dict())
 
 		self.optimizer = torch.optim.Adam([
@@ -65,10 +66,6 @@ class Proximal_Policy_Optimization:
 		self.episode = 0
 		self.reward = 0
 
-		self.save_episode = []  # 保存的每一个回合的回合数
-		self.save_reward = []  # 保存的每一个回合的奖励
-		self.save_time = []
-		self.save_step = []  # 保存的每一步的步数
 		# self.writer = SummaryWriter(path)
 
 	def set_action_std(self, new_action_std):
@@ -91,7 +88,7 @@ class Proximal_Policy_Optimization:
 		:brief:     因为该函数与choose_action并列，所以输出也必须是[-1, 1]之间
 		:return:    random action
 		"""
-		return np.random.uniform(low=-1, high=1, size=self.action_dim_nn)
+		return np.random.uniform(low=-1, high=1, size=self.env.action_dim)
 
 	def choose_action(self, state):
 		with torch.no_grad():
@@ -102,9 +99,24 @@ class Proximal_Policy_Optimization:
 
 	def evaluate(self, state):
 		with torch.no_grad():
-			state = torch.FloatTensor(state).to(device)
-			action_mean = self.policy.actor(state)
+			t_state = torch.FloatTensor(state).to(self.device)
+			action_mean = self.policy.actor(t_state)
 		return action_mean.detach()
+
+	def agent_evaluate(self, test_num):
+		r = 0
+		for _ in range(test_num):
+			self.env.reset_random()
+			while not self.env.is_terminal:
+				self.env.current_state = self.env.next_state.copy()
+				_action_from_actor = self.evaluate(self.env.current_state)
+				_action = self.action_linear_trans(_action_from_actor.cpu().numpy().flatten())  # 将动作转换到实际范围上
+				self.env.step_update(_action)  # 环境更新的action需要是物理的action
+				r += self.env.reward
+				self.env.show_dynamic_image(isWait=False)  # 画图
+		cv.destroyAllWindows()
+		r /= test_num
+		return r
 
 	def learn(self):
 		"""
@@ -178,37 +190,20 @@ class Proximal_Policy_Optimization:
 		self.policy.load_state_dict(torch.load(path + 'Policy_ppo'))
 		self.policy_old.load_state_dict(torch.load(path + 'Policy_old_ppo'))
 
-	def get_RLBase_from_XML(self, filename):
-		rl_base, agentName = self.load_rl_basefromXML(filename=filename)
-		state_dim_nn = int(rl_base['state_dim'])  # input dimension of NN
-		action_dim_nn = int(rl_base['action_dim'])
-		action_range = str2list(rl_base['action_range'])
-		return agentName, state_dim_nn, action_dim_nn, action_range
-
-	@staticmethod
-	def load_rl_basefromXML(filename: str) -> (dict, str):
-		"""
-		:brief:             从模型文件中加载数据到DQN中
-		:param filename:    模型文件
-		:return:            数据字典
-		"""
-		root = xml_cfg().XML_Load(filename)
-		return xml_cfg().XML_GetTagValue(node=xml_cfg().XML_FindNode(nodename='RL_Base', root=root)), root.attrib['name']
-
 	def PPO_info(self):
-		print('agent name：', self.agentName)
-		print('state_dim:', self.state_dim_nn)
-		print('action_dim:', self.action_dim_nn)
-		print('action_range:', self.action_range)
+		print('agent name：', self.env.name)
+		print('state_dim:', self.env.state_dim)
+		print('action_dim:', self.env.action_dim)
+		print('action_range:', self.env.action_range)
 
 	def action_linear_trans(self, action):
 		# the action output
 		linear_action = []
-		for i in range(self.action_dim_nn):
+		for i in range(self.env.action_dim):
 			a = min(max(action[i], -1), 1)
-			maxa = self.action_range[i][1]
-			mina = self.action_range[i][0]
+			maxa = self.env.action_range[i][1]
+			mina = self.env.action_range[i][0]
 			k = (maxa - mina) / 2
 			b = (maxa + mina) / 2
 			linear_action.append(k * a + b)
-		return linear_action
+		return np.array(linear_action)

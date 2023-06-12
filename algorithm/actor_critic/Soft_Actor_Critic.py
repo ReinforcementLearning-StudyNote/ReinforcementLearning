@@ -4,6 +4,7 @@ from environment.config.xml_write import xml_cfg
 from common.common_func import *
 from common.common_cls import *
 import pandas as pd
+import cv2 as cv
 
 """use CPU or GPU"""
 use_cuda = torch.cuda.is_available()
@@ -14,6 +15,7 @@ device = torch.device("cpu") if use_cpu_only else torch.device("cuda" if use_cud
 
 class Soft_Actor_Critic:
     def __init__(self,
+                 env,
                  gamma: float = 0.9,
                  actor_soft_update: float = 1e-2,
                  critic_soft_update: float = 1e-2,
@@ -22,30 +24,26 @@ class Soft_Actor_Critic:
                  alpha_learning: bool = True,
                  memory_capacity: int = 5000,
                  batch_size: int = 64,
-                 modelFileXML: str = '',
+                 actor: ProbActor = ProbActor(),
+                 critic: DualCritic = DualCritic(),
+                 target_critic: DualCritic = DualCritic(),
                  path: str = ''):
         """
-        @note  brief:				class initialization
-        @param gamma:				discount factor
+        @param env:
+        @param gamma:
         @param actor_soft_update:
         @param critic_soft_update:
-        @param alpha:				factor for actor loss
-        @param alpha_learning:		adaptively tune alpha or not
-        @param memory_capacity:		capacity of replay memory
-        @param batch_size:			bath size
-        @param modelFileXML:		model description file
-        @param path:				path to load 'modelFileXML'
+        @param alpha:
+        @param alpha_lr:
+        @param alpha_learning:
+        @param memory_capacity:
+        @param batch_size:
+        @param actor:
+        @param critic:
+        @param target_critic:
+        @param path:
         """
-        '''From rl_base'''
-        # DDPG 要求智能体状态必须是连续的，动作必须连续的
-        self.agentName, self.state_dim_nn, self.action_dim_nn, self.action_range = \
-            self.get_RLBase_from_XML(modelFileXML)
-        # agentName:            the name of the agent
-        # state_dim_nn:         the dimension of the neural network input
-        # action_dim_nn:        the dimension of the neural network output
-        # action_range:         the range of physical action
-        '''From rl_base'''
-
+        self.env = env
         '''SAC'''
         self.device = device
         self.gamma = gamma
@@ -53,14 +51,14 @@ class Soft_Actor_Critic:
         # self.critic_lr = critic_learning_rate
         self.actor_tau = actor_soft_update
         self.critic_tau = critic_soft_update
-        self.memory = ReplayBuffer(memory_capacity, batch_size, self.state_dim_nn, self.action_dim_nn)
+        self.memory = ReplayBuffer(memory_capacity, batch_size, self.env.state_dim, self.env.action_dim)
 
         self.path = path
         self.alpha_learning = alpha_learning
         self.alpha_lr = alpha_lr
         if self.alpha_learning:
             # Target Entropy = −dim(A) (e.g. , -6 for HalfCheetah-v2) as given in the paper
-            self.target_entropy = -self.action_dim_nn
+            self.target_entropy = -self.env.action_dim
             # We learn log_alpha instead of alpha to ensure that alpha=exp(log_alpha)>0
             self.log_alpha = torch.zeros(1).to(self.device)
             self.log_alpha.requires_grad_(True)
@@ -71,11 +69,11 @@ class Soft_Actor_Critic:
         '''SAC'''
 
         '''network'''
-        self.actor = ProbActor(1e-4, self.state_dim_nn, self.action_dim_nn, name='Actor', chkpt_dir=self.path)
+        self.actor = actor
         # The output of the actor is the mean of a gaussian distribution and a log_pi
-        self.critic = DualCritic(1e-3, self.state_dim_nn, self.action_dim_nn, name='Critic', chkpt_dir=self.path)
+        self.critic = critic
         # This critic contains double Q-net structure. No difference, just merge the two nets.
-        self.target_critic = DualCritic(1e-3, self.state_dim_nn, self.action_dim_nn, name='TargetCritic', chkpt_dir=self.path)
+        self.target_critic = target_critic
         for p in self.target_critic.parameters():   # target 网络不训练
             p.requires_grad = False
         '''network'''
@@ -96,7 +94,7 @@ class Soft_Actor_Critic:
         @note brief:	因为该函数与choose_action并列，所以输出也必须是[-1, 1]之间
         @return:		random actions
         """
-        return np.random.uniform(low=-1, high=1, size=self.action_dim_nn)
+        return np.random.uniform(low=-1, high=1, size=self.env.action_dim)
 
     def choose_action(self, state, deterministic=False):
         """
@@ -115,6 +113,18 @@ class Soft_Actor_Critic:
         t_state = torch.tensor(state, dtype=torch.float).to(self.device)  # get the tensor of the state
         act, _ = self.actor(t_state, True)
         return act.cpu().detach().numpy()
+
+    def agent_evaluate(self, test_num: int = 5, show_per: int = 10):
+        for _ in range(test_num):
+            self.env.reset_random()
+            while not self.env.is_terminal:
+                cv.waitKey(1)
+                self.env.current_state = self.env.next_state.copy()
+                action = self.action_linear_trans(self.choose_action(self.env.current_state, True))
+                self.env.step_update(action)
+                if self.episode % show_per == 0:
+                    self.env.show_dynamic_image(isWait=False)
+        cv.destroyAllWindows()
 
     def learn(self, is_reward_ascent=False):
         if self.memory.mem_counter < self.memory.batch_size:
@@ -193,18 +203,18 @@ class Soft_Actor_Critic:
         return xml_cfg().XML_GetTagValue(node=xml_cfg().XML_FindNode(nodename='RL_Base', root=root)), root.attrib['name']
 
     def SAC_info(self):
-        print('agent name：', self.agentName)
-        print('state_dim:', self.state_dim_nn)
-        print('action_dim:', self.action_dim_nn)
-        print('action_range:', self.action_range)
+        print('agent name：', self.env.name)
+        print('state_dim:', self.env.state_dim)
+        print('action_dim:', self.env.action_dim)
+        print('action_range:', self.env.action_range)
 
     def action_linear_trans(self, action):
         # the action output
         linear_action = []
-        for i in range(self.action_dim_nn):
+        for i in range(self.env.action_dim):
             a = min(max(action[i], -1), 1)
-            maxa = self.action_range[i][1]
-            mina = self.action_range[i][0]
+            maxa = self.env.action_range[i][1]
+            mina = self.env.action_range[i][0]
             k = (maxa - mina) / 2
             b = (maxa + mina) / 2
             linear_action.append(k * a + b)

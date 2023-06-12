@@ -11,10 +11,10 @@ from algorithm.actor_critic.DDPG import DDPG
 from common.common_func import *
 from common.common_cls import *
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'Flight_Attitude_Simulator_Continuous.xml'
 optPath = '../../../datasave/network/'
 show_per = 1
+ALGORITHM = 'DDPG'
+ENV = 'Flight_Attitude_Simulator_Continuous'
 
 
 class Critic(nn.Module):
@@ -153,9 +153,7 @@ class Actor(nn.Module):
         self.load_state_dict(torch.load(self.checkpoint_file))
 
 
-def fullFillReplayMemory_with_Optimal(randomEnv: bool,
-                                      fullFillRatio: float,
-                                      is_only_success: bool):
+def fullFillReplayMemory_with_Optimal(randomEnv: bool, fullFillRatio: float, is_only_success: bool):
     print('Retraining...')
     print('Collecting...')
     agent.load_models(optPath)
@@ -218,7 +216,7 @@ if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-FlightAttitudeSimulator/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -229,18 +227,23 @@ if __name__ == '__main__':
     env = flight_sim_con(initTheta=-60.0, setTheta=0.0, save_cfg=False)
 
     if TRAIN:
-        agent = DDPG(gamma=0.9,
+        actor = Actor(1e-4, env.state_dim, env.action_dim, 'Actor', simulationPath)
+        target_actor = Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath)
+        critic = Critic(1e-3, env.state_dim, env.action_dim, 'Critic', simulationPath)
+        target_critic = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic', simulationPath)
+        agent = DDPG(env=env,
+                     gamma=0.9,
                      actor_soft_update=1e-2,
                      critic_soft_update=1e-2,
                      memory_capacity=20000,  # 10000
                      batch_size=512,
-                     modelFileXML=cfgPath + cfgFile,
+                     actor=actor,
+                     target_actor=target_actor,
+                     critic=critic,
+                     target_critic=target_critic,
                      path=simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
+
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.DDPG_info()
         # cv.waitKey(0)
@@ -252,10 +255,10 @@ if __name__ == '__main__':
                                               is_only_success=True)
             # 如果注释掉，就是在上次的基础之上继续学习，如果不是就是重新学习，但是如果两次的奖励函数有变化，那么就必须执行这两句话
             '''生成初始数据之后要再次初始化网络'''
-            # ddpg.actor.initialization()
-            # ddpg.target_actor.initialization()
-            # ddpg.critic.initialization()
-            # ddpg.target_critic.initialization()
+            # agent.actor.initialization()
+            # agent.target_actor.initialization()
+            # agent.critic.initialization()
+            # agent.target_critic.initialization()
             '''生成初始数据之后要再次初始化网络'''
         else:
             '''fullFillReplayMemory_Random'''
@@ -325,12 +328,8 @@ if __name__ == '__main__':
     if TEST:
         print('TESTing...')
         optPath = '../../../datasave/network/DDPG-Flight-Attitude-Simulator/parameters/'
-        agent = DDPG(modelFileXML=cfgPath + cfgFile)
-
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
+        agent = DDPG(env=env, target_actor=Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath))
         agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
-        '''重新加载actor和critic网络结构，这是必须的操作'''
 
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),

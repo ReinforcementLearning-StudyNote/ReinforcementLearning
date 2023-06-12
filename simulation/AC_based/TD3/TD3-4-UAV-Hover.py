@@ -1,10 +1,8 @@
-import math
 import os
 import sys
 import datetime
 import time
 import cv2 as cv
-import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 # import copy
@@ -15,11 +13,11 @@ from common.common_cls import *
 import matplotlib.pyplot as plt
 
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'UAV_Hover.xml'
 optPath = '../../../datasave/network/'
 show_per = 10
 timestep = 0
+ALGORITHM = 'TD3'
+ENV = 'UAV-Hover'
 
 class Critic(nn.Module):
     def __init__(self, beta, state_dim, action_dim, name, chkpt_dir):
@@ -236,7 +234,7 @@ if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-TD3-UAV-Hover/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
@@ -248,23 +246,26 @@ if __name__ == '__main__':
     env.uav_vis.arm_scale = 10
 
     if TRAIN:
-        agent = TD3(gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
+        actor = Actor(1e-4, env.state_dim, env.action_dim, 'Actor', simulationPath)
+        target_actor = Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath)
+        critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic1', simulationPath)
+        target_critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic1', simulationPath)
+        critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic2', simulationPath)
+        target_critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic2', simulationPath)
+        agent = TD3(env=env,
+                    gamma=0.99, noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
                     actor_soft_update=1e-2,
                     memory_capacity=5000,  # 100000
                     batch_size=512,  # 1024
-                    modelFileXML=cfgPath + cfgFile,
+                    actor=actor,
+                    target_actor=target_actor,
+                    critic1=critic1,
+                    target_critic1=target_critic1,
+                    critic2=critic2,
+                    target_critic2=target_critic2,
                     path=simulationPath)
-
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
-        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
-        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
-        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
 
         agent.TD3_info()
         successCounter = 0

@@ -11,9 +11,7 @@ from algorithm.actor_critic.Twin_Delayed_DDPG import Twin_Delayed_DDPG as TD3
 from common.common_func import *
 from common.common_cls import *
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'Flight_Attitude_Simulator_2State_Continuous.xml'
-# optPath = '../../../datasave/network/'
+optPath = '../../../datasave/network/'
 optPath = 'temp/'
 ALGORITHM = 'TD3'
 ENV = 'Flight_Attitude_Simulator_2State_Continuous'
@@ -238,26 +236,30 @@ if __name__ == '__main__':
     TEST = not TRAIN
     is_storage_only_success = False
 
-    env = FAS_2S(initTheta=-60.0, setTheta=0.0, save_cfg=False)
+    env = FAS_2S(initTheta=-60.0, save_cfg=False)
 
     if TRAIN:
-        agent = TD3(gamma=0.99,
+        actor = Actor(1e-4, env.state_dim, env.action_dim, 'Actor', simulationPath)
+        target_actor = Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath)
+        critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic1', simulationPath)
+        target_critic1 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic1', simulationPath)
+        critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'Critic2', simulationPath)
+        target_critic2 = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic2', simulationPath)
+        agent = TD3(env=env,
+                    gamma=0.99,
                     noise_clip=1 / 2, noise_policy=1 / 4, policy_delay=3,
                     critic1_soft_update=1e-2,
                     critic2_soft_update=1e-2,
                     actor_soft_update=1e-2,
                     memory_capacity=20000,  # 20000
                     batch_size=512,  # 1024
-                    modelFileXML=cfgPath + cfgFile,
+                    actor=actor,
+                    target_actor=target_actor,
+                    critic1=critic1,
+                    target_critic1=target_critic1,
+                    critic2=critic2,
+                    target_critic2=target_critic2,
                     path=simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic1', simulationPath)
-        agent.target_critic1 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic1', simulationPath)
-        agent.critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic2', simulationPath)
-        agent.target_critic2 = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic2', simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.TD3_info()
         # cv.waitKey(0)
         MAX_EPISODE = 1500
@@ -343,12 +345,9 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        optPath = '../../datasave/network/TD3-Flight-Attitude-Simulator/parameters/'
-        agent = TD3(modelFileXML=cfgPath + cfgFile)
-        '''重新加载actor网络结构，这是必须的操作'''
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
+        optPath = '../../../datasave/network/TD3-Flight-Attitude-Simulator/parameters/'
+        agent = TD3(env=env, target_actor=Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath))
         agent.load_target_actor_optimal(path=optPath, file='TargetActor_td3')
-        '''重新加载actor网络结构，这是必须的操作'''
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',
                              cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
                              120.0,

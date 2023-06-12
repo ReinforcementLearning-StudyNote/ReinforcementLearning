@@ -167,3 +167,188 @@ Tips: 疯了，一周白干，DPPO2 不好使，不知道是哪里的代码出�
     哪位大佬碰巧看到，可以浏览一下 /algorithm/policy_base/Distributed_PPO2.py 和 /simulation/POlicy_based/DPPO2-4-CartPoleAngleOnly.py 这俩是对应的。
     多谢大佬...... >_< Q_Q T_T
 =================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 10
+Date: 2023.03.29
+Time: 22:15
+Contents:
+    1). 更新了所有算法与环境交互的方式：删除了模型描述文件 (文件本身还在，只是不再使用)
+    2). 算法内部加载 env 环境，可以内部交互
+    3). 修改了DQN、DuelingDQN 和 DoubleDQN 的部分结构
+    4). 修改了部分文件的路径
+    5). 重写了 README.md
+
+Tips：
+    至此，开始逐步将仓库 ReinforcementLearning 修改成 ReinforcementLearning_V2，这也意味着 ReinforcementLearning 将停止更新。
+    ReinforcementLearning_V2 所有的功能与用法均与 ReinforcementLearning 完全相同，之前训练好的控制器也能直接在 V2 上运行 (如果没有bug)。
+    当 V2 的调试完全结束之后，ReinforcementLearning_V2 会被重新命名为 ReinforcementLearning 以覆盖目前的版本。
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 10
+Date: 2023.03.30
+Time: 22:59
+Contents:
+    1). Add new env: UGV2.UGVBidirectional
+    2). Add new env: SecondOrderIntegrationSystem
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 10
+Date: 2023.04.03
+Time: 22:59
+Contents:
+    1). Add new controller: a positional controller for SecondOrderIntegration using DPPO.
+
+Tips:
+    需要网络重训练的方法，在第一次保存的网络中，挑一个比较好的，以此为基础，再训练第二波，以此类推，直到有好的为止。
+    奖励函数分为两部分，位置奖励 和 角度奖励。
+    位置奖励：负的误差的绝对值，在加一个正的偏置 (跟二次型效果相同)
+    角度奖励：误差向量与速度向量夹角的奖励，这个是为了增加轨迹的直线性。奖励数值为 -(夹角 - 45度) * gain，夹角小于45度的时候是就开始给正奖励了。
+    确实学出来了，但是用的是DPPO，这就意味着同样的参数，用 PPO 或者 SAC，TD3 可能就不太好学，要么因为数据太少学不完，要么因为走的步子太大震荡。
+    拼算力啊......我这电脑太垃圾了，以后有机会弄个 i9 处理器，核再多点能更好 (我的电脑目前也就5个进程，想跑10个也行，但是速度跟5个区别不太大了) 再或者直接上ISSAC Gym......
+    奥利给干了
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 11
+Date: 2023.04.12
+Time: 22:29
+Contents:
+    1). Add discrete version of PPO: PPO_Discrete
+    2). Add new controller: a positional controller for SecondOrderIntegration-BangBang using PPO_Discrete.
+
+Tips:
+    这里需要说明一下，为什么加上 “BangBang”。因为 BangBang 是一类系统的时间最优控制的解的形式，即不论系统动态模型是什么，最后的答案一定是 BangBang 的。
+    所谓 BangBang，指的就是控制器的输出只能是最大或者最小，而不存在其他任何中间值，这类最优控制也被称为 “饱和控制”。所以，既然提前已经知道了控制器的形式，
+    所以，动作空间就没有必要从 min 到 max 连续了，直接用离散的动作空间就可以的。因此，可以使用 PPO_Discrete 解决。这种操作是完全合理的，RL 问题中，
+    奖励函数的设计形式和状态-动作空间的设计要远远比网络结构和网络参数重要，因此合理的简化问题，可以大大提高训练速度和效果。二阶积分系统的控制，之前只用 DPPO
+    才训练出来一个差不多的，经过简化，直接用 PPO_Discrete 就完全可以解决。或许在算力足够的情况下不需要考虑这个问题，但是合理将问题简化，并用少的算力得到相同的效果
+    是十分有意义的。
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 12
+Date: 2023.04.19
+Time: 16:41
+Contents:
+    1). Adjust networks and some functions for DQN/Double DQN/Dueling DQN to support multi-dimensional actions.
+    2). Debugged the networks and corresponding demos mentioned above.
+
+Tips:
+    原本的DQN系列网络输出为一维动作的所有价值，不支持高维的动作，本次更新将DQN系列网络输出修改为动作的每个维度的每个价值拉直成的向量，并在用网络选取动作时将其维度进行
+    还原，通过取动作每个维度的最大价值作为动作在该维度的选择，使得DQN系列网络和demo支持多维的动作。同时修复了DQN系列算法在Flight-Attitude-Simulator上demo的历史
+    遗留bug和调整后的新bug，这些demo现在均可以正常进行训练和测试，但是训练效果尚未考察。
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 13
+Date: 2023.04.19
+Time: 22:18
+Contents:
+    1). Added a new controller (stored in ./datasave/network/DQN-FlightAttitudeSimulator)
+    using multi-dimensional-supported DQN (named DQN) for flight attitude simulator.
+    2). Fixed some tiny bugs and deleted some redundant functions.
+
+Tips: None
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 14
+Date: 2023.04.20
+Time: 0:53
+Contents:
+    1). Added a new controller (stored in ./datasave/network/DoubleDQN-FlightAttitudeSimulator)
+    using multi-dimensional-supported DoubleDQN (named DoubleDQN) for flight attitude simulator.
+    2). Added a new controller (stored in ./datasave/network/DuelingDQN-FlightAttitudeSimulator)
+    using multi-dimensional-supported DuelingDQN (named DuelingDQN) for flight attitude simulator.
+    3). Fixed some bugs.
+
+Tips: None
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 15
+Date: 2023.04.26
+Time: 12.20
+Contents:
+    1). Add a discrete SecondOrderIntegration environment
+    2). Add DQN for SecondOrderIntegration_Discrete (untrained)
+    3). Add an acceptable-only controller (in ./datasave/network/DQN-SecondOrderIntegration) for SecondOrderIntegration (BangBang)
+    4). Fixed some bugs for multi-dimensional-supported DQN, DoubleDQN and DuelingDQN.
+    5). Add an option for supporting delay-updating critics for function update_network_parameters() in
+    TD3 (Twin-Delayed-DDPG)
+
+Tips:
+    The performance of the SecondOrderIntegration controller trained by DQN is acceptable at most.
+    I guess this is because I set the boundaries of the environment to prevent the mass point from
+    going too far away during the training process. However, DQN had learnt that the boundaries could be used
+    to reach the target. Once it reaches the target successfully by using the rebound mechanism, DQN would take that as
+    a positive feedback and reinforce such policy. I learnt from this training process that we'd better not change the
+    environment while training. I put the corresponding gif in ./datasave/video/gif and named it "bound-bound
+    control" for fun~.
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 16
+Date: 2023.05.09
+Time: 15.28
+Contents:
+    1). Add a UGVForward_pid environment using PD controller with parameters tuned by RL (in ./environment/env/UGV_PID)
+    2). Add a TD3 controller (in ./datasave/network/TD3-SecondOrderIntegration) for SecondOrderIntegration
+    3). Add a TD3 controller (in ./datasave/network/TD3-UGV-Forward_pid) for UGVForward_pid
+
+Tips:
+    Considering the continuity of the wheels' velocity, we originally planned to train the acceleration of the wheels
+    directly using TD3. However, we failed to get an acceptable controller. Therefore, we decided to use two PID
+    controllers for positional and angular control and used TD3 to automatically tune the parameters of the PID
+    controllers. The bridge between velocity command and acceleration command is a simple proportional module. The
+    training result indicates the effectiveness of our second plan, which can be utilized in future demos.
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 17
+Date: 2023.05.16
+Time: 19.23
+Contents:
+    1). Add a UGVBidirectional_pid environment using PD controller with parameters tuned by RL (in ./environment/env/UGV_PID)
+    2). Add a PPO controller (in ./datasave/network/PPO-UGV-Forward_pid) for UGVForward_pid
+    3). Add a PPO controller (in ./datasave/network/PPO-UGV-Bidirectional_pid) for UGVBidirectional_pid
+
+Tips:
+    Indicated by last log, the idea of RL-PID is utilized in the bidirectional new environment. The difference between
+    forward and bidirectional environments lies in the measurement of position error and angular error as PID inputs.
+    To enable the ability of going backward, the position error value can be positive or negative depending on the
+    orientation of UGV. And the angular error should range in [-pi/2, pi/2] while that is [-pi, pi] in the forward one.
+    The trained controller performed better in the bidirectional one due to it's flexibility in direction.
+=================奥利给兄弟们干他就完了=================
+
+
+====================嗨嗨嗨我又来了啊====================
+Log_num: 18
+Date: 2023.05.22
+Time: 13.50
+Contents:
+    1). Add a DPPO controller (in ./datasave/network/DPPO-UGV-Bidirectional_pid) for UGVBidirectional_pid
+    1). Add a TwoLinkManipulator environment (in ./environment/env/RobotManipulators)
+    2). Add a PPO controller (in ./datasave/network/PPO-TwoLinkManipulator) for TwoLinkManipulator
+    3). Add a DPPO controller (in ./datasave/network/DPPO-4-TwoLinkManipulator) for TwoLinkManipulator
+
+Tips:
+    The TwoLinkManipulator is fully driven by torques on each spin axes. A TD3 controller is utilized to control
+    the manipulator but failed after several attempts. The reason might be that TD3 is hard to converge when the
+    relations between rewards and actions are complex or not obvious. It might work if we well designed the reward
+    functions. However, PPO and DPPO can handle that because policy-based algorithms can dig messages in a deeper level,
+    but steady-state error still exists.
+=================奥利给兄弟们干他就完了=================

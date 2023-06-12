@@ -10,10 +10,12 @@ from algorithm.actor_critic.DDPG import DDPG
 from common.common_func import *
 from common.common_cls import *
 
-cfgPath = '../../../environment/config/'
-cfgFile = 'UGV_Bidirectional_Continuous.xml'
+# cfgPath = '../../../environment/config/'
+# cfgFile = 'UGV_Bidirectional_Continuous.xml'
 optPath = '../../../datasave/network/'
 show_per = 1
+ALGORITHM = 'DDPG'
+ENV = 'UGV-Bidirectional'
 
 
 class Critic(nn.Module):
@@ -237,7 +239,7 @@ if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-DDPG-Two-Wheel-UGV/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = False  # 直接训练
@@ -253,18 +255,23 @@ if __name__ == '__main__':
                                        terminal=[4.0, 4.0])
 
     if TRAIN:
-        agent = DDPG(gamma=0.9,
+        actor = Actor(1e-4, env.state_dim, env.action_dim, 'Actor', simulationPath)
+        target_actor = Actor(1e-4, env.state_dim, env.action_dim, 'TargetActor', simulationPath)
+        critic = Critic(1e-3, env.state_dim, env.action_dim, 'Critic', simulationPath)
+        target_critic = Critic(1e-3, env.state_dim, env.action_dim, 'TargetCritic', simulationPath)
+        agent = DDPG(env=env,
+                     gamma=0.9,
                      actor_soft_update=1e-2,
                      critic_soft_update=1e-2,
                      memory_capacity=24000,
                      batch_size=256,
-                     modelFileXML=cfgPath + cfgFile,
+                     actor=actor,
+                     target_actor=target_actor,
+                     critic=critic,
+                     target_critic=target_critic,
                      path=simulationPath)
         '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetActor', simulationPath)
-        agent.critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = Critic(1e-3, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
+
         '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.DDPG_info()
         successCounter = 0
@@ -356,11 +363,8 @@ if __name__ == '__main__':
 
     if TEST:
         print('TESTing...')
-        agent = DDPG(modelFileXML=cfgPath + cfgFile)
+        agent = DDPG(env=env, target_actor=Actor(1e-4, env.state_dim, env.action_dim, 'Actor', simulationPath))
         optPath = '../../../datasave/network/DDPG-UGV-Bidirectional/parameters/'
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.target_actor = Actor(1e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
         # ddpg.load_models()
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4',

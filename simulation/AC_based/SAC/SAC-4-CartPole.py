@@ -2,7 +2,6 @@ import os
 import sys
 import datetime
 import cv2 as cv
-import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
@@ -17,6 +16,8 @@ from common.common_func import *
 cfgPath = '../../../environment/config/'
 cfgFile = 'cartpole.xml'
 show_per = 1
+ALGORITHM = 'TD3'
+ENV = 'CartPole'
 
 
 class DualCritic(nn.Module):
@@ -267,24 +268,11 @@ def fullFillReplayMemory_Random(randomEnv: bool, fullFillRatio: float, is_only_s
     agent.memory.get_reward_sort()
 
 
-def agent_evaluate():
-    for _ in range(3):
-        env.reset_random()
-        while not env.is_terminal:
-            cv.waitKey(1)
-            env.current_state = env.next_state.copy()
-            action = agent.action_linear_trans(agent.choose_action(env.current_state, True))
-            env.step_update(action)  # 环境更新的action需要是物理的action
-            if agent.episode % show_per == 0:
-                env.show_dynamic_image(isWait=False)
-    cv.destroyAllWindows()
-
-
 if __name__ == '__main__':
     log_dir = '../../../datasave/log/'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-SAC-CartPOle/'
+    simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ALGORITHM + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
     TRAIN = True  # 直接训练
@@ -295,7 +283,14 @@ if __name__ == '__main__':
     env = CartPole(initTheta=0, initX=0, save_cfg=False)
 
     if TRAIN:
-        agent = SAC(gamma=0.99,  # 0.99
+        actor = ProbActor(3e-4, env.state_dim, env.action_dim, 'Actor', simulationPath)
+        critic = DualCritic(5e-4, env.state_dim, env.action_dim, 'Critic', simulationPath)
+        target_critic = DualCritic(5e-4, env.state_dim, env.action_dim, 'TargetCritic', simulationPath)
+        critic.load_state_dict(target_critic.state_dict())  # 二者初始化参数必须相同
+        for p in target_critic.parameters():  # target 网络不训练
+            p.requires_grad = False
+        agent = SAC(env=env,
+                    gamma=0.99,  # 0.99
                     actor_soft_update=5e-3,  # 1e-2
                     critic_soft_update=5e-3,  # 1e-2
                     alpha=0.2,
@@ -303,15 +298,10 @@ if __name__ == '__main__':
                     alpha_learning=True,
                     memory_capacity=60000,       #
                     batch_size=512,
-                    modelFileXML=cfgPath + cfgFile,
+                    actor=actor,
+                    critic=critic,
+                    target_critic=target_critic,
                     path=simulationPath)
-        '''重新加载actor和critic网络结构，这是必须的操作'''
-        agent.actor = ProbActor(3e-4, agent.state_dim_nn, agent.action_dim_nn, 'Actor', simulationPath)
-        agent.critic = DualCritic(5e-4, agent.state_dim_nn, agent.action_dim_nn, 'Critic', simulationPath)
-        agent.target_critic = DualCritic(5e-4, agent.state_dim_nn, agent.action_dim_nn, 'TargetCritic', simulationPath)
-
-        agent.critic.load_state_dict(agent.target_critic.state_dict())      # 二者初始化参数必须相同
-        '''重新加载actor和critic网络结构，这是必须的操作'''
         agent.SAC_info()
         # cv.waitKey(0)
         MAX_EPISODE = 5000
@@ -353,7 +343,7 @@ if __name__ == '__main__':
                     # print('...random...')
                     action_from_actor = agent.choose_action_random()  # 有一定探索概率完全随机探索
                 else:
-                    action_from_actor = agent.choose_action(env.current_state, False)   # TODO
+                    action_from_actor = agent.choose_action(env.current_state, False)
                 action = agent.action_linear_trans(action_from_actor)  # 将动作转换到实际范围上
                 env.step_update(action)  # 环境更新的action需要是物理的action
                 # agent.saveData_Step_Reward(step=step, reward=env.reward, is2file=False, filename='StepReward.csv')
@@ -390,7 +380,7 @@ if __name__ == '__main__':
 
             if agent.episode % 50 == 0:
                 '''50个回合测试一下'''
-                agent_evaluate()
+                agent.agent_evaluate(test_num=5)
                 '''50个回合测试一下'''
 
             if agent.episode % 100 == 0:

@@ -103,7 +103,7 @@ def points_rotate(pts: list, theta: float) -> list:
         return [math.cos(theta) * pts[0] - math.sin(theta) * pts[1], math.sin(theta) * pts[0] + math.cos(theta) * pts[1]]
 
 
-def points_move(pts: list, dis: list) -> list:
+def points_move(pts: list, dis) -> list:
     if type(pts[0]) == list:
         return [[pt[0] + dis[0], pt[1] + dis[1]] for pt in pts]
     else:
@@ -130,8 +130,12 @@ def cal_vector_rad_oriented(v1, v2):
     '''有朝向的，从v1到v2'''
     if np.linalg.norm(v2) < 1e-4 or np.linalg.norm(v1) < 1e-4:
         return 0
-    cosTheta = min(max(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)), -1), 1)
-    return np.sign(cross_product(v1, v2)) * math.acos(cosTheta)
+    x1, y1 = v1
+    x2, y2 = v2
+    dot = x1 * x2 + y1 * y2
+    det = x1 * y2 - y1 * x2
+    theta = np.arctan2(det, dot)
+    return theta
 
 
 def cross_product(vec1: list, vec2: list) -> float:

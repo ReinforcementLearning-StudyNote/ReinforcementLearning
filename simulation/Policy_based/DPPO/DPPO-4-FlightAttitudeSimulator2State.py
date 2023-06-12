@@ -3,18 +3,18 @@ import sys
 import datetime
 import cv2 as cv
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
-from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
+from environment.envs.FlightAttitudeSimulator.flight_attitude_simulator_2state_continuous import Flight_Attitude_Simulator_2State_Continuous as FAS_2S
 from algorithm.policy_base.Distributed_PPO import Distributed_PPO as DPPO
 from algorithm.policy_base.Distributed_PPO import Worker
 from common.common_cls import *
 import torch.multiprocessing as mp
 
-optPath = '../../datasave/network/'
+optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
-ENV = 'DPPO-CartPoleAngleOnly'
+ENV = 'DPPO-FlightAttitudeSimulator'
 
 
 def setup_seed(seed):
@@ -24,9 +24,8 @@ def setup_seed(seed):
 	random.seed(seed)
 
 
-# setup_seed(3407)
+setup_seed(3407)
 os.environ["OMP_NUM_THREADS"] = "1"
-
 
 class PPOActorCritic(nn.Module):
 	def __init__(self, _state_dim, _action_dim, _action_std_init, name='PPOActorCritic', chkpt_dir=''):
@@ -109,7 +108,7 @@ class PPOActorCritic(nn.Module):
 
 
 if __name__ == '__main__':
-	log_dir = '../../datasave/log/'
+	log_dir = '../../../datasave/log/'
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
 	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'
@@ -119,7 +118,7 @@ if __name__ == '__main__':
 	RETRAIN = False  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
-	env = CartPoleAngleOnly(0, False)
+	env = FAS_2S(0, False)
 
 	if TRAIN:
 		'''1. 启动多进程'''
@@ -140,10 +139,10 @@ if __name__ == '__main__':
 			脑海中一定要有这么个观念：从完成任务的目的出发，policy-based 算法的多进程、value-based 算法的经验池，都是一种牛逼但是 “无奈” 之举。
 		'''
 		process_num = 6
-		actor_lr = 3e-4 / min(process_num, 4)
-		critic_lr = 1e-3 / min(process_num, 4)
-		action_std = 0.8
-		k_epo = int(100 / process_num * 1.1)
+		actor_lr = 3e-4 / process_num
+		critic_lr = 1e-3 / process_num
+		action_std = 0.6
+		k_epo_init = 100
 		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=process_num, path=simulationPath)
 
 		'''3. 重新加载全局网络和优化器，这是必须的操作，因为考虑到不同的学习环境要设计不同的网络结构，在训练前，要重写 PPOActorCritic 类'''
@@ -155,7 +154,7 @@ if __name__ == '__main__':
 		])
 
 		'''4. 添加进程'''
-		ppo_msg = {'gamma': 0.99, 'k_epo': k_epo, 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
+		ppo_msg = {'gamma': 0.99, 'k_epo': int(k_epo_init/process_num*1.5), 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
 		for i in range(agent.num_of_pro):
 			w = Worker(g_pi=agent.global_policy,
 					   l_pi=PPOActorCritic(agent.env.state_dim, agent.env.action_dim, action_std, 'LocalPolicy', simulationPath),
@@ -180,8 +179,8 @@ if __name__ == '__main__':
 		agent.start_multi_process()
 	else:
 		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=0, path=simulationPath)
-		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy', simulationPath)
-		agent.load_models(optPath + 'DPPO-4-CartPoleAngleOnly/')
+		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy_ppo', simulationPath)
+		agent.load_models(optPath + 'DPPO-4-FlightAttitudeSimulator2State/')
 		agent.eval_policy.load_state_dict(agent.global_policy.state_dict())
 		test_num = 100
 		for _ in range(test_num):
