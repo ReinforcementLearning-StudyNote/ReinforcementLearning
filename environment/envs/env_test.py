@@ -416,6 +416,24 @@ def test_uav_hover():
     plt.ioff()
 
 
+def test_mars_uav_hover():
+    from UAV.mars_uav_hover import MARS_UAV_Hover
+    import matplotlib.pyplot as plt
+    env = MARS_UAV_Hover(target_pos=[0, 0, 4])
+    num = 0
+    plt.ion()
+    while num < 2:
+        env.reset_random()
+        while not env.is_terminal:
+            env.show_dynamic_image(per_show=1)
+            # cv.waitKey(0)
+            plt.pause(0.00000001)
+            a = [5, 0, 0, 0]
+            env.step_update(action=a)
+        num += 1
+    plt.ioff()
+
+
 def test_two_link_manipulator():
     from RobotManipulators.TwoLinkManipulator import TwoLinkManipulator
     env = TwoLinkManipulator()
@@ -448,6 +466,7 @@ if __name__ == '__main__':
     # test_cartpole()
     # test_cartpoleangleonly()
     # test_uav_hover()
+    test_mars_uav_hover()
     # test_cartpole_discrete_angleonly()
     # test_two_link_manipulator()
     pass
