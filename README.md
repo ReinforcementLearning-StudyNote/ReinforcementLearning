@@ -164,35 +164,35 @@ python DDPG-4-UGV-Forward-Obstacle.py
 The result should be similar to the following.
 
 <div align=center>
-    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle2.gif" width="400px">
+    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DDPG-4-UGV-Obstacle2.gif" width="400px">
 </div>
 
 ### A DPPO controller for SecondOrderIntegration system.
 The result should be similar to the following.
 
 <div align=center>
-    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2/blob/main/datasave/video/gif/DPPO-4-SecondOrderIntegration.gif" width="400px">
+    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DPPO-4-SecondOrderIntegration.gif" width="400px">
 </div>
 
 ### A PPO controller for TwoLinkManipulator system
 The result should be similar to the following.
 
 <div align=center>
-    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2/blob/main/datasave/video/gif/PPO-4-TwoLinkManipulator.gif" width="400px">
+    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/PPO-4-TwoLinkManipulator.gif" width="400px">
 </div>
 
 ### A DPPO controller for CartPole system with both position and angle
 The result should be similar to the following.
 
 <div align=center>
-    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2/blob/main/datasave/video/gif/DPPO-4-CartPole.gif" width="400px">
+    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DPPO-4-CartPole.gif" width="400px">
 </div>
 
 ### A DPPO controller for BallBalancer1D system
 The result should be similar to the following.
 
 <div align=center>
-    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2/blob/main/datasave/video/gif/DPPO-BallBalancer1D.gif" width="400px">
+    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning/blob/main/datasave/video/gif/DPPO-BallBalancer1D.gif" width="400px">
 </div>
 
 # TODO
