@@ -189,10 +189,10 @@ if __name__ == '__main__':
         agent.load_models(optPath + 'DPPO-BallBalancer1D/')
         agent.eval_policy.load_state_dict(agent.global_policy.state_dict())
         test_num = 10
-        cap = cv.VideoWriter('Optimal.mp4',
-                             cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
-                             120.0,
-                             (env.width, env.height))
+        # cap = cv.VideoWriter('Optimal.mp4',
+        #                      cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
+        #                      120.0,
+        #                      (env.width, env.height))
         for _ in range(test_num):
             env.reset_random()
             while not env.is_terminal:
@@ -202,5 +202,5 @@ if __name__ == '__main__':
                 action = agent.action_linear_trans(action_from_actor.flatten())  # 将动作转换到实际范围上
                 env.step_update(action)  # 环境更新的action需要是物理的action
                 env.show_dynamic_image(isWait=False)  # 画图
-                cap.write(env.save)
-        cap.release()
+                # cap.write(env.save)
+        # cap.release()
