@@ -66,7 +66,7 @@ Currently, this repository consists of algorithm, common, datasave, environment,
 |             UGVForward_pid              |         ./UGV_PID/         |       UGV forward with PID controller tuned by RL        |
 |          UGVBidirectional_pid           |         ./UGV_PID/         |    UGV bidirectional with PID controller tuned by RL     |
 |           TwoLinkManipulator            |    ./RobotManipulators/    |                  continuous, full drive                  |
-
+|             BallBalancer1D              |    ./RobotManipulators/    |      continuous, 1D ball balanced by a manipulator       |
 **Simulation** 
 
     Simulation is the place where we implement our simulation experiments,
@@ -123,6 +123,7 @@ A DPPO controller for:
 * SecondOrderIntegration
 * UGVBidirectional_pid
 * TwoLinkManipulator
+* BallBalancer1D
 
 ## Run the scripts
 All runnable scripts are in './simulation/'.
@@ -185,6 +186,13 @@ The result should be similar to the following.
 
 <div align=center>
     <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2/blob/main/datasave/video/gif/DPPO-4-CartPole.gif" width="400px">
+</div>
+
+### A DPPO controller for BallBalancer1D system
+The result should be similar to the following.
+
+<div align=center>
+    <img src="https://github.com/ReinforcementLearning-StudyNote/ReinforcementLearning_V2/blob/main/datasave/video/gif/DPPO-BallBalancer1D.gif" width="400px">
 </div>
 
 # TODO

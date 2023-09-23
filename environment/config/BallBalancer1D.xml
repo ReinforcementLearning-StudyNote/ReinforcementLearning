@@ -1,0 +1,58 @@
+<Plant name="BallBalancer1D" author="Yu Cai" date="2023.09.19" E-mail="18959062162@163.com">
+	<RL_Base>
+		<state_dim>3</state_dim>
+		<state_num>[inf, inf, inf]</state_num>
+		<state_step>[None, None, None]</state_step>
+		<state_space>[None, None, None]</state_space>
+		<state_range>[[-0.134, 0.134], [-3, 3], [-0.7853981633974483, 0.7853981633974483]]</state_range>
+		<isStateContinuous>[True, True, True]</isStateContinuous>
+		<initial_state>[0.74626866 0.         0.        ]</initial_state>
+		<current_state>[0.74626866 0.         0.        ]</current_state>
+		<next_state>[0.74626866 0.         0.        ]</next_state>
+		<action_dim>1</action_dim>
+		<action_step>[None]</action_step>
+		<action_range>[[-0.7853981633974483, 0.7853981633974483]]</action_range>
+		<action_num>[inf]</action_num>
+		<action_space>[None]</action_space>
+		<isActionContinuous>True</isActionContinuous>
+		<initial_action>[0.]</initial_action>
+		<current_action>[0.]</current_action>
+		<is_terminal>False</is_terminal>
+	</RL_Base>
+	<Physical>
+		<initTheta>0.0</initTheta>
+		<initVel>0.0</initVel>
+		<initPos>0.05</initPos>
+		<omega>0</omega>
+		<omegaMax>0.7853981633974483</omegaMax>
+		<omegaMin>-0.7853981633974483</omegaMin>
+		<thetaMin>-0.7853981633974483</thetaMin>
+		<thetaMax>0.7853981633974483</thetaMax>
+		<vMin>-3</vMin>
+		<vMax>3</vMax>
+		<theta>0.0</theta>
+		<pos>0.05</pos>
+		<vel>0.0</vel>
+		<target>0.0</target>
+		<error>-0.05</error>
+		<dt>0.02</dt>
+		<rBall>0.02</rBall>
+		<rMotor>0.0245</rMotor>
+		<L>0.134</L>
+		<J>4.16e-05</J>
+		<K>1.2811567164179105</K>
+		<m>0.26</m>
+		<g>9.81</g>
+	</Physical>
+	<Image>
+		<width>400</width>
+		<height>400</height>
+		<name4image>Ball Balancer 1D</name4image>
+		<scale>800</scale>
+		<ybias>250</ybias>
+		<base_hor_w>0.05</base_hor_w>
+		<base_hor_h>0.005</base_hor_h>
+		<base_ver_w>0.005</base_ver_w>
+		<base_ver_h>0.1</base_ver_h>
+	</Image>
+</Plant>

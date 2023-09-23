@@ -3,6 +3,8 @@ import sys
 import cv2 as cv
 import numpy as np
 
+from environment.envs.RISEControl.rise import RISE
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "./")
 from common.common_func import *
@@ -428,7 +430,7 @@ def test_mars_uav_hover():
             env.show_dynamic_image(per_show=1)
             # cv.waitKey(0)
             plt.pause(0.00000001)
-            a = [5, 0, 0, 0]
+            a = [12, 0, 0, 0]
             env.step_update(action=a)
         num += 1
     plt.ioff()
@@ -449,6 +451,22 @@ def test_two_link_manipulator():
         num += 1
         print(r)
 
+
+def test_ball_balancer_1d():
+    from RobotManipulators.BallBalancer1D import BallBalancer1D
+    env = BallBalancer1D(initPos=0.05)
+    num = 0
+    while num < 2:
+        env.reset()
+        r = 0
+        while not env.is_terminal:
+            env.show_dynamic_image()
+            cv.waitKey(0)
+            env.step_update(action=np.array([-np.sin(10 * env.time)]))
+            r += env.reward
+        num += 1
+
+
 if __name__ == '__main__':
     # test_flight_attitude_simulator()
     # test_flight_attitude_simulator_continuous()
@@ -466,7 +484,8 @@ if __name__ == '__main__':
     # test_cartpole()
     # test_cartpoleangleonly()
     # test_uav_hover()
-    test_mars_uav_hover()
+    # test_mars_uav_hover()
     # test_cartpole_discrete_angleonly()
     # test_two_link_manipulator()
+    test_ball_balancer_1d()
     pass
