@@ -225,14 +225,14 @@ class Flight_Attitude_Simulator_2State_Continuous(rl_base):
         if self.theta > self.maxTheta + deg2rad(1):
             self.terminal_flag = 1
             # print('超出最大角度')
-            return True
+            return False
         if self.theta < self.minTheta - deg2rad(1):
             self.terminal_flag = 2
             # print('超出最小角度')
-            return True
+            return False
         if self.time > self.timeMax:
             self.terminal_flag = 3
-            print('Timeout')
+            # print('Timeout')
             return True
         # if self.is_success():
         #     self.terminal_flag = 4
@@ -283,13 +283,25 @@ class Flight_Attitude_Simulator_2State_Continuous(rl_base):
 
         # r1 = -(next_error ** 2) * 100     # 使用 x'Qx 的形式，试试好不好使
         # r2 = -(self.dTheta ** 2) * 1
-        # r3 = 0
-
-        self.reward = r1 + r2 + r3 + r4
+        r3 = 0
+        _F = (2 * self.force - self.f_max - self.f_min) / (self.f_max - self.f_min) * self.staticGain
+        r1 = - (10 * self.next_state[0] ** 2) - (1 * self.next_state[1] ** 2)
+        r2 = - 0.1 * (_F ** 2)
+        # r3 = - (10 * np.tanh(100 * self.next_state[0]) ** 2) - (1 * np.tanh(10 * self.next_state[1]) ** 2)
+        r3 = - 0.05 * np.sign(self.next_state[0]) ** 2 - 0.05 * np.sign(self.next_state[1]) ** 2
+        self.reward = r1 + r2 + r3
 
     def ode(self, xx: np.ndarray):
+        # 正弦扰动
+        # _dtheta = xx[1]
+        # _ddtheta = (self.force * self.L - self.m * self.g * self.dis - self.k * xx[1]) / (self.J + self.m * self.dis ** 2) + 5 * np.sin(5 * self.time)
+        # 常值扰动
+        # _dtheta = xx[1]
+        # _ddtheta = (self.force * self.L - self.m * self.g * self.dis - self.k * xx[1]) / (
+        #             self.J + self.m * self.dis ** 2) + 10
         _dtheta = xx[1]
-        _ddtheta = (self.force * self.L - self.m * self.g * self.dis - self.k * xx[1]) / (self.J + self.m * self.dis ** 2)
+        _ddtheta = (self.force * self.L - self.m * self.g * self.dis - self.k * xx[1]) / (
+                    self.J + self.m * self.dis ** 2)
         return np.array([_dtheta, _ddtheta])
 
     def rk44(self, action: float):
@@ -325,14 +337,14 @@ class Flight_Attitude_Simulator_2State_Continuous(rl_base):
 
         self.get_reward()
 
-        # '''出界处理'''
-        # if self.theta > self.maxTheta:                  # 如果超出最大角度限制
-        #     self.theta = self.maxTheta
-        #     self.dTheta = -0.8 * self.dTheta            # 碰边界速度直接反弹
-        # if self.theta < self.minTheta:
-        #     self.theta = self.minTheta
-        #     self.dTheta = -0.8 * self.dTheta
-        # '''出界处理'''
+        '''出界处理'''
+        if self.theta > self.maxTheta:                  # 如果超出最大角度限制
+            self.theta = self.maxTheta
+            self.dTheta = -0.8 * self.dTheta            # 碰边界速度直接反弹
+        if self.theta < self.minTheta:
+            self.theta = self.minTheta
+            self.dTheta = -0.8 * self.dTheta
+        '''出界处理'''
 
         self.saveData()
 

@@ -11,7 +11,7 @@
 		<next_state>[0.  0.  0.4 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0. ]</next_state>
 		<action_dim>4</action_dim>
 		<action_step>[None, None, None, None]</action_step>
-		<action_range>[[0.0, 250.0], [0.0, 250.0], [-0.1, 0.1], [-0.1, 0.1]]</action_range>
+		<action_range>[[0.0, 20.0], [-5, 5], [-5, 5], [-5, 5]]</action_range>
 		<action_num>[inf, inf, inf, inf]</action_num>
 		<action_space>[None, None, None, None]</action_space>
 		<isActionContinuous>[True, True, True, True]</isActionContinuous>
@@ -21,11 +21,11 @@
 		<staticGain>2</staticGain>
 	</RL_Base>
 	<Physical>
-		<m>0.41</m>
-		<g>9.81</g>
-		<Jxx>0.001383</Jxx>
-		<Jyy>0.001383</Jyy>
-		<Jzz>0.000272</Jzz>
+		<m>2.1</m>
+		<g>3.7</g>
+		<Jxx>0.046</Jxx>
+		<Jyy>0.046</Jyy>
+		<Jzz>0.018</Jzz>
 		<d>0.0676</d>
 		<pos>[0 0 0]</pos>
 		<vel>[0 0 0]</vel>

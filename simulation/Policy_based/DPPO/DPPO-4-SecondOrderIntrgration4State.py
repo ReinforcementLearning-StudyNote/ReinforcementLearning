@@ -5,16 +5,17 @@ import cv2 as cv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
-from environment.envs.BallBalancer.BallBalancer1D import BallBalancer1D as env
+from environment.envs.SecondOrderIntegration.SecondOrderIntegration4State import SecondOrderIntegration4State as env
 from algorithm.policy_base.Distributed_PPO import Distributed_PPO as DPPO
 from algorithm.policy_base.Distributed_PPO import Worker
 from common.common_cls import *
 import torch.multiprocessing as mp
+import matplotlib.pyplot as plt
 
 optPath = '../../../datasave/network/'
 show_per = 1
 timestep = 0
-ENV = 'DPPO-BallBalancer1D'
+ENV = 'DPPO-SecondOrderIntegration4State'
 
 
 def setup_seed(seed):
@@ -24,7 +25,7 @@ def setup_seed(seed):
     random.seed(seed)
 
 
-setup_seed(3407)
+# setup_seed(3407)
 os.environ["OMP_NUM_THREADS"] = "1"
 
 
@@ -116,11 +117,14 @@ if __name__ == '__main__':
                                                           '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'
     os.mkdir(simulationPath)
     c = cv.waitKey(1)
-    TRAIN = True  # 直接训练
+    TRAIN = False  # 直接训练
     RETRAIN = False  # 基于之前的训练结果重新训练
     TEST = not TRAIN
 
-    env = env()
+    env = env(pos0=np.array([3.0, 4.0]),
+              vel0=np.array([0.0, 0.0]),
+              map_size=np.array([5.0, 5.0]),
+              target=np.array([0.0, 0.0]))
 
     if TRAIN:
         '''1. 启动多进程'''
@@ -140,16 +144,18 @@ if __name__ == '__main__':
 			但是还是要注意，每个人同时不要走太远，不要走太快，稳稳当当一步一步来。
 			脑海中一定要有这么个观念：从完成任务的目的出发，policy-based 算法的多进程、value-based 算法的经验池，都是一种牛逼但是 “无奈” 之举。
 		'''
-        process_num = 6
-        actor_lr = 3e-4 / process_num
-        critic_lr = 1e-3 / process_num
+        process_num = 5
+        actor_lr = 1e-5 / min(process_num, 5)
+        critic_lr = 1e-4 / min(process_num, 5)  # 一直都是 1e-3
         action_std = 0.6
-        k_epo_init = 100
-        agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=process_num, path=simulationPath)
+        k_epo = int(100 / process_num * 1)  # int(100 / process_num * 1.1)
+        agent = DPPO(env=env, actor_lr=actor_lr, critic_lr=critic_lr, num_of_pro=process_num, path=simulationPath)
 
         '''3. 重新加载全局网络和优化器，这是必须的操作，因为考虑到不同的学习环境要设计不同的网络结构，在训练前，要重写 PPOActorCritic 类'''
         agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, action_std, 'GlobalPolicy',
                                              simulationPath)
+        if RETRAIN:
+            agent.global_policy.load_state_dict(torch.load('Policy_PPO_4_20700'))
         agent.global_policy.share_memory()
         agent.optimizer = SharedAdam([
             {'params': agent.global_policy.actor.parameters(), 'lr': actor_lr},
@@ -157,8 +163,7 @@ if __name__ == '__main__':
         ])
 
         '''4. 添加进程'''
-        ppo_msg = {'gamma': 0.99, 'k_epo': int(k_epo_init / process_num * 1.5), 'eps_c': 0.2, 'a_std': 0.6,
-                   'device': 'cpu', 'loss': nn.MSELoss()}
+        ppo_msg = {'gamma': 0.99, 'k_epo': k_epo, 'eps_c': 0.2, 'a_std': 0.6, 'device': 'cpu', 'loss': nn.MSELoss()}
         for i in range(agent.num_of_pro):
             w = Worker(g_pi=agent.global_policy,
                        l_pi=PPOActorCritic(agent.env.state_dim, agent.env.action_dim, action_std, 'LocalPolicy',
@@ -184,23 +189,44 @@ if __name__ == '__main__':
         agent.start_multi_process()
     else:
         agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=0, path=simulationPath)
-        agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy_ppo',
+        agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy',
                                              simulationPath)
-        agent.load_models(optPath + 'DPPO-BallBalancer1D/')
+        # agent.load_models(optPath + 'DPPO-4-SecondOrderIntegration/')
+        agent.load_models(optPath + 'Robust/')
+        # agent.global_policy.load_state_dict(torch.load('Policy_PPO_4_20700'))
         agent.eval_policy.load_state_dict(agent.global_policy.state_dict())
-        test_num = 10
-        # cap = cv.VideoWriter('Optimal.mp4',
-        #                      cv.VideoWriter_fourcc('X', 'V', 'I', 'D'),
-        #                      120.0,
-        #                      (env.width, env.height))
-        for _ in range(test_num):
-            env.reset_random()
+        test_num = 1
+        error = []
+        terminal_list = []
+        x1, x2, v1, v2 = [], [], [], []
+        # cap = cv.VideoWriter('record.mp4', cv.VideoWriter_fourcc(*'mp4v'), 120, (env.image_size[0]-env.board,
+        # env.image_size[1]))
+        for i in range(test_num):
+            env.reset()
             while not env.is_terminal:
                 env.current_state = env.next_state.copy()
                 action_from_actor = agent.evaluate(env.current_state)
                 action_from_actor = action_from_actor.numpy()
                 action = agent.action_linear_trans(action_from_actor.flatten())  # 将动作转换到实际范围上
+                # Robust compensation
+                g_ = np.linalg.pinv(np.array([[0], [0], [1 / env.mass], [1 / env.mass]]))
+                s = torch.tensor(env.current_state, requires_grad=True, dtype=torch.float32)
+                agent.global_policy.critic(s).backward()
+                V_ = s.grad.numpy()
+                print(V_)
+                action -= g_ @ np.diag([10, 10, 10, 10]) @ np.tanh(1 * V_)
                 env.step_update(action)  # 环境更新的action需要是物理的action
-                env.show_dynamic_image(isWait=False)  # 画图
-                # cap.write(env.save)
+                # env.show_dynamic_image(isWait=False)  # 画图
+                x1.append(env.pos[0])
+                x2.append(env.pos[1])
+                v1.append(env.vel[0])
+                v2.append(env.vel[1])
+            # cap.write(env.image[:, 0:env.image_size[0] - env.board])
+            error.append(np.linalg.norm(env.error))
+            terminal_list.append(env.init_target)
         # cap.release()
+        plt.plot(x1)
+        plt.plot(x2)
+        plt.plot(v1)
+        plt.plot(v2)
+        plt.show()

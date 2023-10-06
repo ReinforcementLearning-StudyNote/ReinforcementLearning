@@ -7,17 +7,18 @@ import math
 
 class MARS_UAV:
     def __init__(self,
-                 m: float = 0.41,
-                 g: float = 9.81,
-                 Jxx: float = 1.383e-3,
-                 Jyy: float = 1.383e-3,
-                 Jzz: float = 0.272e-3,
+                 m: float = 2.1,
+                 g: float = 3.7,
+                 Jxx: float = 0.046,
+                 Jyy: float = 0.046,
+                 Jzz: float = 0.018,
                  D: float = 0.6,
                  d: float = 0.0676,
-                 kappa1: float = 3.6835e-5,
-                 kappa2: float = 3.7760e-5,
-                 gamma1: float = 1.4765e-6,
-                 gamma2: float = 1.3266e-6,
+                 d1: float = 0.14,
+                 d2: float = 0.28,
+                 rho: float = 0.017,
+                 S: float = 0.01,
+                 C: float = 0.5,
                  pos0=None,
                  vel0=None,
                  angle0=None,
@@ -41,11 +42,12 @@ class MARS_UAV:
         self.Jyy = Jyy  # Y方向转动惯量
         self.Jzz = Jzz  # Z方向转动惯量
         self.D = D  # 机臂长度 'X'构型
-        self.d = d  # 质心到桨盘距离
-        self.kappa1 = kappa1
-        self.kappa2 = kappa2
-        self.gamma1 = gamma1
-        self.gamma2 = gamma2
+        self.d = d  # 质心到桨盘距离（绘图用）
+        self.d1 = d1  # 质心到下旋翼中心距离
+        self.d2 = d2  # 质心到上旋翼中心距离
+        self.rho = rho  # 火星大气密度
+        self.S = S  # 机身三轴投影面积（假设为正方体，三轴面积一致）
+        self.C = C  # 三轴气动阻力系数（假设为正方体，三轴阻力系数一致）
 
         self.pos = pos0  # 无人机在世界坐标系下的初始位置
         self.vel = vel0  # 无人机在世界坐标系下的初始速度
@@ -55,7 +57,7 @@ class MARS_UAV:
 
         self.dt = 0.01  # 控制频率，100Hz
         self.time = 0.  # 当前时间
-        self.tmax = 30  # 每回合最大时间
+        self.tmax = 20  # 每回合最大时间
 
         self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
 
@@ -72,20 +74,14 @@ class MARS_UAV:
 
         'control'
         '''
-        控制输入为上下旋翼转速和桨盘周期变距角
+        控制输入为上下旋翼桨距和桨盘周期变距角，采用油门和转矩作为虚拟控制量
         '''
-        self.omega = np.zeros(2)
-        self.squared_omega = np.zeros(2)
-        self.omegaMin = 0.
-        self.omegaMax = 250.0
-        self.delta_cx = 0.
-        self.delta_cy = 0.
-        self.deltaMin = -0.1
-        self.deltaMax = 0.1
         self.thrust = 0.
         self.thrustMin = 0.
-        self.thrustMax = 7.0
+        self.thrustMax = 12.0
         self.tau = np.zeros(3)
+        self.tauMin = -5
+        self.tauMax = 5
         'control'
 
         '''physical parameters'''
@@ -157,23 +153,25 @@ class MARS_UAV:
         return False
 
     def f2omega(self):
-        self.squared_omega = np.array([(self.gamma2 * self.thrust - self.kappa2 * self.tau[2]) / (
-                self.kappa1 * self.gamma2 + self.kappa2 * self.gamma1),
-                                       (self.gamma1 * self.thrust - self.kappa1 * self.tau[2]) / (
-                                               self.kappa2 * self.gamma1 + self.kappa1 * self.gamma2)])
-        self.squared_omega = np.clip(self.squared_omega, 0, 80000)
-        self.omega = np.sqrt(self.squared_omega)
-        self.delta_cx = - self.tau[0] / (self.d * self.kappa2 * self.squared_omega[1])
-        self.delta_cy = self.tau[1] / (self.d * self.kappa2 * self.squared_omega[1])
+        # self.squared_omega = np.array([(self.gamma2 * self.thrust - self.kappa2 * self.tau[2]) / (
+        #         self.kappa1 * self.gamma2 + self.kappa2 * self.gamma1),
+        #                                (self.gamma1 * self.thrust - self.kappa1 * self.tau[2]) / (
+        #                                        self.kappa2 * self.gamma1 + self.kappa1 * self.gamma2)])
+        # self.squared_omega = np.clip(self.squared_omega, 0, 80000)
+        # self.omega = np.sqrt(self.squared_omega)
+        # self.delta_cx = - self.tau[0] / (self.d * self.kappa2 * self.squared_omega[1])
+        # self.delta_cy = self.tau[1] / (self.d * self.kappa2 * self.squared_omega[1])
+        pass
 
     def omega2f(self):
-        self.squared_omega = self.omega ** 2
-        self.thrust = self.kappa1 * self.squared_omega[0] + self.kappa2 * np.cos(self.delta_cx) * np.cos(
-            self.delta_cy) * self.squared_omega[1]
-        self.tau = np.array([-self.d * self.kappa2 * np.sin(self.delta_cx) * self.squared_omega[1],
-                             self.d * self.kappa2 * np.sin(self.delta_cy) * np.cos(self.delta_cx) * self.squared_omega[
-                                 1],
-                             self.gamma1 * self.squared_omega[0] - self.gamma2 * self.squared_omega[1]])
+        # self.squared_omega = self.omega ** 2
+        # self.thrust = self.kappa1 * self.squared_omega[0] + self.kappa2 * np.cos(self.delta_cx) * np.cos(
+        #     self.delta_cy) * self.squared_omega[1]
+        # self.tau = np.array([-self.d * self.kappa2 * np.sin(self.delta_cx) * self.squared_omega[1],
+        #                      self.d * self.kappa2 * np.sin(self.delta_cy) * np.cos(self.delta_cx) * self.squared_omega[
+        #                          1],
+        #                      self.gamma1 * self.squared_omega[0] - self.gamma2 * self.squared_omega[1]])
+        pass
 
     def ode(self, xx: np.ndarray):
         """
@@ -199,33 +197,18 @@ class MARS_UAV:
         # dv = 
         '''
         [_x, _y, _z, _vx, _vy, _vz, _phi, _theta, _psi, _p, _q, _r] = xx[0:12]
-        # PSI = np.array([[1, 0, -np.sin(_theta)],
-        #                 [0, np.cos(_phi), np.sin(_phi) * np.cos(_theta)],
-        #                 [0, -np.sin(_phi), np.cos(_phi) * np.cos(_theta)]])     # 欧拉参数矩阵
-        #
-        # M = PSI.T @ np.diag([self.Jxx, self.Jyy, self.Jzz]) @ PSI       # 惯性矩阵
-        #
-        # '''1. 无人机在惯性系下的姿态角 phi theta psi 的微分方程'''
-        # dphi, dtheta, dpsi = _p, _q, _r
-        # '''1. 无人机在惯性系下的姿态角 phi theta psi 的微分方程'''
-        #
-        # w = np.array([dphi, dtheta, dpsi])
-        # dPSI = np.array([[0, 0, -np.cos(_theta) * dtheta],
-        #                  [0, -np.sin(_phi) * dphi, np.cos(_phi) * np.cos(_theta) * dphi - np.sin(_phi) * np.sin(_theta) * dtheta],
-        #                  [0, -np.cos(_phi) * dphi, -np.sin(_phi) * np.cos(_theta) * dphi - np.sin(_theta) * np.cos(_phi) * dtheta]])
-        # C = - PSI @ np.linalg.pinv(dPSI) @ PSI - PSI.T @ np.cross(np.diag([self.Jxx, self.Jyy, self.Jzz]) @ PSI @ w, PSI)
-        #
-        # '''2. 无人机在惯性系旋转的角速度p q r 的微分方程'''
-        # [dp, dq, dr] = (np.linalg.pinv(M) @ (PSI.T @ self.tau - C @ w)).tolist()
-        # '''2. 无人机在惯性系旋转的角速度 p q r 的微分方程'''
-        #
-        # '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
-        # [dx, dy, dz] = [_vx, _vy, _vz]
-        # dvx = self.thrust / self.m * (np.cos(_phi) * np.sin(_theta) * np.cos(_psi) + np.sin(_phi) * np.sin(_psi))
-        # dvy = self.thrust / self.m * (np.cos(_phi) * np.sin(_theta) * np.sin(_psi) - np.sin(_phi) * np.cos(_psi))
-        # dvz = self.thrust / self.m * np.cos(_phi) * np.cos(_theta) - self.g
-        # '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
-        # dvx, dvy, dvz = 0, 0, 0     # 将速度强行限制
+        R_i_b1 = np.array([[math.cos(_psi), math.sin(_psi), 0],
+                           [-math.sin(_psi), math.cos(_psi), 0],
+                           [0, 0, 1]])  # 从惯性系到b1系，旋转偏航角psi
+        R_b1_b2 = np.array([[math.cos(_theta), 0, -math.sin(_theta)],
+                            [0, 1, 0],
+                            [math.sin(_theta), 0, math.cos(_theta)]])  # 从b1系到b2系，旋转俯仰角theta
+        R_b2_b = np.array([[1, 0, 0],
+                           [0, math.cos(_phi), math.sin(_phi)],
+                           [0, -math.sin(_phi), math.cos(_phi)]])  # 从b2系到b系，旋转滚转角phi
+        R_i_b = np.matmul(R_b2_b, np.matmul(R_b1_b2, R_i_b1))  # 从惯性系到机体系的转换矩阵
+        R_b_i = R_i_b.T  # 从机体系到惯性系的转换矩阵
+
         '''1. 无人机在惯性系下的姿态角 phi theta psi 的微分方程'''
         dp = (self.tau[0] + (self.Jyy - self.Jzz) * _q * _r) / self.Jxx
         dq = (self.tau[1] + (self.Jzz - self.Jxx) * _p * _r) / self.Jyy
@@ -239,12 +222,18 @@ class MARS_UAV:
         [dphi, dtheta, dpsi] = np.dot(_R_pqr2diner, [_p, _q, _r]).tolist()
         '''2. 无人机在惯性系旋转的角速度 p q r 的微分方程'''
 
-        '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
+        '''3. 无人机在惯性系下的空气阻力计算'''
+        [u, v, w] = np.dot(R_i_b, [_vx, _vy, _vz]).tolist()  # 机体系下速度 为了计算阻力
+        V_total = np.sqrt(u ** 2 + v ** 2 + w ** 2)     # 总气流速度 无外界干扰情况下为机体系总速度
+        f = np.dot(0.5 * self.rho * self.S * self.C * V_total * np.array([u, v, w]), R_b_i)  # 计算机体系下阻力并转换到惯性系
+        '''3. 无人机在惯性系下的空气阻力计算'''
+
+        '''4. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
         [dx, dy, dz] = [_vx, _vy, _vz]
-        dvx = self.thrust / self.m * (np.cos(_phi) * np.sin(_theta) * np.cos(_psi) + np.sin(_phi) * np.sin(_psi))
-        dvy = self.thrust / self.m * (np.cos(_phi) * np.sin(_theta) * np.sin(_psi) - np.sin(_phi) * np.cos(_psi))
-        dvz = self.thrust / self.m * np.cos(_phi) * np.cos(_theta) - self.g
-        '''3. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
+        dvx = self.thrust / self.m * (np.cos(_phi) * np.sin(_theta) * np.cos(_psi) + np.sin(_phi) * np.sin(_psi)) - f[0] / self.m
+        dvy = self.thrust / self.m * (np.cos(_phi) * np.sin(_theta) * np.sin(_psi) - np.sin(_phi) * np.cos(_psi)) - f[1] / self.m
+        dvz = self.thrust / self.m * np.cos(_phi) * np.cos(_theta) - self.g - f[2] / self.m
+        '''4. 无人机在惯性系下的位置 x y z 和速度 vx vy vz 的微分方程'''
         # dvx, dvy, dvz = 0, 0, 0     # 将速度强行限制
         return np.array([dx, dy, dz, dvx, dvy, dvz, dphi, dtheta, dpsi, dp, dq, dr])
 
@@ -337,10 +326,6 @@ class MARS_UAV:
         self.omega_body = omega0_body
         self.time = 0
         self.control_state = np.concatenate((self.pos, self.vel, self.angle, self.omega_inertial))  # 控制系统的状态，不是强化学习的状态
-        self.omega = np.zeros(2)
-        self.squared_omega = np.zeros(2)
-        self.delta_cx = 0.
-        self.delta_cy = 0.
         self.thrust = 0.
         self.tau = np.zeros(3)
         self.is_terminal = False

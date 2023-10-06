@@ -1,26 +1,25 @@
 import os
 import sys
 import cv2 as cv
-import numpy as np
+from common.common_func import *
 
-from environment.envs.RISEControl.rise import RISE
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "./")
-from common.common_func import *
+
 
 
 # Flight Attitude Simulator Test
 def test_flight_attitude_simulator():
     from FlightAttitudeSimulator.flight_attitude_simulator import Flight_Attitude_Simulator
-    env = Flight_Attitude_Simulator(initTheta=-60.0, setTheta=0., save_cfg=True)
+    env = Flight_Attitude_Simulator(initTheta=-60.0, setTheta=0.)
     test_num = 1
     for _ in range(test_num):
         env.reset_random()
         while not env.is_terminal:
             env.show_dynamic_image(isWait=False)
             # action = random.choice(env.action_space)
-            action = [0.0]
+            action = np.array([0.0])
             env.step_update(action=action)
 
 
@@ -419,7 +418,7 @@ def test_uav_hover():
 
 
 def test_mars_uav_hover():
-    from UAV.mars_uav_hover import MARS_UAV_Hover
+    from environment.envs.MarsUAV.mars_uav_hover import MARS_UAV_Hover
     import matplotlib.pyplot as plt
     env = MARS_UAV_Hover(target_pos=[0, 0, 4])
     num = 0
@@ -453,7 +452,7 @@ def test_two_link_manipulator():
 
 
 def test_ball_balancer_1d():
-    from RobotManipulators.BallBalancer1D import BallBalancer1D
+    from environment.envs.BallBalancer.BallBalancer1D import BallBalancer1D
     env = BallBalancer1D(initPos=0.05)
     num = 0
     while num < 2:

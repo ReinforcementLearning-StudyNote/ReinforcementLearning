@@ -114,7 +114,7 @@ if __name__ == '__main__':
 	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'
 	os.mkdir(simulationPath)
 	c = cv.waitKey(1)
-	TRAIN = True  # 直接训练
+	TRAIN = False  # 直接训练
 	RETRAIN = False  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
@@ -180,7 +180,7 @@ if __name__ == '__main__':
 	else:
 		agent = DPPO(env=env, actor_lr=3e-4, critic_lr=1e-3, num_of_pro=0, path=simulationPath)
 		agent.global_policy = PPOActorCritic(agent.env.state_dim, agent.env.action_dim, 0.1, 'GlobalPolicy_ppo', simulationPath)
-		agent.load_models(optPath + 'DPPO-4-FlightAttitudeSimulator2State/')
+		agent.load_models(optPath + 'DPPO-FlightAttitudeSimulator2State/')
 		agent.eval_policy.load_state_dict(agent.global_policy.state_dict())
 		test_num = 100
 		for _ in range(test_num):

@@ -1,8 +1,6 @@
-import numpy as np
-
 from environment.config.xml_write import *
-from environment.envs.UAV.mars_uav import MARS_UAV
-from environment.envs.UAV.mars_uav_visualization import MARS_UAV_Visualization
+from environment.envs.MarsUAV.mars_uav import MARS_UAV
+from environment.envs.MarsUAV.mars_uav_visualization import MARS_UAV_Visualization
 from algorithm.rl_base.rl_base import rl_base
 from common.common_func import *
 import pandas as pd
@@ -49,10 +47,10 @@ class MARS_UAV_Hover(rl_base, MARS_UAV):
 
         self.action_dim = 4
         self.action_step = [None for _ in range(self.action_dim)]
-        self.action_range = [[self.omegaMin, self.omegaMax],
-                             [self.omegaMin, self.omegaMax],
-                             [self.deltaMin, self.deltaMax],
-                             [self.deltaMin, self.deltaMax]]
+        self.action_range = [[self.thrustMin, self.thrustMax],
+                             [self.tauMin, self.tauMax],
+                             [self.tauMin, self.tauMax],
+                             [self.tauMin, self.tauMax]]
         self.action_num = [math.inf for _ in range(self.action_dim)]
         self.action_space = [None for _ in range(self.action_dim)]
         self.isActionContinuous = [True for _ in range(self.action_dim)]
@@ -282,8 +280,8 @@ class MARS_UAV_Hover(rl_base, MARS_UAV):
         if self.is_success():
             print('Very good!!!')
             self.terminal_flag = 3
-            self.is_terminal = True
-            return True
+            self.is_terminal = False
+            # return False
         return self.is_episode_Terminal()
 
     def step_update(self, action: list):
