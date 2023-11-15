@@ -447,7 +447,7 @@ if __name__ == '__main__':
         RECORD = True
         optPath = '../../../datasave/network/DDPG-UGV-Obstacle-Avoidance/parameters/'
         agent = DDPG(env=env, target_actor=Actor(1e-4, 8, env.state_dim - 8, env.action_dim, 'Actor', simulationPath))
-        agent.load_target_actor_optimal(path=optPath, file='TargetActor_ddpg')
+        agent.load_target_actor_optimal(path=optPath, file='Actor_ddpg2')
         cap = cv.VideoWriter(simulationPath + '/' + 'Optimal.mp4', cv.VideoWriter_fourcc('X', 'V', 'I', 'D'), 30.0, (env.width, env.height)) if RECORD else None
         simulation_num = 5
         successCounter = 0

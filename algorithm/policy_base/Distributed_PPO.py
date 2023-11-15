@@ -247,6 +247,7 @@ class Worker(mp.Process):
 	# 				self.queue.put(round(sumr / (self.episode + 1 - start_eps), 3))
 	#
 	# 	self.queue.put(None)  # 这个进程结束了，就把None放进去，用于global判断
+	'''这个run是给UGVBi用的'''
 
 
 class Distributed_PPO:

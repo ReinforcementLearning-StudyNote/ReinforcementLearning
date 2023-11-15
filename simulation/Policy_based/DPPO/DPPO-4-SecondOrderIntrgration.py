@@ -112,14 +112,14 @@ class PPOActorCritic(nn.Module):
 
 
 if __name__ == '__main__':
-	log_dir = '../../../datasave/log/'
+	log_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../datasave/log/'
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
 	simulationPath = log_dir + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d-%H-%M-%S') + '-' + ENV + '/'
 	os.mkdir(simulationPath)
 	c = cv.waitKey(1)
-	TRAIN = False  # 直接训练
-	RETRAIN = True  # 基于之前的训练结果重新训练
+	TRAIN = True  # 直接训练
+	RETRAIN = False  # 基于之前的训练结果重新训练
 	TEST = not TRAIN
 
 	env = env(pos0=np.array([1.0, 1.0]),
@@ -145,7 +145,7 @@ if __name__ == '__main__':
 			但是还是要注意，每个人同时不要走太远，不要走太快，稳稳当当一步一步来。
 			脑海中一定要有这么个观念：从完成任务的目的出发，policy-based 算法的多进程、value-based 算法的经验池，都是一种牛逼但是 “无奈” 之举。
 		'''
-		process_num = 5
+		process_num = 1
 		actor_lr = 1e-5 / min(process_num, 5)
 		critic_lr = 1e-4 / min(process_num, 5)		# 一直都是 1e-3
 		action_std = 0.6

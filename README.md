@@ -1,18 +1,22 @@
 # Installation
 This platform can be implemented on both windows and ubuntu if you have installed python3. Currently, there is no ROS-related packages.
 It only requires pytorch, numpy, and opencv.
-## Python version
-Python higher than 3.8 is recommended.
+## Package version
+* Python: 3.8.10
+* numpy: 1.22.2
+* opencv: 4.7.0
+* pytorch: 1.13.1 + cu117 (cpu only also works for our platform)
+* matplotlib: 3.7.1
 ## Installation
-Pre-installed: Anaconda3, any version that has a default python higher than 3.8 is fine.
-```commandline
-pip install opencv-python
-pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio===0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
-```
-The version of PyTorch depends on the device you have. You can choose CPU only or a specified CUDA version according to your GPU.
+* windows: Anaconda3 is recommended because it is convenient to install and uninstall.
+  One can install some extra packages (torch et.al) after installing anaconda3
+* ubuntu: Ubuntu 20.04 is recommended because it has already integrated python3. 
+  However, anaconda3 is still required if your ubuntu version is lower than 20.04.  
+* The version of PyTorch depends on the device. One can choose CPU only or a specified CUDA version.
+  We have tested our code using different versions of PyTorch and they all works.
 
 # ReinforcementLearning
-Currently, this repository consists of algorithm, common, datasave, environment, and simulation five parts..
+Currently, this repository consists of algorithm, common, datasave, environment, and simulation five directories.
 
 **Algorithm**
 

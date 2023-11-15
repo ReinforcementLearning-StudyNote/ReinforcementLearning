@@ -44,7 +44,6 @@ class Critic(nn.Module):
         state_value = self.fc1(state)  # forward
         state_value = self.batch_norm1(state_value)  # batch normalization
         state_value = func.relu(state_value)  # relu
-
         state_value = self.fc2(state_value)
         state_value = self.batch_norm2(state_value)
 

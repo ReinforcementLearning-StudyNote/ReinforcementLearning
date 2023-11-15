@@ -4,11 +4,17 @@ import datetime
 import time
 import cv2 as cv
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
+print(os.path.dirname(os.path.abspath(__file__)))
+
 from algorithm.policy_base.Proximal_Policy_Optimization import Proximal_Policy_Optimization as PPO
 from common.common_cls import *
+from environment.envs.cartpole.cartpole_angleonly import CartPoleAngleOnly
 
 optPath = '../../../datasave/network/'
 show_per = 1
